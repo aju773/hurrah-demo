@@ -33,6 +33,9 @@ export default defineConfig({
         MEDIA_ROOT: E2E_MEDIA,
         CORS_ALLOWED_ORIGINS: "http://127.0.0.1:3100",
         ALLOWED_HOSTS: "127.0.0.1,localhost",
+        // The specs so far exercise the priced behaviour (Price grid, Quote); the
+        // money-free scripted runs come with their own backend setting.
+        COMMERCE_ENABLED: "true",
       },
       url: `${API_URL}/api/design-requests/settings/`,
       reuseExistingServer: false,

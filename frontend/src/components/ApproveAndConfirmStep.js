@@ -28,6 +28,7 @@ export default function ApproveAndConfirmStep({
   catalogue,
   selection,
   quote,
+  commerceEnabled = false,
   clock,
   frontId,
   backId,
@@ -69,7 +70,7 @@ export default function ApproveAndConfirmStep({
   if (previewError) {
     return <div className="p-[24px] text-[#bb0027] text-[14px]">{t("loadError")}</div>;
   }
-  if (!preview || !quote || !clock) {
+  if (!preview || (commerceEnabled && !quote) || !clock) {
     return <div className="p-[24px] text-[#575c64] text-[14px]">{t("loading")}</div>;
   }
 
@@ -111,7 +112,8 @@ export default function ApproveAndConfirmStep({
         back_artwork: sameAsFront ? null : backId,
         same_as_front: sameAsFront,
         size_choice: sizeChoice?.choice === "keep_size_scale" ? sizeChoice : null,
-        expected_total_fils: Math.round(Number(quote.total_aed) * 100),
+        // With the Commerce switch off there is no total to send or check.
+        ...(commerceEnabled && quote ? { expected_total_fils: Math.round(Number(quote.total_aed) * 100) } : {}),
         expected_turnaround: selection.turnaround,
         expected_promised_date: clock.promised_date,
         accepted_warning_codes: warningCodes,
@@ -174,26 +176,32 @@ export default function ApproveAndConfirmStep({
               {configLines.map((line) => (
                 <Line key={line.name} label={line.name} value={line.label} />
               ))}
-              <div className="h-px bg-[#f0f3ff] my-[4px]" />
-              <Line label={t("subtotalExVat")} value={t("aed", { amount: quote.subtotal_aed })} />
-              <Line label={t("vat")} value={t("aed", { amount: quote.vat_aed })} />
-              <Line label={t("delivery")} value={t("free")} />
-              <div className="flex items-center justify-between pt-[8px]">
-                <span className="text-[#151c27] text-[16px] font-bold">{t("totalInclVat")}</span>
-                <span className="text-[#bb0027] text-[24px] font-extrabold">{t("aed", { amount: quote.total_aed })}</span>
-              </div>
+              {commerceEnabled && quote && (
+                <>
+                  <div className="h-px bg-[#f0f3ff] my-[4px]" />
+                  <Line label={t("subtotalExVat")} value={t("aed", { amount: quote.subtotal_aed })} />
+                  <Line label={t("vat")} value={t("aed", { amount: quote.vat_aed })} />
+                  <Line label={t("delivery")} value={t("free")} />
+                  <div className="flex items-center justify-between pt-[8px]">
+                    <span className="text-[#151c27] text-[16px] font-bold">{t("totalInclVat")}</span>
+                    <span className="text-[#bb0027] text-[24px] font-extrabold">{t("aed", { amount: quote.total_aed })}</span>
+                  </div>
+                </>
+              )}
             </div>
           </div>
 
-          <div className="bg-[#f0f3ff] rounded-[12px] p-[12px] text-[#151c27] text-[13px] font-semibold">
-            {t("payOnDelivery")}
-          </div>
+          {commerceEnabled && (
+            <div className="bg-[#f0f3ff] rounded-[12px] p-[12px] text-[#151c27] text-[13px] font-semibold">
+              {t("payOnDelivery")}
+            </div>
+          )}
 
           {/* Keyed on clock.now, like FlyersConfigurator's step 1 Countdown: a
               fresh clock (a resubmit-triggered refresh, or this countdown's
               own expiry below) remounts it with a clean countdown instead of
               syncing a ticking value in from a changing prop. */}
-          <Countdown key={clock.now} clock={clock} locale={locale} onExpire={onClockExpire} />
+          <Countdown key={clock.now} clock={clock} locale={locale} onExpire={onClockExpire} commerceEnabled={commerceEnabled} />
 
           <DeliveryForm t={t} delivery={delivery} onChange={updateDelivery} />
 
@@ -260,7 +268,7 @@ function ProofThumbnail({ label, image, orderedTrimMm }) {
   );
 }
 
-function Countdown({ clock, locale, onExpire }) {
+function Countdown({ clock, locale, onExpire, commerceEnabled }) {
   const [secondsLeft, setSecondsLeft] = useState(clock.seconds_to_cutoff);
   const [retryCount, setRetryCount] = useState(0);
 
@@ -276,7 +284,7 @@ function Countdown({ clock, locale, onExpire }) {
 
   return (
     <p className="text-[#575c64] text-[13px]">
-      <DeliveryLine clock={clock} secondsLeft={secondsLeft} locale={locale} />
+      <DeliveryLine clock={clock} secondsLeft={secondsLeft} locale={locale} commerceEnabled={commerceEnabled} />
     </p>
   );
 }

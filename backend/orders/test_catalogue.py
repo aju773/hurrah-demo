@@ -1,6 +1,6 @@
 from decimal import Decimal
 
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from rest_framework.test import APIClient
 
 from .catalogue import load_catalogue
@@ -179,6 +179,7 @@ class FlyerScriptTotalsTests(TestCase):
         self.assertIsNone(cell["quote"])
 
 
+@override_settings(COMMERCE_ENABLED=True)
 class CatalogueApiTests(TestCase):
     def setUp(self):
         self.client = APIClient()

@@ -29,10 +29,12 @@ export default async function FlyersPage() {
   // (see above); a distinct error message keeps that indistinguishable from
   // FlyersConfigurator's own initial-loading state.
   const hasError = !catalogue || !configuration;
+  // The Commerce switch rides in the catalogue payload; without it, stay money-free.
+  const commerceEnabled = catalogue?.commerce_enabled === true;
 
   return (
     <div className="relative mx-auto bg-[#f9f9ff]" style={{ maxWidth: "1512px" }}>
-      <SiteHeader />
+      <SiteHeader commerceEnabled={commerceEnabled} />
       <div className="flex flex-col gap-[20px] px-[32px] py-[26px] w-full">
         <div className="flex flex-wrap items-center justify-between gap-[12px]">
           <h1 className="text-[#151c27] text-[28px] font-extrabold tracking-[-0.7px]">{t("title")}</h1>
@@ -44,7 +46,7 @@ export default async function FlyersPage() {
           <FlyersConfigurator initialCatalogue={catalogue} initialConfiguration={configuration} />
         )}
       </div>
-      <SiteFooter />
+      <SiteFooter commerceEnabled={commerceEnabled} />
     </div>
   );
 }

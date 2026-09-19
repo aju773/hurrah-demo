@@ -23,11 +23,15 @@ export default function SyncDialog({
   fileTrimMm,
   fileBleedMm,
   fileImageUrl,
+  commerceEnabled = false,
 }) {
   const t = useTranslations("SyncDialog");
   // "front-only" and "back-on-single" always offer a switch; fetch its
   // preview as soon as the dialog appears instead of waiting for a click.
-  const autoPreviewKind = dialog?.kind === "front-only" || dialog?.kind === "back-on-single";
+  // With the Commerce switch off there is no total to ask for, but the preview also
+  // carries any Turnaround fallback notice, so a size mismatch fetches it up front too.
+  const autoPreviewKind =
+    dialog?.kind === "front-only" || dialog?.kind === "back-on-single" || (!commerceEnabled && dialog?.kind === "size-mismatch");
   useEffect(() => {
     if (dialog && autoPreviewKind && !preview) onPreviewSwitch(dialog.key);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -56,7 +60,7 @@ export default function SyncDialog({
 
   if (dialog.kind === "size-mismatch") {
     title = t("sizeMismatchTitle", { file: sizeLabel(dialog.file), ordered: sizeLabel(dialog.ordered) });
-    body = <SwitchPreview t={t} preview={preview} onPreview={() => onPreviewSwitch(dialog.key)} />;
+    body = <SwitchPreview t={t} preview={preview} commerceEnabled={commerceEnabled} onPreview={() => onPreviewSwitch(dialog.key)} />;
     actions.push(
       <button
         key="switch"
@@ -234,7 +238,18 @@ function translatedScaleNote(t, result) {
   return t(key, { ...values, edges: values.edges ? t(values.edges) : "" });
 }
 
-function SwitchPreview({ t, preview, onPreview }) {
+function SwitchPreview({ t, preview, onPreview, commerceEnabled }) {
+  if (!commerceEnabled) {
+    // No money: only the notices (e.g. a Turnaround falling back) are worth showing.
+    if (!preview?.notices?.length) return null;
+    return (
+      <div className="bg-[#f0f3ff] rounded-[10px] p-[10px] flex flex-col gap-[4px] text-[13px]">
+        {preview.notices.map((n, i) => (
+          <span key={i} className="text-[#6f5400]">{n.reason}</span>
+        ))}
+      </div>
+    );
+  }
   if (!preview) {
     return (
       <button type="button" onClick={onPreview} className="self-start text-[#bb0027] text-[12px] font-bold underline">

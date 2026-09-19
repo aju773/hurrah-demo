@@ -1,7 +1,8 @@
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 
-export default function SiteHeader() {
+// The cart is money-shaped, so it only shows with the Commerce switch on.
+export default function SiteHeader({ commerceEnabled = false }) {
   const t = useTranslations("SiteHeader");
 
   return (
@@ -31,12 +32,14 @@ export default function SiteHeader() {
             <div className="absolute inset-0 pointer-events-none rounded-[inherit] shadow-[inset_0px_2px_4px_0px_rgba(0,0,0,0.05)]"></div>
           </div>
         </div>
-        <a href="#" className="relative shrink-0 block" style={{ width: "67px", height: "48px" }}>
-          <div className="absolute inset-0 rounded-[7px] bg-[#f0f3ff] shadow-[inset_2px_3px_4px_0px_rgba(97,93,93,0.25)]"></div>
-          <div className="absolute flex items-center justify-center inset-[8px]">
-            <img src="/assets/e897f.svg" className="w-[26px] h-[24px] -scale-x-100" alt={t("cartAlt")} />
-          </div>
-        </a>
+        {commerceEnabled && (
+          <a href="#" className="relative shrink-0 block" style={{ width: "67px", height: "48px" }}>
+            <div className="absolute inset-0 rounded-[7px] bg-[#f0f3ff] shadow-[inset_2px_3px_4px_0px_rgba(97,93,93,0.25)]"></div>
+            <div className="absolute flex items-center justify-center inset-[8px]">
+              <img src="/assets/e897f.svg" className="w-[26px] h-[24px] -scale-x-100" alt={t("cartAlt")} />
+            </div>
+          </a>
+        )}
       </div>
 
       <div className="absolute" style={{ left: "100px", top: "107px" }}>

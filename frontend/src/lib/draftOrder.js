@@ -38,6 +38,11 @@ export function initDraft(defaults) {
     blocked: {},
     priceGrid: [],
     clock: null,
+    // From the Configuration API: the Commerce switch, every Turnaround's promised
+    // date/window (the money-free cards), and whether the selection has a Base price.
+    commerceEnabled: false,
+    turnarounds: [],
+    available: true,
     // Step 3 approval ticks (spec stories 78-79, 82): cleared whenever the
     // Configuration or Artwork changes, or the Cut-off countdown expires.
     ticks: { approval: false, warnings: false },
@@ -135,6 +140,9 @@ function applyResolved(state, resolved, meta, primaryOption) {
     blocked: meta?.blocked ?? state.blocked,
     priceGrid: meta?.priceGrid ?? state.priceGrid,
     clock: meta?.clock ?? state.clock,
+    commerceEnabled: meta?.commerceEnabled ?? state.commerceEnabled,
+    turnarounds: meta?.turnarounds ?? state.turnarounds,
+    available: meta?.available ?? state.available,
   };
 }
 

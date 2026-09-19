@@ -33,7 +33,7 @@ const EMPTY_FORM = { name: "", phone: "", email: "", business_name: "", brief: "
  * and the hotline card — all pass the same shape of props. Closing it (via
  * `onClose`) never touches the caller's own options/uploads state.
  */
-export default function DesignHelpDrawer({ open, onClose, product, configurationLine, configurationSnapshot }) {
+export default function DesignHelpDrawer({ open, onClose, product, configurationLine, configurationSnapshot, commerceEnabled = false }) {
   const browsingLanguage = useLocale();
   const t = useTranslations("DesignHelp");
   const [form, setForm] = useState(EMPTY_FORM);
@@ -163,7 +163,7 @@ export default function DesignHelpDrawer({ open, onClose, product, configuration
             </div>
           ) : (
             <form onSubmit={submit} className="flex flex-col gap-[16px]">
-              <p className="text-[#151c27] text-[16px] font-semibold">{t("intro")}</p>
+              <p className="text-[#151c27] text-[16px] font-semibold">{t(commerceEnabled ? "introPriced" : "intro")}</p>
 
               <div className="bg-[#f0f3ff] rounded-[8px] p-[10px]">
                 <span className="text-[#5d3f3e] text-[10px] font-bold tracking-[0.5px] uppercase">{t("currentConfiguration")}</span>

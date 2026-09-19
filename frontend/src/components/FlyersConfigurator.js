@@ -3,7 +3,9 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { useRouter } from "@/i18n/navigation";
-import DeliveryLine from "./DeliveryLine";
+import Countdown from "./Countdown";
+import TurnaroundCards from "./TurnaroundCards";
+import ConfigurationSummary from "./ConfigurationSummary";
 import useDraftOrder, { clearPersistedDraft } from "@/lib/useDraftOrder";
 import DesignHelpDrawer from "./DesignHelpDrawer";
 import ArtworkSlots from "./ArtworkSlots";
@@ -66,6 +68,7 @@ export default function FlyersConfigurator({ initialCatalogue, initialConfigurat
   }, [state.slots.front]);
 
   const quote = state.quote;
+  const commerceEnabled = state.commerceEnabled;
   const blocked = state.blocked ?? {};
   const quantityOption = catalogue?.options.find((o) => o.code === "quantity");
   const turnaroundOption = catalogue?.options.find((o) => o.code === "turnaround");
@@ -129,6 +132,7 @@ export default function FlyersConfigurator({ initialCatalogue, initialConfigurat
           catalogue={catalogue}
           selection={selection}
           quote={quote}
+          commerceEnabled={commerceEnabled}
           clock={state.clock}
           frontId={state.slots.front?.id}
           backId={state.slots.back?.id}
@@ -153,7 +157,7 @@ export default function FlyersConfigurator({ initialCatalogue, initialConfigurat
       <div className="flex items-center justify-between gap-[12px] bg-white rounded-[12px] shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)] p-[16px]">
         <div className="flex flex-col gap-[2px]">
           <span className="text-[#151c27] text-[14px] font-semibold">{t("noArtworkHeading")}</span>
-          <span className="text-[#575c64] text-[12px]">{t("noArtworkBody")}</span>
+          <span className="text-[#575c64] text-[12px]">{t(commerceEnabled ? "noArtworkBodyPriced" : "noArtworkBody")}</span>
         </div>
         <button
           type="button"
@@ -228,6 +232,7 @@ export default function FlyersConfigurator({ initialCatalogue, initialConfigurat
         fileTrimMm={state.slots.front?.mm ? [state.slots.front.mm.width, state.slots.front.mm.height] : null}
         fileBleedMm={state.slots.front?.bleedMm ?? 0}
         fileImageUrl={state.slots.front?.imageUrl ?? null}
+        commerceEnabled={commerceEnabled}
       />
 
       <div className="grid grid-cols-12 gap-[20px] w-full items-start">
@@ -236,7 +241,19 @@ export default function FlyersConfigurator({ initialCatalogue, initialConfigurat
           {catalogue.options.map((option) => (
             <div key={option.code} className="bg-[#f0f3ff] rounded-[12px] p-[12px] flex flex-col gap-[8px]">
               <span className="text-[#5d3f3e] text-[10px] font-bold tracking-[0.5px] uppercase">{option.name}</span>
-              <div className="flex flex-wrap gap-[8px]">
+              {!commerceEnabled && option.code === "turnaround" ? (
+                <TurnaroundCards
+                  option={option}
+                  selected={selection.turnaround}
+                  blocked={blocked.turnaround}
+                  turnarounds={state.turnarounds}
+                  clock={state.clock}
+                  locale={locale}
+                  onPick={(code) => pick("turnaround", code)}
+                  onExpire={refresh}
+                />
+              ) : (
+              <div className="flex flex-wrap gap-[8px]" {...(option.code === "quantity" ? { role: "radiogroup", "aria-label": option.name } : {})}>
                 {option.values.map((value) => {
                   const reason = blocked[option.code]?.[value.code];
                   const selected = selection[option.code] === value.code;
@@ -244,6 +261,7 @@ export default function FlyersConfigurator({ initialCatalogue, initialConfigurat
                     <button
                       key={value.code}
                       type="button"
+                      {...(option.code === "quantity" ? { role: "radio", "aria-checked": selected } : {})}
                       disabled={Boolean(reason)}
                       title={reason?.reason ?? ""}
                       onClick={() => pick(option.code, value.code)}
@@ -260,50 +278,63 @@ export default function FlyersConfigurator({ initialCatalogue, initialConfigurat
                   );
                 })}
               </div>
+              )}
             </div>
           ))}
         </div>
 
         {/* Summary panel */}
-        <div className="col-span-12 lg:col-span-5 bg-white rounded-[16px] shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)] overflow-clip">
-          <div className="bg-[#2a313d] px-[16px] py-[12px]">
-            <span className="text-[#ebf1ff] text-[16px] font-semibold">{t("summary")}</span>
+        <div className="col-span-12 lg:col-span-5">
+          {commerceEnabled ? (
+          <div className="bg-white rounded-[16px] shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)] overflow-clip">
+            <div className="bg-[#2a313d] px-[16px] py-[12px]">
+              <span className="text-[#ebf1ff] text-[16px] font-semibold">{t("summary")}</span>
+            </div>
+            <div className="flex flex-col gap-[8px] p-[16px]">
+              {quote ? (
+                <>
+                  <Line label={t("basePrice")} value={t("aed", { amount: quote.base_aed })} />
+                  {quote.uplifts.map((uplift) => (
+                    <Line
+                      key={uplift.option}
+                      label={t("upliftLabel", { label: uplift.label, percent: uplift.percent })}
+                      value={t("aedPlus", { amount: uplift.amount_aed })}
+                    />
+                  ))}
+                  <div className="h-px bg-[#f0f3ff] my-[4px]" />
+                  <Line label={t("subtotalExVat")} value={t("aed", { amount: quote.subtotal_aed })} />
+                  <Line label={t("vat")} value={t("aed", { amount: quote.vat_aed })} />
+                  <div className="flex items-center justify-between pt-[8px]">
+                    <span className="text-[#151c27] text-[16px] font-bold">{t("totalInclVat")}</span>
+                    <span className="text-[#bb0027] text-[24px] font-extrabold">{t("aed", { amount: quote.total_aed })}</span>
+                  </div>
+                  <span className="text-[#575c64] text-[12px]">{t("perPiece", { amount: quote.per_piece_aed })}</span>
+                  {state.clock && (
+                    // Keyed on clock.now: a fresh Configuration (new pick, or the
+                    // countdown expiring below) remounts this with a clean countdown
+                    // rather than syncing a ticking value in from a changing prop.
+                    <Countdown key={state.clock.now} clock={state.clock} locale={locale} onExpire={refresh} commerceEnabled />
+                  )}
+                </>
+              ) : (
+                <span className="text-[#bb0027] text-[13px] font-semibold">{t("notAvailable")}</span>
+              )}
+            </div>
           </div>
-          <div className="flex flex-col gap-[8px] p-[16px]">
-            {quote ? (
-              <>
-                <Line label={t("basePrice")} value={t("aed", { amount: quote.base_aed })} />
-                {quote.uplifts.map((uplift) => (
-                  <Line
-                    key={uplift.option}
-                    label={t("upliftLabel", { label: uplift.label, percent: uplift.percent })}
-                    value={t("aedPlus", { amount: uplift.amount_aed })}
-                  />
-                ))}
-                <div className="h-px bg-[#f0f3ff] my-[4px]" />
-                <Line label={t("subtotalExVat")} value={t("aed", { amount: quote.subtotal_aed })} />
-                <Line label={t("vat")} value={t("aed", { amount: quote.vat_aed })} />
-                <div className="flex items-center justify-between pt-[8px]">
-                  <span className="text-[#151c27] text-[16px] font-bold">{t("totalInclVat")}</span>
-                  <span className="text-[#bb0027] text-[24px] font-extrabold">{t("aed", { amount: quote.total_aed })}</span>
-                </div>
-                <span className="text-[#575c64] text-[12px]">{t("perPiece", { amount: quote.per_piece_aed })}</span>
-                {state.clock && (
-                  // Keyed on clock.now: a fresh Configuration (new pick, or the
-                  // countdown expiring below) remounts this with a clean countdown
-                  // rather than syncing a ticking value in from a changing prop.
-                  <Countdown key={state.clock.now} clock={state.clock} locale={locale} onExpire={refresh} />
-                )}
-              </>
-            ) : (
-              <span className="text-[#bb0027] text-[13px] font-semibold">{t("notAvailable")}</span>
-            )}
-          </div>
+          ) : (
+            <ConfigurationSummary
+              catalogue={catalogue}
+              selection={selection}
+              available={state.available}
+              turnarounds={state.turnarounds}
+              locale={locale}
+            />
+          )}
         </div>
       </div>
 
-      {/* Price grid: Quantity x Turnaround */}
-      <div className="flex flex-col gap-[8px] w-full">
+      {/* Price grid: Quantity x Turnaround (only with the Commerce switch on) */}
+      {commerceEnabled && <div className="flex flex-col gap-[8px] w-full">
         <h2 className="text-[#151c27] text-[16px] font-bold">{t("priceGrid")}</h2>
         <div className="bg-white rounded-[12px] shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)] overflow-x-auto">
           <table className="w-full text-left" style={{ minWidth: "600px" }}>
@@ -362,7 +393,7 @@ export default function FlyersConfigurator({ initialCatalogue, initialConfigurat
             </tbody>
           </table>
         </div>
-      </div>
+      </div>}
 
       <div className="flex items-center justify-end">
         <button
@@ -382,35 +413,10 @@ export default function FlyersConfigurator({ initialCatalogue, initialConfigurat
         product={{ id: catalogue.product_id }}
         configurationLine={configurationLine}
         configurationSnapshot={selection}
+        commerceEnabled={commerceEnabled}
       />
     </div>
   );
-}
-
-const EXPIRED_RETRY_MS = 5000;
-
-// Ticks the current Turnaround's Cut-off countdown down once a second and shows the
-// delivery line beneath it; calls onExpire (a refetch) when it reaches zero, so a
-// Same-day pick past its Cut-off (or a weekend) falls back and its notice shows
-// without the customer touching anything. A successful refetch brings a new
-// clock.now, which remounts this component (see its `key` at the call site) with a
-// fresh countdown; if the refetch fails instead, we keep retrying on a delay rather
-// than freezing on "0s" forever.
-function Countdown({ clock, locale, onExpire }) {
-  const [secondsLeft, setSecondsLeft] = useState(clock.seconds_to_cutoff);
-  const [retryCount, setRetryCount] = useState(0);
-
-  useEffect(() => {
-    if (secondsLeft > 0) {
-      const timer = setTimeout(() => setSecondsLeft((s) => Math.max(0, s - 1)), 1000);
-      return () => clearTimeout(timer);
-    }
-    onExpire();
-    const retry = setTimeout(() => setRetryCount((c) => c + 1), EXPIRED_RETRY_MS);
-    return () => clearTimeout(retry);
-  }, [secondsLeft, retryCount, onExpire]);
-
-  return <DeliveryLine clock={clock} secondsLeft={secondsLeft} locale={locale} className="text-[#575c64] text-[12px]" />;
 }
 
 function Line({ label, value }) {

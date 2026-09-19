@@ -74,6 +74,12 @@ _Avoid_: Crop, stretch, scale to fill
 Whether a page is portrait or landscape. Recorded per side; not an Option, so a Size matches either way round.
 _Avoid_: Rotation, layout
 
+### Commerce
+
+**Commerce switch**:
+A server setting, off by default, that hides all money from the journey: no price, VAT, total, cart, payment or delivery amount in the pages or the API responses (omitted, not just hidden). Availability still comes from the Base price rows, so a combination with no Base price stays "Not available". Turning it on restores the Price grid and Quote.
+_Avoid_: Feature flag, price toggle, demo mode
+
 ### Design help
 
 **Design request**:

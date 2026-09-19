@@ -1,5 +1,6 @@
 from decimal import Decimal
 
+from django.conf import settings
 from django.shortcuts import get_object_or_404
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -23,14 +24,22 @@ def _fils_to_aed(fils):
     return str((Decimal(fils) / 100).quantize(Decimal("0.01")))
 
 
+def commerce_enabled():
+    """The Commerce switch (settings.COMMERCE_ENABLED), read per request."""
+    return bool(settings.COMMERCE_ENABLED)
+
+
 def _serialize_catalogue(catalogue, locale):
+    commerce = commerce_enabled()
     return {
+        "commerce_enabled": commerce,
         "product_id": catalogue["product"].id,
         "options": [
             {
                 "code": option["code"],
                 "name": _text(option, "name", locale),
-                "pricing_role": option["pricing_role"],
+                # Which Options price a Quote is money structure: omitted with the switch off.
+                **({"pricing_role": option["pricing_role"]} if commerce else {}),
                 "values": [
                     {
                         "code": value["code"],
@@ -107,10 +116,8 @@ def _serialize_grid(rows, locale):
     ]
 
 
-def _serialize_clock(catalogue, resolved, now):
-    """seconds to Cut-off plus the promised date/window for the resolved Turnaround."""
-    turnaround_option = option_by_code(catalogue, "turnaround")
-    value = value_by_code(turnaround_option, resolved["turnaround"])
+def _turnaround_clock(value, now):
+    """seconds to Cut-off plus the promised date/window for one Turnaround value."""
     delivery = promised_delivery(
         now,
         cutoff_time=value["cutoff_time"],
@@ -119,12 +126,25 @@ def _serialize_clock(catalogue, resolved, now):
         window_end=value["delivery_window_end"],
     )
     return {
-        "now": now.isoformat(),
         "seconds_to_cutoff": seconds_to_cutoff(now, value["cutoff_time"]),
         "promised_date": delivery["date"].isoformat(),
         "window_start": delivery["window_start"].strftime("%H:%M") if delivery["window_start"] else None,
         "window_end": delivery["window_end"].strftime("%H:%M") if delivery["window_end"] else None,
     }
+
+
+def _serialize_clock(catalogue, resolved, now):
+    """The clock block for the resolved Turnaround."""
+    turnaround_option = option_by_code(catalogue, "turnaround")
+    value = value_by_code(turnaround_option, resolved["turnaround"])
+    return {"now": now.isoformat(), **_turnaround_clock(value, now)}
+
+
+def _serialize_turnarounds(catalogue, now):
+    """Every Turnaround with its promised date/window and Cut-off countdown, so
+    the page can show a card per Turnaround without a Price grid."""
+    turnaround_option = option_by_code(catalogue, "turnaround")
+    return [{"code": value["code"], **_turnaround_clock(value, now)} for value in turnaround_option["values"]]
 
 
 class ProductCatalogueView(APIView):
@@ -163,12 +183,19 @@ class ProductConfigurationView(APIView):
         now = current_time()
         resolved, notices = resolve_selection(catalogue, selection, now=now)
         quote = compute_quote(catalogue, resolved)
+        commerce = commerce_enabled()
 
-        return Response({
+        data = {
+            "commerce_enabled": commerce,
             "selection": resolved,
+            # A combination with no Base price row is "Not available", whatever the switch says.
+            "available": quote is not None,
             "notices": _serialize_notices(notices, locale),
             "blocked": _serialize_blocked(blocked_map(catalogue, resolved, now=now), locale),
-            "quote": _serialize_quote(quote, locale),
-            "price_grid": _serialize_grid(price_grid(catalogue, resolved, now=now), locale),
             "clock": _serialize_clock(catalogue, resolved, now),
-        })
+            "turnarounds": _serialize_turnarounds(catalogue, now),
+        }
+        if commerce:
+            data["quote"] = _serialize_quote(quote, locale)
+            data["price_grid"] = _serialize_grid(price_grid(catalogue, resolved, now=now), locale)
+        return Response(data)

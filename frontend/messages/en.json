@@ -59,7 +59,7 @@
     "loading": "Loading options…",
     "catalogueError": "Something went wrong loading the catalogue. Please refresh the page.",
     "noArtworkHeading": "No artwork yet?",
-    "noArtworkBody": "Send us a brief and we’ll design it for you — free, we quote after your brief.",
+    "noArtworkBody": "Send us a brief and we’ll design it for you.",
     "needDesign": "Need a design?",
     "hotlineLabel": "Artwork Assist Hotline",
     "chatWithUs": "Chat with us",
@@ -78,7 +78,11 @@
     "gridCellDetail": "ex-VAT {subtotal} · {perPiece}/pc",
     "continue": "Continue",
     "continueNeedsArtwork": "Upload your Front artwork to continue.",
-    "continueHasOpenDialog": "Resolve the artwork/order difference above to continue."
+    "continueHasOpenDialog": "Resolve the artwork/order difference above to continue.",
+    "noArtworkBodyPriced": "Send us a brief and we’ll design it for you — free, we quote after your brief.",
+    "configurationSummary": "Your configuration",
+    "cardReady": "Ready {date}, <ltr>{window}</ltr>",
+    "unavailableCard": "Not available"
   },
   "CheckAndPreviewStep": {
     "loading": "Loading your preview…",
@@ -263,7 +267,8 @@
   },
   "Clock": {
     "by": "by",
-    "deliveryLine": "Approve in <ltr>{countdown}</ltr> for delivery {date}, <ltr>{window}</ltr> (Dubai)"
+    "deliveryLine": "Approve in <ltr>{countdown}</ltr> for delivery {date}, <ltr>{window}</ltr> (Dubai)",
+    "readyLine": "Approve in <ltr>{countdown}</ltr> for ready {date}, <ltr>{window}</ltr> (Dubai)"
   },
   "DesignHelp": {
     "title": "Need a design?",
@@ -271,7 +276,7 @@
     "successTitle": "Design request {number} received. We’ll WhatsApp you within 2 working hours (Mon–Fri 9:00–18:00).",
     "continueWhatsapp": "Continue on WhatsApp",
     "backToFlyers": "Back to Flyers",
-    "intro": "Free design help — we’ll quote after your brief",
+    "intro": "Design help — send us a brief",
     "currentConfiguration": "Current configuration",
     "notDecided": "Not decided yet",
     "fieldName": "Name",
@@ -302,6 +307,7 @@
     "configuration_invalid": "Configuration must be a JSON object.",
     "files_too_many": "Up to 3 reference files are allowed.",
     "files_wrong_type": "Reference files must be JPG, PNG or PDF.",
-    "files_too_large": "Each reference file must be 20MB or smaller."
+    "files_too_large": "Each reference file must be 20MB or smaller.",
+    "introPriced": "Free design help — we’ll quote after your brief"
   }
 }

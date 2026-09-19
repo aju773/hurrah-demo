@@ -59,7 +59,7 @@
     "loading": "جارٍ تحميل الخيارات…",
     "catalogueError": "حدث خطأ أثناء تحميل الكتالوج. يرجى تحديث الصفحة.",
     "noArtworkHeading": "ليس لديك تصميم بعد؟",
-    "noArtworkBody": "أرسل لنا ملخصًا وسنصممه لك مجانًا — نقدّم لك عرض السعر بعد استلام الملخص.",
+    "noArtworkBody": "أرسل لنا ملخصًا وسنصممه لك.",
     "needDesign": "بحاجة إلى تصميم؟",
     "hotlineLabel": "خط المساعدة للتصميم",
     "chatWithUs": "تحدث معنا",
@@ -78,7 +78,11 @@
     "gridCellDetail": "قبل الضريبة {subtotal} · {perPiece}/قطعة",
     "continue": "متابعة",
     "continueNeedsArtwork": "قم برفع تصميم الوجه الأمامي للمتابعة.",
-    "continueHasOpenDialog": "قم بحل الفرق بين التصميم والطلب أعلاه للمتابعة."
+    "continueHasOpenDialog": "قم بحل الفرق بين التصميم والطلب أعلاه للمتابعة.",
+    "noArtworkBodyPriced": "أرسل لنا ملخصًا وسنصممه لك مجانًا — نقدّم لك عرض السعر بعد استلام الملخص.",
+    "configurationSummary": "تكوين طلبك",
+    "cardReady": "جاهز {date}، <ltr>{window}</ltr>",
+    "unavailableCard": "غير متاح"
   },
   "CheckAndPreviewStep": {
     "loading": "جارٍ تحميل المعاينة…",
@@ -263,7 +267,8 @@
   },
   "Clock": {
     "by": "بحلول",
-    "deliveryLine": "وافق خلال <ltr>{countdown}</ltr> للتسليم {date}، <ltr>{window}</ltr> (دبي)"
+    "deliveryLine": "وافق خلال <ltr>{countdown}</ltr> للتسليم {date}، <ltr>{window}</ltr> (دبي)",
+    "readyLine": "وافق خلال <ltr>{countdown}</ltr> ليكون جاهزًا {date}، <ltr>{window}</ltr> (دبي)"
   },
   "DesignHelp": {
     "title": "بحاجة إلى تصميم؟",
@@ -271,7 +276,7 @@
     "successTitle": "تم استلام طلب التصميم {number}. سنراسلك عبر واتساب خلال ساعتي عمل (من الاثنين إلى الجمعة 9:00–18:00).",
     "continueWhatsapp": "المتابعة على واتساب",
     "backToFlyers": "العودة إلى الفلايرز",
-    "intro": "مساعدة مجانية في التصميم — نقدّم لك عرض السعر بعد استلام الملخص",
+    "intro": "مساعدة في التصميم — أرسل لنا ملخصًا",
     "currentConfiguration": "الاختيار الحالي",
     "notDecided": "لم يتم تحديده بعد",
     "fieldName": "الاسم",
@@ -302,6 +307,7 @@
     "configuration_invalid": "بيانات الاختيار غير صالحة.",
     "files_too_many": "يمكن رفع حتى 3 ملفات مرجعية.",
     "files_wrong_type": "يجب أن تكون الملفات المرجعية بصيغة JPG أو PNG أو PDF.",
-    "files_too_large": "يجب ألا يتجاوز حجم كل ملف مرجعي 20 ميجابايت."
+    "files_too_large": "يجب ألا يتجاوز حجم كل ملف مرجعي 20 ميجابايت.",
+    "introPriced": "مساعدة مجانية في التصميم — نقدّم لك عرض السعر بعد استلام الملخص"
   }
 }

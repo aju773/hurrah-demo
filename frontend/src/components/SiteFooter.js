@@ -1,6 +1,6 @@
 import { useTranslations } from "next-intl";
 
-export default function SiteFooter() {
+export default function SiteFooter({ commerceEnabled = false }) {
   const t = useTranslations("SiteFooter");
 
   return (
@@ -53,7 +53,7 @@ export default function SiteFooter() {
           <a href="#">{t("serviceTrackOrder")}</a>
           <a href="#">{t("serviceShipping")}</a>
           <a href="#">{t("serviceReturns")}</a>
-          <a href="#">{t("servicePayment")}</a>
+          {commerceEnabled && <a href="#">{t("servicePayment")}</a>}
           <a href="#">{t("serviceHelpCenter")}</a>
         </div>
       </div>

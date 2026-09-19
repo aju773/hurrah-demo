@@ -6,6 +6,7 @@ import CopyButton from "@/components/CopyButton";
 import LocaleControls from "@/components/LocaleControls";
 import { isolateLtr } from "@/lib/bidi";
 import { API_BASE_URL } from "@/lib/api";
+import { fetchCommerceEnabled } from "@/lib/commerce";
 
 async function getOrder(token, locale) {
   const res = await fetch(`${API_BASE_URL}/api/orders/${token}/?locale=${locale}`, { cache: "no-store" });
@@ -29,19 +30,23 @@ export default async function OrderConfirmationPage({ params }) {
   const { token } = await params;
   const locale = await getLocale();
   const t = await getTranslations("OrderConfirmation");
-  const [order, whatsappNumber] = await Promise.all([getOrder(token, locale), getWhatsappNumber()]);
+  const [order, whatsappNumber, commerceEnabled] = await Promise.all([
+    getOrder(token, locale),
+    getWhatsappNumber(),
+    fetchCommerceEnabled(),
+  ]);
 
   if (!order) {
     return (
       <div className="relative mx-auto bg-[#f9f9ff]" style={{ maxWidth: "1512px" }}>
-        <SiteHeader />
+        <SiteHeader commerceEnabled={commerceEnabled} />
         <div className="flex flex-col items-center justify-center gap-[16px] px-[32px] py-[64px]">
           <h1 className="text-[#151c27] text-[20px] font-bold">{t("notFound")}</h1>
           <Link href="/flyers" className="bg-[#e51937] px-[24px] py-[12px] rounded-[12px] text-white text-[14px] font-semibold">
             {t("orderMore")}
           </Link>
         </div>
-        <SiteFooter />
+        <SiteFooter commerceEnabled={commerceEnabled} />
       </div>
     );
   }
@@ -50,7 +55,7 @@ export default async function OrderConfirmationPage({ params }) {
 
   return (
     <div className="relative mx-auto bg-[#f9f9ff]" style={{ maxWidth: "1512px" }} dir={locale === "ar" ? "rtl" : "ltr"}>
-      <SiteHeader />
+      <SiteHeader commerceEnabled={commerceEnabled} />
       <div className="flex flex-col gap-[20px] px-[32px] py-[26px] w-full max-w-[720px] mx-auto">
         <div className="flex justify-end">
           <LocaleControls />
@@ -132,7 +137,7 @@ export default async function OrderConfirmationPage({ params }) {
           </Link>
         </div>
       </div>
-      <SiteFooter />
+      <SiteFooter commerceEnabled={commerceEnabled} />
     </div>
   );
 }

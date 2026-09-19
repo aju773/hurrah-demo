@@ -428,4 +428,26 @@ describe("idempotency key (spec story 88)", () => {
     s = reduce(s, { type: "RESET_IDEMPOTENCY_KEY", key: "xyz" });
     expect(s.idempotencyKey).toBe("xyz");
   });
+
+  it("keeps the money-free Configuration state (Commerce switch, Turnaround cards, availability) from the API", () => {
+    const turnarounds = [{ code: "standard", promised_date: "2026-09-25", window_start: null, window_end: "20:00", seconds_to_cutoff: 1000 }];
+    let s = initDraft(DEFAULTS);
+    expect(s.commerceEnabled).toBe(false);
+    s = reduce(s, {
+      type: "REQUOTED",
+      selection: DEFAULTS,
+      notices: [],
+      blocked: {},
+      clock: null,
+      commerceEnabled: false,
+      turnarounds,
+      available: false,
+    });
+    expect(s.turnarounds).toEqual(turnarounds);
+    expect(s.available).toBe(false);
+    expect(s.quote).toBeNull();
+    // A later refresh that omits them (e.g. a preview) leaves them alone.
+    s = reduce(s, { type: "REQUOTED", selection: DEFAULTS, notices: [] });
+    expect(s.turnarounds).toEqual(turnarounds);
+  });
 });

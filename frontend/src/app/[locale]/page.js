@@ -1,15 +1,18 @@
 import { Link } from "@/i18n/navigation";
 import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
+import { fetchCommerceEnabled } from "@/lib/commerce";
 
 // Static showcase page (design mock). It reads nothing from the API: the real,
-// catalogue-driven ordering flow is the Flyers page.
+// catalogue-driven ordering flow is the Flyers page. Only the Commerce switch
+// comes from the API: with it off, every price, VAT and discount line is left out.
 const NAME = "Rounded Corner Spot UV Matt Lamination 400gsm";
 const SKU = "HRH-BC-400UV-RND";
 const SPEC_LINE = "4 Color • 2 Sides • Matt Lamination • Spot UV • Before Cutting: 9.5×6 cm";
 const BASE_PRICE = "110.00";
 
-export default function ProductPage() {
+export default async function ProductPage() {
+  const commerceEnabled = await fetchCommerceEnabled();
   const name = NAME;
   const sku = SKU;
   const specLine = SPEC_LINE;
@@ -17,7 +20,7 @@ export default function ProductPage() {
 
   return (
     <div className="relative mx-auto bg-[#f9f9ff]" style={{ width: "1512px" }}>
-      <SiteHeader />
+      <SiteHeader commerceEnabled={commerceEnabled} />
 
       <div className="flex flex-col" style={{ width: "1352px", margin: "0 auto" }}>
         {/* Trust & Certification Bar */}
@@ -302,15 +305,15 @@ export default function ProductPage() {
                     <h2 className="text-[#151c27] text-[16px] font-bold tracking-[-0.16px]">Available Dimension(s):</h2>
                     <img src="/assets/f5460.svg" className="w-[13.333px] h-[13.333px]" alt="" />
                   </div>
-                  <span className="text-[#5d3f3e] text-[11px] font-bold tracking-[0.22px]">All prices quoted in UAE Dirhams (AED)</span>
+                  {commerceEnabled && <span className="text-[#5d3f3e] text-[11px] font-bold tracking-[0.22px]">All prices quoted in UAE Dirhams (AED)</span>}
                 </div>
                 <div className="bg-white rounded-[12px] shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)] w-full overflow-x-auto">
                   <table className="w-full text-left" style={{ minWidth: "700px" }}>
                     <thead>
                       <tr className="bg-[#f0f3ff]">
                         <th className="p-[12px] text-[#5d3f3e] text-[12px] font-bold">Dimension</th>
-                        <th className="p-[12px] text-[#5d3f3e] text-[12px] font-bold text-center">Total Price Exclusive of Discount and VAT</th>
-                        <th className="p-[12px] text-[#5d3f3e] text-[12px] font-bold text-right">Total Price INC. VAT</th>
+                        {commerceEnabled && <th className="p-[12px] text-[#5d3f3e] text-[12px] font-bold text-center">Total Price Exclusive of Discount and VAT</th>}
+                        {commerceEnabled && <th className="p-[12px] text-[#5d3f3e] text-[12px] font-bold text-right">Total Price INC. VAT</th>}
                         <th className="p-[12px] text-[#5d3f3e] text-[12px] font-bold text-center">Selection</th>
                       </tr>
                     </thead>
@@ -320,6 +323,8 @@ export default function ProductPage() {
                           <div className="text-[#151c27] text-[14px] font-bold">After Cutting 90 × 55 mm</div>
                           <div className="text-[#575c64] text-[10px] font-semibold tracking-[0.4px]">Bleed size: 95 × 60 mm (Standard UAE Format)</div>
                         </td>
+                        {commerceEnabled && (
+                          <>
                         <td className="p-[12px] text-center">
                           <span className="text-[#575c64] text-[12px] line-through mr-[8px]">116.00 AED</span>
                           <span className="text-[#151c27] text-[14px] font-bold">{basePrice} AED</span>
@@ -328,6 +333,8 @@ export default function ProductPage() {
                           <span className="text-[#575c64] text-[12px] line-through mr-[8px]">121.80 AED</span>
                           <span className="text-[#bb0027] text-[16px] font-extrabold tracking-[-0.16px]">115.50 AED</span>
                         </td>
+                          </>
+                        )}
                         <td className="p-[12px] text-center">
                           <span className="inline-flex items-center justify-center bg-white border border-[#bb0027] rounded-full w-[20px] h-[20px]"><span className="bg-[#bb0027] rounded-full w-[12px] h-[12px]"></span></span>
                         </td>
@@ -337,6 +344,8 @@ export default function ProductPage() {
                           <div className="text-[#151c27] text-[14px] font-bold">After Cutting 85 × 55 mm</div>
                           <div className="text-[#575c64] text-[10px] font-semibold tracking-[0.4px]">Bleed size: 90 × 60 mm (European Credit Card Size)</div>
                         </td>
+                        {commerceEnabled && (
+                          <>
                         <td className="p-[12px] text-center">
                           <span className="text-[#575c64] text-[12px] line-through mr-[8px]">110.00 AED</span>
                           <span className="text-[#151c27] text-[14px] font-bold">104.50 AED</span>
@@ -345,6 +354,8 @@ export default function ProductPage() {
                           <span className="text-[#575c64] text-[12px] line-through mr-[8px]">115.50 AED</span>
                           <span className="text-[#151c27] text-[16px] font-extrabold tracking-[-0.16px]">109.72 AED</span>
                         </td>
+                          </>
+                        )}
                         <td className="p-[12px] text-center">
                           <span className="inline-block bg-white border border-[#767676] rounded-full w-[20px] h-[20px]"></span>
                         </td>
@@ -352,13 +363,13 @@ export default function ProductPage() {
                     </tbody>
                   </table>
                 </div>
-                <div className="bg-[#f0f3ff] flex items-center justify-between p-[12px] rounded-[12px] w-full">
+                {commerceEnabled && <div className="bg-[#f0f3ff] flex items-center justify-between p-[12px] rounded-[12px] w-full">
                   <div className="flex gap-[8px] items-center">
                     <img src="/assets/ba848.svg" className="w-[16.667px] h-[16.667px]" alt="" />
                     <span className="text-[#5d3f3e] text-[12px]"><span className="font-bold">Up to 5.17% off</span> for online Orders. The crossed-out price is for email or in-person purchases.</span>
                   </div>
                   <span className="bg-[#ffc72c] px-[8px] py-[2px] rounded-[4px] text-[#6f5400] text-[11px] font-bold tracking-[0.55px] uppercase whitespace-nowrap">INSTANT WEB DISCOUNT APPLIED</span>
-                </div>
+                </div>}
                 <div className="flex items-center justify-between pt-[8px] w-full flex-wrap gap-[12px]">
                   <div className="flex gap-[12px] items-center">
                     <button className="bg-[#f0f3ff] flex gap-[4px] h-[48px] items-center justify-center px-[16px] rounded-[12px]">
@@ -436,10 +447,12 @@ export default function ProductPage() {
                       <p className="text-[#575c64] text-[12px]">{card.desc}</p>
                     </div>
                     <div className="flex items-center justify-between pt-[20px] w-full">
-                      <div>
-                        <div className="text-[#575c64] text-[10px] font-semibold tracking-[0.4px]">Starts at</div>
-                        <div className="text-[#151c27] text-[16px] font-extrabold tracking-[-0.16px]">AED {card.price}</div>
-                      </div>
+                      {commerceEnabled ? (
+                        <div>
+                          <div className="text-[#575c64] text-[10px] font-semibold tracking-[0.4px]">Starts at</div>
+                          <div className="text-[#151c27] text-[16px] font-extrabold tracking-[-0.16px]">AED {card.price}</div>
+                        </div>
+                      ) : <span />}
                       <button className="bg-[#ffc72c] h-[36px] px-[12px] rounded-[8px] text-[#6f5400] text-[12px] font-bold">Configure</button>
                     </div>
                   </div>
@@ -450,7 +463,7 @@ export default function ProductPage() {
         </div>
       </div>
 
-      <SiteFooter />
+      <SiteFooter commerceEnabled={commerceEnabled} />
     </div>
   );
 }

@@ -106,6 +106,9 @@ export default function useDraftOrder({ defaults, locale, initialConfiguration }
       blocked: initialConfiguration.blocked,
       priceGrid: initialConfiguration.price_grid,
       clock: initialConfiguration.clock,
+      commerceEnabled: initialConfiguration.commerce_enabled,
+      turnarounds: initialConfiguration.turnarounds,
+      available: initialConfiguration.available,
     });
   });
   const [rehydrating, setRehydrating] = useState(true);
@@ -177,6 +180,9 @@ export default function useDraftOrder({ defaults, locale, initialConfiguration }
           blocked: data.blocked,
           priceGrid: data.price_grid,
           clock: data.clock,
+          commerceEnabled: data.commerce_enabled,
+          turnarounds: data.turnarounds,
+          available: data.available,
         });
       } else if (effect.type === "preview-switch") {
         dispatch({ type: "PREVIEW_READY", key: effect.key, quote: data.quote, notices: data.notices, resolvedSelection: data.selection });

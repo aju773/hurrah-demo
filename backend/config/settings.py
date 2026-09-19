@@ -153,6 +153,12 @@ FILE_UPLOAD_MAX_MEMORY_SIZE = 20 * 1024 * 1024  # 20MB
 DESIGN_HELP_WHATSAPP_NUMBER = "+971500000000"
 
 
+# The Commerce switch: off (the default) hides every price, VAT, total, payment and
+# delivery amount from the journey, in the pages and in the API responses. Turning
+# it on restores the priced behaviour (Price grid, Quote).
+COMMERCE_ENABLED = os.environ.get('COMMERCE_ENABLED', 'false').lower() == 'true'
+
+
 # Email
 # https://docs.djangoproject.com/en/6.1/topics/email/#topic-email-configuration
 

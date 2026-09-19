@@ -39,7 +39,8 @@ VALID_DELIVERY = {
 }
 
 
-@override_settings(MEDIA_ROOT=tempfile.mkdtemp())
+# Order submit still carries a Quote total until the money-free Step 3 lands.
+@override_settings(MEDIA_ROOT=tempfile.mkdtemp(), COMMERCE_ENABLED=True)
 class OrderSubmitApiTests(TestCase):
     @classmethod
     def setUpClass(cls):

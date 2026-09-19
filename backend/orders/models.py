@@ -168,7 +168,7 @@ class SourceFile(models.Model):
     It is not Artwork: nothing on it is checked or ordered until the customer
     assigns pages to Front and Back (orders/source_views.py). `pages` is the page
     list the picker shows. Sources that are never used expire (`expires_at`); the
-    scheduled cleanup that purges them is the demo-reset ticket."""
+    `cleanup_uploads` command (orders/cleanup.py) purges them."""
 
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="sources")
     file = models.FileField(upload_to="sources/%Y/%m/%d/")

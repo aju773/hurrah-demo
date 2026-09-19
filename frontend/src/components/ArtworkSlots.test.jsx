@@ -1,6 +1,6 @@
 import "@testing-library/jest-dom/vitest";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import en from "../../messages/en.json";
 import ArtworkSlots from "./ArtworkSlots";
@@ -250,5 +250,83 @@ describe("ArtworkSlots page picker", () => {
     expect(bodies[1]).toMatchObject({ back: 3, front_id: 31 });
     expect(FakeXhr.instances).toHaveLength(1); // the multi-page file was never re-sent
     expect(onBackResult).toHaveBeenCalled();
+  });
+});
+
+describe("ArtworkSlots picker: same artwork for the back", () => {
+  it("sends only Front and turns 'same as back' on, so Back is copied from the source", async () => {
+    const fetchMock = mockAssign({ body: { page_count: 5, front: FRONT_3, back: null, errors: [] } });
+    const view = renderSlots({ orderedSize: "a5" });
+    pickFront(view.container);
+    await act(async () => xhr().respond(201, PHASE_ONE));
+    fireEvent.click(screen.getByRole("button", { name: "Use page 3 as Front" }));
+    fireEvent.click(within(screen.getByRole("dialog")).getByLabelText("Use the same artwork for the back"));
+    await act(async () => fireEvent.click(screen.getByRole("button", { name: "Use these pages" })));
+    const body = JSON.parse(assignCalls(fetchMock)[0][1].body);
+    expect(body).toMatchObject({ front: 3 });
+    expect(body.back).toBeUndefined();
+    expect(view.onSameAsBackChange).toHaveBeenCalledWith(true);
+  });
+});
+
+describe("ArtworkSlots page picker in the Back slot", () => {
+  async function dropMultiPageIntoBack(props) {
+    const view = renderSlots({ orderedSize: "a5", ...props });
+    pickFront(view.container);
+    await act(async () => xhr(0).respond(201, { page_count: 1, front: ARTWORK, back: null, errors: [] }));
+    fireEvent.change(view.container.querySelector('input[type="file"]'), { target: { files: [FILE] } }); // Front is filled, so Back's is the only one left
+    await act(async () => xhr(1).respond(201, PHASE_ONE));
+    return view;
+  }
+
+  it("opens the picker for one page instead of a dead end", async () => {
+    const { onBackResult } = await dropMultiPageIntoBack();
+    expect(screen.getByRole("dialog", { name: "Choose your flyer pages" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /as Front/ })).toBeNull();
+    expect(screen.getAllByRole("button", { name: /as Back/ })).toHaveLength(5);
+    expect(onBackResult).not.toHaveBeenCalled();
+  });
+
+  it("assigns just the Back page, against the Front already there", async () => {
+    const fetchMock = mockAssign({ body: { page_count: 5, front: null, back: BACK_4, errors: [] } });
+    const { onBackResult, onFrontResult } = await dropMultiPageIntoBack();
+    fireEvent.click(screen.getByRole("button", { name: "Use page 4 as Back" }));
+    await act(async () => fireEvent.click(screen.getByRole("button", { name: "Use these pages" })));
+    const [[url, init]] = assignCalls(fetchMock);
+    expect(url).toContain("/api/sources/7/assign/");
+    const body = JSON.parse(init.body);
+    expect(body).toMatchObject({ back: 4, front_id: ARTWORK.id });
+    expect(body.front).toBeUndefined();
+    expect(onBackResult).toHaveBeenCalledWith(BACK_4);
+    expect(onFrontResult).toHaveBeenCalledTimes(1); // only the earlier Front upload
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(screen.getAllByText("Detected")).toHaveLength(2);
+  });
+
+  it("will not take a Back page of another Size than the Front, and says why", async () => {
+    await dropMultiPageIntoBack();
+    fireEvent.click(screen.getByRole("button", { name: "Use page 1 as Back" }));
+    expect(screen.getByRole("alert")).toHaveTextContent("Front is A5 but Back is A4");
+    expect(screen.getByRole("button", { name: "Use these pages" })).toBeDisabled();
+  });
+});
+
+describe("ArtworkSlots Choose pages", () => {
+  it("shows Choose pages on a file with a stored source, and asks the parent to reopen it", async () => {
+    const onChoosePages = vi.fn();
+    const view = renderSlots({ onChoosePages });
+    pickFront(view.container);
+    await act(async () => xhr().respond(201, { page_count: 2, front: { ...ARTWORK, source_id: 7, page_index: 1 }, back: { ...ARTWORK, id: 12, source_id: 7, page_index: 2 }, errors: [] }));
+    const buttons = screen.getAllByRole("button", { name: "Choose pages" });
+    expect(buttons).toHaveLength(2);
+    fireEvent.click(buttons[1]);
+    expect(onChoosePages).toHaveBeenCalledWith("back");
+  });
+
+  it("shows nothing for a plain upload with no stored source", async () => {
+    const view = renderSlots({ onChoosePages: vi.fn() });
+    pickFront(view.container);
+    await act(async () => xhr().respond(201, { page_count: 1, front: ARTWORK, back: null, errors: [] }));
+    expect(screen.queryByRole("button", { name: "Choose pages" })).toBeNull();
   });
 });

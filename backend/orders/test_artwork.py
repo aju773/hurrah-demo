@@ -82,11 +82,10 @@ class ArtworkUploadEndpointTests(TestCase):
         self.assertEqual(data["back"]["matched_size_code"], "a5")
         self.assertEqual(Artwork.objects.count(), 2)
 
-    def test_two_pages_in_back_is_error(self):
+    def test_two_pages_in_back_opens_the_picker_instead_of_erroring(self):
         res = self.upload(build_pdf({"media": (148, 210)}, {"media": (148, 210)}), slot="back")
-        self.assertEqual(res.status_code, 400)
-        codes = [e["code"] for e in res.json()["errors"]]
-        self.assertIn("back_one_page", codes)
+        self.assertEqual(res.status_code, 201, res.content)
+        self.assertEqual(res.json()["source"]["page_count"], 2)
         self.assertEqual(Artwork.objects.count(), 0)
 
     def test_three_pages_opens_the_page_picker_instead_of_making_artwork(self):

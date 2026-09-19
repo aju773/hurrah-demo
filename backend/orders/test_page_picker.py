@@ -73,11 +73,16 @@ class PagePickerApiTests(TestCase):
         self.assertEqual(again.status_code, 200)
         self.assertEqual(again.json()["pages"], source["pages"])
 
-    def test_a_multi_page_file_into_back_is_still_one_page_only(self):
-        res = self.upload(build_five_page_mixed(), slot="back")
-        self.assertEqual(res.status_code, 400)
-        self.assertEqual(res.json()["errors"][0]["code"], "back_one_page")
-        self.assertEqual(SourceFile.objects.count(), 0)
+    def test_a_multi_page_file_into_back_opens_the_picker_for_one_page(self):
+        for buf in (build_five_page_mixed(), build_pdf({"media": (148, 210)}, {"media": (148, 210)})):
+            res = self.upload(buf, slot="back")
+            self.assertEqual(res.status_code, 201, res.content)
+            data = res.json()
+            self.assertIsNone(data["back"])
+            self.assertIsNone(data["front"])
+            self.assertEqual(data["source"]["page_count"], len(data["source"]["pages"]))
+        self.assertEqual(Artwork.objects.count(), 0)
+        self.assertEqual(SourceFile.objects.count(), 2)
 
     def test_resending_phase_one_with_the_same_key_stores_one_source(self):
         first = self.open_picker(key="k1")
@@ -239,3 +244,61 @@ class PagePickerApiTests(TestCase):
         body = str(self.upload(build_five_page_mixed()).json()).lower()
         for word in ("price", "vat", "total", "aed"):
             self.assertNotIn(word, body)
+
+    # ---- reopening the picker (ticket 10) ----------------------------------
+
+    def two_page_upload(self, key=None):
+        res = self.upload(build_pdf({"media": (148, 210)}, {"media": (148, 210)}), key=key)
+        self.assertEqual(res.status_code, 201, res.content)
+        return res.json()
+
+    def test_a_two_page_upload_keeps_its_source_so_pages_can_be_swapped(self):
+        data = self.two_page_upload()
+        self.assertNotIn("source", data)  # still one-shot: no picker opens by itself
+        source_id = data["front"]["source_id"]
+        self.assertIsNotNone(source_id)
+        self.assertEqual(data["back"]["source_id"], source_id)
+        self.assertEqual(SourceFile.objects.count(), 1)
+        swapped = self.assign({"id": source_id}, {"front": 2, "back": 1})
+        self.assertEqual(swapped.status_code, 201, swapped.content)
+        self.assertEqual((swapped.json()["front"]["page_index"], swapped.json()["back"]["page_index"]), (2, 1))
+
+    def test_cancelling_a_two_page_upload_by_key_leaves_no_source(self):
+        self.two_page_upload(key="k2")
+        self.assertEqual(self.client.delete("/api/artworks/?upload_key=k2").status_code, 204)
+        self.assertEqual(Artwork.objects.count(), 0)
+        self.assertEqual(SourceFile.objects.count(), 0)
+
+    def test_resending_a_two_page_upload_still_makes_one_set(self):
+        self.two_page_upload(key="k3")
+        self.two_page_upload(key="k3")
+        self.assertEqual(Artwork.objects.count(), 2)
+        self.assertEqual(SourceFile.objects.count(), 1)
+
+    def test_a_source_with_artwork_stays_usable_after_its_expiry(self):
+        source = self.open_picker()
+        self.assign(source, {"front": 3})
+        SourceFile.objects.filter(pk=source["id"]).update(expires_at=timezone.now() - timedelta(minutes=1))
+        self.assertEqual(self.client.get(f"/api/sources/{source['id']}/").status_code, 200)
+        self.assertEqual(self.assign(source, {"front": 4}).status_code, 201)
+
+    def test_a_front_alone_is_checked_against_an_existing_back(self):
+        source = self.open_picker()
+        back = self.assign(source, {"back": 3}).json()["back"]
+        fits = self.assign(source, {"front": 4, "back_id": back["id"]})
+        self.assertEqual(fits.status_code, 201, fits.content)
+        self.assertEqual(fits.json()["front"]["page_index"], 4)
+        clash = self.assign(source, {"front": 1, "back_id": back["id"]})
+        self.assertEqual(clash.json()["errors"][0]["code"], "back_size_differs")
+        self.assertEqual(clash.json()["errors"][0]["slot"], "front")
+
+    def test_a_large_thumbnail_can_be_asked_for_and_is_cached_apart(self):
+        source = self.open_picker()
+        url = source["pages"][2]["thumbnail_url"]
+        small = Image.open(io.BytesIO(b"".join(self.client.get(url).streaming_content)))
+        large_res = self.client.get(url + "?size=large")
+        self.assertEqual(large_res.status_code, 200)
+        large = Image.open(io.BytesIO(b"".join(large_res.streaming_content)))
+        self.assertLessEqual(max(small.size), 400)
+        self.assertGreater(max(large.size), 400)
+        self.assertLessEqual(max(large.size), 1000)

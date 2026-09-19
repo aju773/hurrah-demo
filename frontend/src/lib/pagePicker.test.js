@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { chooseBack, chooseFront, evaluateChoice, pageSizeLabel } from "./pagePicker";
+import { chooseBack, chooseFront, evaluateChoice, initialChoiceFor, pageSizeLabel, pickerTargetFor, slotAsPage } from "./pagePicker";
 
 const page = (number, code, w = 148, h = 210) => ({
   number,
@@ -78,5 +78,84 @@ describe("pageSizeLabel", () => {
 
   it("gives the measured mm for a page that matches nothing", () => {
     expect(pageSizeLabel(page(1, null, 100, 200))).toEqual({ code: null, mm: { width: 100, height: 200 } });
+  });
+});
+
+describe("the same artwork for the back", () => {
+  it("allows one page as both Front and Back when 'same' is on, and needs only a Front", () => {
+    const result = evaluateChoice({ pages: PAGES, front: 3, back: null, same: true, orderedSize: "a5" });
+    expect(result).toMatchObject({ canConfirm: true, samePage: false, backSizeDiffers: false });
+    expect(result.backPage).toBe(result.frontPage);
+    expect(evaluateChoice({ pages: PAGES, front: null, back: null, same: true, orderedSize: "a5" }).canConfirm).toBe(false);
+  });
+
+  it("still refuses the same page twice when 'same' is off", () => {
+    expect(evaluateChoice({ pages: PAGES, front: 3, back: 3, same: false, orderedSize: "a5" }).canConfirm).toBe(false);
+  });
+});
+
+describe("choosing one side while the other stays", () => {
+  const fixedA5 = { matched_size_code: "a5", trim_width_mm: 148, trim_height_mm: 210 };
+
+  it("Back alone: needs a Back page that is the Size of the Front it goes with", () => {
+    expect(evaluateChoice({ pages: PAGES, mode: "back", fixed: fixedA5, front: null, back: null, orderedSize: "a5" }).canConfirm).toBe(false);
+    expect(evaluateChoice({ pages: PAGES, mode: "back", fixed: fixedA5, back: 4, orderedSize: "a5" }).canConfirm).toBe(true);
+    const clash = evaluateChoice({ pages: PAGES, mode: "back", fixed: fixedA5, back: 1, orderedSize: "a5" });
+    expect(clash).toMatchObject({ canConfirm: false, backSizeDiffers: true });
+    expect(clash.frontPage).toBe(fixedA5);
+  });
+
+  it("Back alone with no Front yet has nothing to clash with", () => {
+    expect(evaluateChoice({ pages: PAGES, mode: "back", fixed: null, back: 1, orderedSize: "a5" }).canConfirm).toBe(true);
+  });
+
+  it("Front alone: checked against the Back that stays, and only the chosen side is warned about", () => {
+    expect(evaluateChoice({ pages: PAGES, mode: "front", fixed: fixedA5, front: 4, orderedSize: "a6" })).toMatchObject({ canConfirm: true, frontDiffersFromOrder: true, backDiffersFromOrder: false });
+    expect(evaluateChoice({ pages: PAGES, mode: "front", fixed: fixedA5, front: 2, orderedSize: "a5" }).backSizeDiffers).toBe(true);
+  });
+});
+
+describe("what a slot can reopen", () => {
+  const slot = (sourceId, page, extra = {}) => ({ id: page * 10, sourceId, page, matchedSizeCode: "a5", mm: { width: 148, height: 210 }, ...extra });
+
+  it("a file with no stored source has nothing to choose from", () => {
+    expect(pickerTargetFor("front", { front: slot(null, 1), back: null })).toBeNull();
+    expect(pickerTargetFor("front", { front: null, back: null })).toBeNull();
+  });
+
+  it("Front and Back from one source reopen together, from either card, keeping their pages", () => {
+    const slots = { front: slot(7, 1), back: slot(7, 2) };
+    for (const which of ["front", "back"]) {
+      expect(pickerTargetFor(which, slots)).toEqual({ sourceId: 7, mode: "both", initial: { front: 1, back: 2, same: false }, fixed: null });
+    }
+  });
+
+  it("a Back that is Front's own page shows as 'same artwork for the back'", () => {
+    expect(pickerTargetFor("front", { front: slot(7, 3), back: slot(7, 3) }).initial).toEqual({ front: 3, back: null, same: true });
+  });
+
+  it("a Front alone reopens with no Back chosen", () => {
+    expect(pickerTargetFor("front", { front: slot(7, 3), back: null })).toMatchObject({ mode: "both", initial: { front: 3, back: null, same: false } });
+  });
+
+  it("a Back from a different file reopens on its own, against the Front, and Front reopens on its own", () => {
+    const slots = { front: slot(7, 3), back: slot(9, 2) };
+    expect(pickerTargetFor("back", slots)).toMatchObject({ sourceId: 9, mode: "back", initial: { back: 2 }, fixed: slotAsPage(slots.front) });
+    expect(pickerTargetFor("front", slots)).toMatchObject({ sourceId: 7, mode: "front", initial: { front: 3 }, fixed: slotAsPage(slots.back) });
+  });
+
+  it("a Back picked from a file while Front is a plain upload reopens as Back only", () => {
+    const slots = { front: slot(null, 1), back: slot(9, 2) };
+    expect(pickerTargetFor("back", slots)).toMatchObject({ sourceId: 9, mode: "back" });
+    expect(pickerTargetFor("front", slots)).toBeNull();
+  });
+
+  it("initialChoiceFor is the choice a plain both-sides pick starts from", () => {
+    expect(initialChoiceFor(slot(7, 3), slot(7, 4))).toEqual({ front: 3, back: 4, same: false });
+  });
+
+  it("slotAsPage reads a draft slot as a picker page", () => {
+    expect(slotAsPage(slot(7, 1))).toEqual({ matched_size_code: "a5", trim_width_mm: 148, trim_height_mm: 210 });
+    expect(slotAsPage(null)).toBeNull();
   });
 });

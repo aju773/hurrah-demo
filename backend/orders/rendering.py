@@ -11,6 +11,7 @@ import io
 
 RENDER_DPI = 150.0
 THUMBNAIL_LONGEST_EDGE_PX = 400
+LARGE_THUMBNAIL_EDGE_PX = 1000  # the Page picker's enlarged view
 
 
 def render_artwork_images(file_bytes, page_index):
@@ -42,8 +43,8 @@ def render_artwork_images(file_bytes, page_index):
     return {"page_png": page_buf.getvalue(), "thumbnail_png": thumb_buf.getvalue()}
 
 
-def render_page_thumbnail(file_bytes, page_number):
-    """PNG bytes of one page at 400px longest edge, rendered straight at that size
+def render_page_thumbnail(file_bytes, page_number, longest_edge_px=None):
+    """PNG bytes of one page at 400px longest edge (or `longest_edge_px`), rendered straight at that size
     (no 150 dpi detour) so a Page picker with dozens of pages opens quickly."""
     import pypdfium2 as pdfium
 
@@ -51,7 +52,7 @@ def render_page_thumbnail(file_bytes, page_number):
     try:
         page = pdf[page_number - 1]
         width_pt, height_pt = page.get_size()
-        scale = THUMBNAIL_LONGEST_EDGE_PX / max(width_pt, height_pt, 1)
+        scale = (longest_edge_px or THUMBNAIL_LONGEST_EDGE_PX) / max(width_pt, height_pt, 1)
         image = page.render(scale=scale).to_pil().convert("RGB")
     finally:
         pdf.close()

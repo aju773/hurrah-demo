@@ -17,7 +17,8 @@ const TRIM_SOURCES = ["trimbox", "crop", "media", "media_minus_bleed"];
  * presentational — ArtworkSlots owns the upload. `progress` is bytes sent as
  * 0–1; `canRetry` says the file is still in memory and the error is worth
  * retrying. A polite status region announces each stage and the result; an
- * error is an alert. `cancelled` marks an empty slot the customer just cancelled.
+ * error is an alert. `onChoosePages`, when given, adds "Choose pages" to a checked file.
+ * `cancelled` marks an empty slot the customer just cancelled.
  * `error` is the upload's {code, message}; the code picks the translated text.
  * File names, sizes in mm and the size code stay left-to-right in Arabic.
  */
@@ -36,6 +37,7 @@ export default function ArtworkSlot({
   onRemove,
   onCancel,
   onRetry,
+  onChoosePages,
 }) {
   const t = useTranslations("ArtworkSlot");
   const tErrors = useTranslations("ArtworkErrors");
@@ -182,6 +184,11 @@ export default function ArtworkSlot({
                 {status === "error" && canRetry && (
                   <button type="button" onClick={onRetry} className="text-[#bb0027] text-[11px] font-bold underline">
                     {t("retry")}
+                  </button>
+                )}
+                {status === "ok" && onChoosePages && (
+                  <button type="button" onClick={onChoosePages} className="text-[#bb0027] text-[11px] font-bold underline">
+                    {t("choosePages")}
                   </button>
                 )}
                 <button type="button" onClick={onRemove} className="text-[#575c64] text-[11px] font-semibold underline">

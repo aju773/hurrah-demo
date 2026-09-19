@@ -11,7 +11,6 @@ from rest_framework.views import APIView
 from . import preflight, size_choice
 from .models import Artwork, Product, SLOT_BACK, SLOT_CHOICES, SLOT_FRONT, SourceFile
 from .pdf_utils import (
-    ERROR_BACK_ONE_PAGE,
     ERROR_BACK_SIZE_DIFFERS,
     ERROR_MESSAGES_EN,
     ERROR_NOT_A_PDF,
@@ -225,10 +224,11 @@ class ArtworkUploadView(APIView):
     A 2-page PDF dropped into Front auto-fills both slots. The file is judged by
     its content, never its name. Errors are returned as {"errors": [{"code",
     "slot", "message"}], ...}: not_a_pdf, file_too_large, file_unreadable,
-    too_many_pages (over 50), back_one_page, back_size_differs, and server_busy
+    too_many_pages (over 50), back_size_differs, and server_busy
     (429, over the rate limit). See pdf_utils.ERROR_MESSAGES_EN.
 
-    A PDF of 3-50 pages dropped into Front is phase one of the Page picker: the
+    A PDF of 3-50 pages dropped into Front (or of 2-50 pages dropped into Back) is
+    phase one of the Page picker: the
     file is stored as a SourceFile, no Artwork is made, and the response carries
     {"source": {id, pages: [...]}, "front": null, "back": null}. The customer then
     assigns pages with POST /api/sources/<id>/assign/ (orders/source_views.py).
@@ -294,9 +294,9 @@ class ArtworkUploadView(APIView):
 
         if page_count > MAX_PAGES:
             return _error_response(ERROR_TOO_MANY_PAGES, page_count=page_count)
-        if slot == SLOT_BACK and page_count >= 2:
-            return _error_response(ERROR_BACK_ONE_PAGE, page_count=page_count, slot=SLOT_BACK)
-        if page_count > 2:
+        if page_count > 2 or (slot == SLOT_BACK and page_count == 2):
+            # Phase one of the Page picker. A multi-page file into Back is the same
+            # thing: the customer picks the one page Back takes.
             source = _create_source(product, uploaded_file, result, upload_key)
             return Response(_upload_payload(request, {}, page_count, source=source), status=status.HTTP_201_CREATED)
 
@@ -304,9 +304,13 @@ class ArtworkUploadView(APIView):
         file_repaired = file_check["repaired"]
         created = {}
         if slot == SLOT_FRONT and page_count == 2:
-            created[SLOT_FRONT] = _save_artwork(product, SLOT_FRONT, uploaded_file, pages[0], page_count, 1, file_bytes, file_repaired, upload_key)
+            # Still one-shot, but the file is kept as a source too, so "Choose pages"
+            # can swap Front and Back later. It is bound to the Artwork, not offered.
+            source = _create_source(product, uploaded_file, result, upload_key)
             uploaded_file.seek(0)
-            created[SLOT_BACK] = _save_artwork(product, SLOT_BACK, uploaded_file, pages[1], page_count, 2, file_bytes, file_repaired, upload_key)
+            created[SLOT_FRONT] = _save_artwork(product, SLOT_FRONT, uploaded_file, pages[0], page_count, 1, file_bytes, file_repaired, upload_key, source=source)
+            uploaded_file.seek(0)
+            created[SLOT_BACK] = _save_artwork(product, SLOT_BACK, uploaded_file, pages[1], page_count, 2, file_bytes, file_repaired, upload_key, source=source)
         else:
             artwork = _save_artwork(product, slot, uploaded_file, pages[0], page_count, 1, file_bytes, file_repaired, upload_key)
             created[slot] = artwork

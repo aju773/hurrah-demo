@@ -27,7 +27,7 @@ from .pdf_utils import (
     ERROR_SOURCE_EXPIRED,
     analyze_pdf,
 )
-from .rendering import render_page_thumbnail
+from .rendering import LARGE_THUMBNAIL_EDGE_PX, render_page_thumbnail
 from .views import (
     MAX_UPLOAD_KEY_LENGTH,
     ArtworkUploadThrottle,
@@ -55,7 +55,9 @@ class SourceExpired(APIException):
 
 def _live_source(pk):
     source = get_object_or_404(SourceFile, pk=pk)
-    if source.is_expired:
+    # Only a source nobody chose pages from expires: once Artwork is bound to it the
+    # customer must be able to reopen the picker for as long as the draft lives.
+    if source.is_expired and not source.artworks.exists():
         raise SourceExpired()
     return source
 
@@ -76,17 +78,19 @@ class SourceDetailView(APIView):
 
 
 class SourcePageThumbnailView(APIView):
-    """GET one page's 400px PNG. Rendered on the first request and cached on disk
-    per source file, so the picker's first rows appear quickly and a 50-page file
-    is not rendered up front."""
+    """GET one page's 400px PNG (`?size=large` for the enlarged view's 1000px one).
+    Rendered on the first request and cached on disk per source file, so the
+    picker's first rows appear quickly and a 50-page file is not rendered up front."""
 
     def get(self, request, pk, number):
         source = _live_source(pk)
         if not 1 <= number <= source.page_count:
             raise NotFound()
-        name = f"source_thumbs/{source.id}/{number}.png"
+        large = request.query_params.get("size") == "large"
+        name = f"source_thumbs/{source.id}/{number}{'-large' if large else ''}.png"
         if not default_storage.exists(name):
-            name = default_storage.save(name, ContentFile(render_page_thumbnail(_read_source(source), number)))
+            png = render_page_thumbnail(_read_source(source), number, LARGE_THUMBNAIL_EDGE_PX if large else None)
+            name = default_storage.save(name, ContentFile(png))
         response = FileResponse(default_storage.open(name), content_type="image/png")
         response["Cache-Control"] = "public, max-age=86400"
         return response
@@ -119,14 +123,15 @@ def _size_of(artwork):
 
 
 class SourceAssignView(APIView):
-    """POST {front?, back?, front_id?, upload_key?} to make Artwork from chosen
+    """POST {front?, back?, front_id?, back_id?, upload_key?} to make Artwork from chosen
     pages (1-based page numbers), answering like a one-shot upload.
 
     Front and Back must be the same Size (back_size_differs) and cannot be the
     same page (same_page_twice) when both are sent. `back` alone is for adding or
     replacing the Back later: with `front_id` it is checked against that Front
     Artwork, and it may repeat Front's own page ("Use the same artwork for the
-    back"). Nothing is stored when any check fails. `upload_key` makes a resend
+    back"). `front` alone with `back_id` is the same check the other way round,
+    for re-choosing Front while Back stays. Nothing is stored when any check fails. `upload_key` makes a resend
     return what the first attempt made.
     """
 
@@ -178,6 +183,10 @@ class SourceAssignView(APIView):
             front_size = None
         if SLOT_BACK in chosen and front_size is not None and not _same_size(front_size, pages[chosen[SLOT_BACK] - 1], product.size_tolerance_mm):
             return _error_response(ERROR_BACK_SIZE_DIFFERS, page_count=source.page_count, slot=SLOT_BACK)
+        if chosen.keys() == {SLOT_FRONT} and request.data.get("back_id"):
+            back = Artwork.objects.filter(pk=request.data.get("back_id"), slot=SLOT_BACK, product=product).first()
+            if back is not None and not _same_size(_size_of(back), pages[chosen[SLOT_FRONT] - 1], product.size_tolerance_mm):
+                return _error_response(ERROR_BACK_SIZE_DIFFERS, page_count=source.page_count, slot=SLOT_FRONT)
 
         created = {}
         for slot in (SLOT_FRONT, SLOT_BACK):

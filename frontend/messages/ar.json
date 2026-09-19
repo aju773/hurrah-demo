@@ -112,7 +112,8 @@
     "close": "إغلاق",
     "zoomFit": "احتواء",
     "previewOnlyNote": "معاينة فقط — يُطبع ملفك بجودته الكاملة.",
-    "previewLabel": "معاينة {side}"
+    "previewLabel": "معاينة {side}",
+    "choosePages": "اختيار الصفحات"
   },
   "ApproveAndConfirmStep": {
     "loading": "جارٍ تحميل نسخة الإثبات…",
@@ -254,7 +255,8 @@
     "trimbox": "من TrimBox",
     "crop": "من CropBox",
     "media": "مقاس الصفحة، بدون هامش",
-    "media_minus_bleed": "مقاس الصفحة ناقص الهامش"
+    "media_minus_bleed": "مقاس الصفحة ناقص الهامش",
+    "choosePages": "اختيار الصفحات"
   },
   "SyncDialog": {
     "sizeMismatchTitle": "ملفك بمقاس {file}، وطلبك بمقاس {ordered}.",
@@ -354,6 +356,17 @@
     "differsFromOrder": "{side}: الصفحة {page} مقاسها {size} بينما طلبك {ordered}. يمكنك اختيار ما تريد فعله بعد ذلك.",
     "cancel": "إلغاء",
     "confirm": "استخدام هذه الصفحات",
-    "checking": "جارٍ فحص صفحاتك…"
+    "checking": "جارٍ فحص صفحاتك…",
+    "instructionsFront": "اختر الصفحة التي ستُطبع على الوجه الأمامي. يبقى الوجه الخلفي كما هو.",
+    "instructionsBack": "اختر الصفحة التي ستُطبع على الوجه الخلفي.",
+    "summaryOne": "{side}: الصفحة {page}",
+    "sameAsFront": "نفس الأمامي",
+    "sameArtwork": "استخدم نفس التصميم للوجه الخلفي",
+    "enlarge": "تكبير الصفحة {page}",
+    "enlargedTitle": "الصفحة {page} بحجم أكبر",
+    "closeEnlarged": "إغلاق",
+    "loading": "جارٍ تحميل صفحاتك…",
+    "loadError": "تعذّر فتح صفحاتك. حاول مرة أخرى.",
+    "sourceExpired": "لم يعد هذا الملف محفوظًا. ارفعه مرة أخرى لاختيار الصفحات."
   }
 }

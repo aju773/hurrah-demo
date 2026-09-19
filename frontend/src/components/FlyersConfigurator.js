@@ -9,6 +9,9 @@ import ConfigurationSummary from "./ConfigurationSummary";
 import useDraftOrder, { clearPersistedDraft } from "@/lib/useDraftOrder";
 import DesignHelpDrawer from "./DesignHelpDrawer";
 import ArtworkSlots from "./ArtworkSlots";
+import ReopenPagePicker from "./ReopenPagePicker";
+import { pickerTargetFor } from "@/lib/pagePicker";
+import { reopenedActions, toBackPayload, toFrontPayload } from "@/lib/reopenPicker";
 import SyncDialog from "./SyncDialog";
 import CheckAndPreviewStep from "./CheckAndPreviewStep";
 import ApproveAndConfirmStep from "./ApproveAndConfirmStep";
@@ -20,6 +23,7 @@ export default function FlyersConfigurator({ initialCatalogue, initialConfigurat
   const [catalogue] = useState(initialCatalogue);
   const [designHelpOpen, setDesignHelpOpen] = useState(false);
   const [artworkResetKey, setArtworkResetKey] = useState(0);
+  const [reopenTarget, setReopenTarget] = useState(null); // the Page picker reopened from Step 1 or 2
   const mountedLocale = useRef(locale);
   const draft = useDraftOrder({
     defaults: initialConfiguration?.selection ?? initialCatalogue?.defaults ?? {},
@@ -111,6 +115,31 @@ export default function FlyersConfigurator({ initialCatalogue, initialConfigurat
 
   const dialog = dialogs[0] ?? null;
 
+  // "Choose pages" (Step 1 and Step 2): the same picker, on the file already stored.
+  const canChoosePages = { front: Boolean(pickerTargetFor("front", state.slots)), back: Boolean(pickerTargetFor("back", state.slots)) };
+  function openChoosePages(which) {
+    const target = pickerTargetFor(which, state.slots);
+    if (target) setReopenTarget(target);
+  }
+  function handlePagesReassigned(result) {
+    for (const action of reopenedActions(result, state.slots)) {
+      if (action.type === "UPLOAD_FRONT") uploadFront(action.artwork);
+      else if (action.type === "UPLOAD_BACK") uploadBack(action.artwork);
+      else removeArtwork(action.slot);
+    }
+    setReopenTarget(null);
+    setArtworkResetKey((k) => k + 1); // Step 1's slots show the new Artwork
+  }
+  const reopenPicker = reopenTarget && (
+    <ReopenPagePicker
+      target={reopenTarget}
+      slots={state.slots}
+      orderedSize={selection.size ?? null}
+      onAssigned={handlePagesReassigned}
+      onCancel={() => setReopenTarget(null)}
+    />
+  );
+
   function handleClockExpire() {
     refresh();
     clearTicks();
@@ -145,7 +174,10 @@ export default function FlyersConfigurator({ initialCatalogue, initialConfigurat
           sizeChoice={state.sizeChoice}
           onBack={() => goToStep(0)}
           onNext={() => goToStep(2)}
+          canChoosePages={canChoosePages}
+          onChoosePages={openChoosePages}
         />
+        {reopenPicker}
       </div>
     );
   }
@@ -219,38 +251,14 @@ export default function FlyersConfigurator({ initialCatalogue, initialConfigurat
         onSameAsBackChange={(checked) => {
           if (checked !== state.slots.sameBack) toggleSameBack();
         }}
-        onFrontResult={(front, back) => {
-          uploadFront({
-            id: front.id,
-            matchedSizeCode: front.matched_size_code ?? null,
-            mm: { width: front.trim_width_mm, height: front.trim_height_mm },
-            bleedMm: front.bleed_mm ?? null,
-            imageUrl: front.page_image ?? null,
-            pages: back ? 2 : 1,
-            backId: back?.id,
-            backImageUrl: back?.page_image ?? null,
-            hasError: !front.is_valid,
-            backHasError: back ? !back.is_valid : false,
-            sourceId: front.source_id ?? null,
-            page: front.page_index ?? null,
-            backPage: back?.page_index ?? null,
-          });
-        }}
-        onBackResult={(back) =>
-          uploadBack({
-            id: back.id,
-            matchedSizeCode: back.matched_size_code ?? null,
-            mm: { width: back.trim_width_mm, height: back.trim_height_mm },
-            bleedMm: back.bleed_mm ?? null,
-            imageUrl: back.page_image ?? null,
-            hasError: !back.is_valid,
-            sourceId: back.source_id ?? null,
-            page: back.page_index ?? null,
-          })
-        }
+        onFrontResult={(front, back) => uploadFront(toFrontPayload(front, back))}
+        onBackResult={(back) => uploadBack(toBackPayload(back))}
+        onChoosePages={openChoosePages}
         onFrontRemoved={() => removeArtwork("front")}
         onBackRemoved={() => removeArtwork("back")}
       />
+
+      {reopenPicker}
 
       <SyncDialog
         key={dialog?.key ?? "none"}

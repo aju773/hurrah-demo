@@ -112,7 +112,8 @@
     "close": "Close",
     "zoomFit": "Fit",
     "previewOnlyNote": "Preview only — your file prints at its full quality.",
-    "previewLabel": "{side} preview"
+    "previewLabel": "{side} preview",
+    "choosePages": "Choose pages"
   },
   "ApproveAndConfirmStep": {
     "loading": "Loading your proof…",
@@ -254,7 +255,8 @@
     "trimbox": "from TrimBox",
     "crop": "from CropBox",
     "media": "page size, no bleed",
-    "media_minus_bleed": "page size minus bleed"
+    "media_minus_bleed": "page size minus bleed",
+    "choosePages": "Choose pages"
   },
   "SyncDialog": {
     "sizeMismatchTitle": "Your file is {file}, your order is {ordered}.",
@@ -354,6 +356,17 @@
     "differsFromOrder": "{side} page {page} is {size}, but your order is {ordered}. You can choose what to do next.",
     "cancel": "Cancel",
     "confirm": "Use these pages",
-    "checking": "Checking your pages…"
+    "checking": "Checking your pages…",
+    "instructionsFront": "Pick the page to print on the front. Your back stays as it is.",
+    "instructionsBack": "Pick the page to print on the back.",
+    "summaryOne": "{side}: page {page}",
+    "sameAsFront": "same as front",
+    "sameArtwork": "Use the same artwork for the back",
+    "enlarge": "Enlarge page {page}",
+    "enlargedTitle": "Page {page}, enlarged",
+    "closeEnlarged": "Close",
+    "loading": "Loading your pages…",
+    "loadError": "We couldn't open your pages. Please try again.",
+    "sourceExpired": "This file is no longer stored. Upload it again to choose pages."
   }
 }

@@ -34,9 +34,11 @@ const HEADLINE_CLASS = {
 /**
  * Step 2, "Check & preview" (ticket 07): one Findings list for both sides
  * next to Front/Back previews with pins, an As printed / With guides toggle
- * and legend. Next is disabled while any Error remains.
+ * and legend. Next is disabled while any Error remains. A side whose file was
+ * picked from a stored PDF offers "Choose pages" (`canChoosePages.front/back`,
+ * answered by `onChoosePages(side)`), so pages can be re-chosen without uploading again.
  */
-export default function CheckAndPreviewStep({ frontId, backId, sameAsFront, sizeCode, sizeChoice, onBack, onNext }) {
+export default function CheckAndPreviewStep({ frontId, backId, sameAsFront, sizeCode, sizeChoice, onBack, onNext, canChoosePages = {}, onChoosePages }) {
   const t = useTranslations("CheckAndPreviewStep");
   const tPreflight = useTranslations("Preflight");
   const tFindings = useTranslations("Findings");
@@ -129,6 +131,8 @@ export default function CheckAndPreviewStep({ frontId, backId, sameAsFront, size
               withGuides={withGuides}
               onOpen={() => openEnlarged("front")}
               onSelectFinding={(group) => openEnlarged("front", group.key)}
+              choosePagesLabel={canChoosePages.front && onChoosePages ? t("choosePages") : null}
+              onChoosePages={() => onChoosePages("front")}
             />
             {preview.back?.same_as_front ? (
               <button
@@ -152,6 +156,8 @@ export default function CheckAndPreviewStep({ frontId, backId, sameAsFront, size
                 withGuides={withGuides}
                 onOpen={() => openEnlarged("back")}
                 onSelectFinding={(group) => openEnlarged("back", group.key)}
+                choosePagesLabel={canChoosePages.back && onChoosePages ? t("choosePages") : null}
+                onChoosePages={() => onChoosePages("back")}
               />
             ) : null}
           </div>
@@ -232,7 +238,7 @@ function FindingRow({ group, slotLabel, message, countText, locatable, onOpen })
   );
 }
 
-function PreviewCell({ slot, label, headline, ariaLabel, image, orderedTrimMm, productBleedMm, productSafeMm, groups, withGuides, onOpen, onSelectFinding }) {
+function PreviewCell({ slot, label, headline, ariaLabel, image, orderedTrimMm, productBleedMm, productSafeMm, groups, withGuides, onOpen, onSelectFinding, choosePagesLabel, onChoosePages }) {
   return (
     <div className="bg-[#f0f3ff] rounded-[12px] p-[10px] flex flex-col gap-[6px]">
       <PreviewLoupe onClick={onOpen}>
@@ -251,6 +257,11 @@ function PreviewCell({ slot, label, headline, ariaLabel, image, orderedTrimMm, p
       <span className="text-[#575c64] text-[11px] text-center">
         {label} · {headline}
       </span>
+      {choosePagesLabel && (
+        <button type="button" onClick={onChoosePages} className="self-center text-[#bb0027] text-[11px] font-bold underline">
+          {choosePagesLabel}
+        </button>
+      )}
     </div>
   );
 }

@@ -71,14 +71,16 @@ export function startUpload({ file, slot, productId, frontId, key, onProgress, o
 /**
  * Phase two of a Page picker upload: turns chosen pages of a stored source into
  * Artwork. `front` / `back` are 1-based page numbers (either may be omitted);
- * `frontId` is the existing Front Artwork when only a Back is being added. Resolves
+ * `frontId` is the existing Front Artwork when only a Back is being added, and `backId`
+ * the existing Back when only a Front is being chosen (so the Sizes are checked). Resolves
  * like an upload, {ok, data, error}, and never rejects. `key` makes a resend safe.
  */
-export async function assignPages({ sourceId, front, back, frontId, key }) {
+export async function assignPages({ sourceId, front, back, frontId, backId, key }) {
   const body = {};
   if (front != null) body.front = front;
   if (back != null) body.back = back;
   if (frontId) body.front_id = frontId;
+  if (backId) body.back_id = backId;
   if (key) body.upload_key = key;
   try {
     const res = await fetch(`${API_BASE_URL}/api/sources/${sourceId}/assign/`, {

@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { API_BASE_URL } from "@/lib/api";
 import { NETWORK_FAILED, SERVER_BUSY } from "@/lib/artworkErrors";
 import { assignPages, discardUpload, newUploadKey, startUpload } from "@/lib/uploadArtwork";
+import { artworkAsPage } from "@/lib/pagePicker";
 import ArtworkSlot from "./ArtworkSlot";
 import DesignHelpDrawer from "./DesignHelpDrawer";
 import PagePicker from "./PagePicker";
@@ -22,8 +23,11 @@ const EMPTY_SLOT = { status: "empty", fileName: "", file: null, artwork: null, e
  * into the Back slot without the customer picking it twice.
  *
  * A PDF of more than 2 pages opens the Page picker (phase one stored the file,
- * no Artwork yet); the customer's Front/Back choice is phase two. `orderedSize`
- * is the Size code the picker warns against.
+ * no Artwork yet); the customer's Front/Back choice is phase two. A multi-page PDF
+ * dropped into Back opens it for one page. `orderedSize` is the Size code the
+ * picker warns against. A card whose file has a stored source offers "Choose
+ * pages", which the parent answers with `onChoosePages("front" | "back")` (it
+ * owns the draft the reopened picker changes).
  *
  * `sameAsBack` and its toggle are controlled by the parent (the draft-order
  * state, ticket 05) so a sync dialog's "use the same artwork for the back"
@@ -41,12 +45,13 @@ export default function ArtworkSlots({
   onBackResult,
   onFrontRemoved,
   onBackRemoved,
+  onChoosePages,
 }) {
   const t = useTranslations("ArtworkSlots");
   const [front, setFront] = useState(EMPTY_SLOT);
   const [back, setBack] = useState(EMPTY_SLOT);
   const [designHelpOpen, setDesignHelpOpen] = useState(false);
-  // The open Page picker: {source, file, key (of phase one), busy, error}.
+  // The open Page picker: {source, file, key (of phase one), mode ("both" or "back"), fixed (Front, in back mode), busy, error}.
   const [picker, setPicker] = useState(null);
   const assignAttemptRef = useRef({ signature: null, key: null }); // one key per identical choice, so a resend is safe
   // Whether the current Front file is the one that auto-filled Back (a 2-page
@@ -96,7 +101,7 @@ export default function ArtworkSlots({
     if (data.source) {
       // More than 2 pages: nothing is Artwork yet. The slot waits, empty, behind the picker.
       setFront(EMPTY_SLOT);
-      setPicker({ source: data.source, file, key, busy: false, error: null });
+      setPicker({ source: data.source, file, key, mode: "both", fixed: null, busy: false, error: null });
       return;
     }
     await applyFrontResult(file, data, key);
@@ -118,18 +123,34 @@ export default function ArtworkSlots({
 
   // Phase two: the customer's Front/Back pages become Artwork. The picker stays open,
   // busy, while the pages are checked, so a refused choice is explained where they made it.
-  async function handleAssign({ front: frontPage, back: backPage }) {
-    const signature = `${picker.source.id}:${frontPage}:${backPage}`;
+  async function handleAssign({ front: frontPage, back: backPage, same }) {
+    const signature = `${picker.source.id}:${frontPage}:${backPage}:${same}`;
     if (assignAttemptRef.current.signature !== signature) assignAttemptRef.current = { signature, key: newUploadKey() };
     const key = assignAttemptRef.current.key;
+    const backOnly = picker.mode === "back";
     setPicker((p) => ({ ...p, busy: true, error: null }));
-    const result = await assignPages({ sourceId: picker.source.id, front: frontPage, back: backPage, key });
+    const result = await assignPages({
+      sourceId: picker.source.id,
+      front: backOnly ? undefined : frontPage,
+      back: backPage,
+      frontId: backOnly ? front.artwork?.id : undefined,
+      key,
+    });
     if (!result.ok) {
       setPicker((p) => ({ ...p, busy: false, error: result.error }));
       return;
     }
     const { file } = picker;
     setPicker(null);
+    if (backOnly) {
+      setBack(okSlot(file, result.data.back, key));
+      onBackResult?.(result.data.back);
+      frontFilledBothRef.current = false; // Back is now its own pick, not Front's page 2.
+      return;
+    }
+    // "Use the same artwork for the back" chosen in the picker: Front only, and Back
+    // is copied from the same stored source as it is for the checkbox.
+    if (same && !sameAsBack) onSameAsBackChange?.(true);
     await applyFrontResult(file, result.data, key);
   }
 
@@ -165,6 +186,12 @@ export default function ArtworkSlots({
   async function handleBackFile(file, key = newUploadKey()) {
     const result = await runUpload("back", { file, key, frontId: front.artwork?.id, retry: () => handleBackFile(file, key) });
     if (!result.ok) return;
+    if (result.data.source) {
+      // A multi-page file for Back: the customer picks the one page it takes.
+      setBack(EMPTY_SLOT);
+      setPicker({ source: result.data.source, file, key, mode: "back", fixed: artworkAsPage(front.artwork), busy: false, error: null });
+      return;
+    }
     setBack(okSlot(file, result.data.back, key));
     onBackResult?.(result.data.back);
     frontFilledBothRef.current = false; // Back is now its own upload, not Front's page 2.
@@ -258,6 +285,7 @@ export default function ArtworkSlots({
           onRemove={handleRemoveFront}
           onCancel={() => handleCancel("front")}
           onRetry={() => retryRef.current.front?.()}
+          onChoosePages={front.artwork?.source_id && onChoosePages ? () => onChoosePages("front") : undefined}
         />
         <ArtworkSlot
           id="artwork-slot-back"
@@ -274,6 +302,7 @@ export default function ArtworkSlots({
           onRemove={handleRemoveBack}
           onCancel={() => handleCancel("back")}
           onRetry={() => retryRef.current.back?.()}
+          onChoosePages={back.artwork?.source_id && onChoosePages ? () => onChoosePages("back") : undefined}
         />
       </div>
 
@@ -299,6 +328,8 @@ export default function ArtworkSlots({
         <PagePicker
           source={picker.source}
           orderedSize={orderedSize}
+          mode={picker.mode}
+          fixed={picker.fixed}
           busy={picker.busy}
           error={picker.error}
           onConfirm={handleAssign}

@@ -84,6 +84,7 @@ export default function SyncDialog({
     );
   } else if (dialog.kind === "front-only") {
     title = t("frontOnlyTitle");
+    body = <PreviewNotices preview={preview} />;
     actions.push(
       <button
         key="switch"
@@ -103,6 +104,7 @@ export default function SyncDialog({
     );
   } else if (dialog.kind === "back-on-single") {
     title = t("backOnSingleTitle");
+    body = <PreviewNotices preview={preview} />;
     actions.push(
       <button
         key="switch"
@@ -238,18 +240,21 @@ function translatedScaleNote(t, result) {
   return t(key, { ...values, edges: values.edges ? t(values.edges) : "" });
 }
 
+// What the switch would change besides the option itself (e.g. a Turnaround falling
+// back), shown before the customer confirms. Never carries money.
+function PreviewNotices({ preview }) {
+  if (!preview?.notices?.length) return null;
+  return (
+    <div className="bg-[#f0f3ff] rounded-[10px] p-[10px] flex flex-col gap-[4px] text-[13px]">
+      {preview.notices.map((n, i) => (
+        <span key={i} className="text-[#6f5400]">{n.reason}</span>
+      ))}
+    </div>
+  );
+}
+
 function SwitchPreview({ t, preview, onPreview, commerceEnabled }) {
-  if (!commerceEnabled) {
-    // No money: only the notices (e.g. a Turnaround falling back) are worth showing.
-    if (!preview?.notices?.length) return null;
-    return (
-      <div className="bg-[#f0f3ff] rounded-[10px] p-[10px] flex flex-col gap-[4px] text-[13px]">
-        {preview.notices.map((n, i) => (
-          <span key={i} className="text-[#6f5400]">{n.reason}</span>
-        ))}
-      </div>
-    );
-  }
+  if (!commerceEnabled) return <PreviewNotices preview={preview} />;
   if (!preview) {
     return (
       <button type="button" onClick={onPreview} className="self-start text-[#bb0027] text-[12px] font-bold underline">

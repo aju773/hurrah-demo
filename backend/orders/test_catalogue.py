@@ -149,21 +149,24 @@ class FlyerScriptTotalsTests(TestCase):
         self.assertEqual(total, Decimal("1059.24"))
         self.assertEqual(notices, [{
             "code": "fallback", "option": "turnaround", "from": "same-day", "to": "express",
-            "reason_en": "Same-day not available for A3 — changed to Express", "reason_ar": "",
+            "reason_en": "Same-day not available for A3 — changed to Express",
+            "reason_ar": "التسليم في اليوم نفسه غير متاح لمقاس A3 — سريع",
         }])
 
     def test_same_day_blocked_above_1000_falls_back_to_express(self):
         total, notices = self.total_aed(quantity="2500", turnaround="same-day")
         self.assertEqual(notices, [{
             "code": "fallback", "option": "turnaround", "from": "same-day", "to": "express",
-            "reason_en": "Same-day up to 1,000 copies — changed to Express", "reason_ar": "",
+            "reason_en": "Same-day up to 1,000 copies — changed to Express",
+            "reason_ar": "التسليم في اليوم نفسه حتى 1,000 نسخة — سريع",
         }])
 
     def test_express_blocked_at_5000_falls_back_to_standard(self):
         total, notices = self.total_aed(quantity="5000", turnaround="express")
         self.assertEqual(notices, [{
             "code": "fallback", "option": "turnaround", "from": "express", "to": "standard",
-            "reason_en": "Express up to 2,500 copies — changed to Standard", "reason_ar": "",
+            "reason_en": "Express up to 2,500 copies — changed to Standard",
+            "reason_ar": "التسليم السريع حتى 2,500 نسخة — عادي",
         }])
 
     def test_missing_base_price_combo_has_no_quote(self):

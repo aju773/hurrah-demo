@@ -286,11 +286,25 @@ STATUS_MESSAGE_AR = {
 }
 
 
-def _window_text(start, end):
+AR_WEEKDAYS = ["الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت", "الأحد"]  # Monday first
+AR_MONTHS = [
+    "يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو",
+    "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر",
+]
+
+
+def _date_text(day, locale):
+    """"Tue 22 Sep" / "الثلاثاء 22 سبتمبر": Gregorian, Western digits in both."""
+    if locale == "ar":
+        return f"{AR_WEEKDAYS[day.weekday()]} {day.day} {AR_MONTHS[day.month - 1]}"
+    return day.strftime("%a %d %b")
+
+
+def _window_text(start, end, locale="en"):
     if start and end:
         return f"{start.strftime('%H:%M')}–{end.strftime('%H:%M')}"
     if end:
-        return f"by {end.strftime('%H:%M')}"
+        return f"{'بحلول' if locale == 'ar' else 'by'} {end.strftime('%H:%M')}"
     return ""
 
 
@@ -302,8 +316,8 @@ def status_message(order_obj, locale):
     line = getattr(order_obj, "line", None)
     messages = STATUS_MESSAGE_AR if locale == "ar" else STATUS_MESSAGE_EN
     template = messages.get(order_obj.status, "")
-    date_str = line.promised_date.strftime("%a %d %b") if line else ""
-    window = _window_text(line.promised_window_start, line.promised_window_end) if line else ""
+    date_str = _date_text(line.promised_date, locale) if line else ""
+    window = _window_text(line.promised_window_start, line.promised_window_end, locale) if line else ""
     return template.format(date=date_str, window=window)
 
 

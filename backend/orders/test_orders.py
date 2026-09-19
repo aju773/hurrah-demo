@@ -138,6 +138,28 @@ class OrderSubmitApiTests(TestCase):
         self.assertEqual(data["line"]["total_aed"], "838.95")
         self.assertEqual(data["number"], "HUR-10001")
 
+    # ---- Arabic browsing language ---------------------------------------
+
+    def test_arabic_order_stores_language_and_confirmation_resolves_labels_at_display_time(self):
+        self.set_now(dubai(2026, 9, 16, 9, 0))
+        upload_data = self.upload(build_f2())
+        front, back = upload_data["front"], upload_data["back"]
+        config = self.get_config(paper="350gsm-matt", sides="double", quantity="500", turnaround="same-day")
+        payload = {**self.submit_payload(config, front, back, "ar-key"), "browsing_language": "ar"}
+
+        created = self.client.post(SUBMIT_URL, payload, format="json").json()
+        self.assertEqual(created["browsing_language"], "ar")
+        self.assertEqual(Order.objects.get().browsing_language, "ar")
+
+        arabic = self.client.get(f"/api/orders/{created['token']}/", {"locale": "ar"}).json()
+        self.assertEqual(arabic["status_message"], "قيد الإنتاج. التسليم الأربعاء 16 سبتمبر، 15:00–20:00.")
+        labels = {c["name"]: c["label"] for c in arabic["line"]["configuration"]}
+        self.assertEqual(labels["المقاس"], "A5")
+        self.assertEqual(labels["الأوجه"], "وجهان")
+
+        english = self.client.get(f"/api/orders/{created['token']}/", {"locale": "en"}).json()
+        self.assertEqual({c["name"] for c in english["line"]["configuration"]} >= {"Size", "Sides"}, True)
+
     # ---- freshness (409) ---------------------------------------------------
 
     def test_changed_price_returns_409(self):

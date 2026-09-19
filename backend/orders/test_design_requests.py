@@ -123,6 +123,27 @@ class DesignRequestCreateApiTests(TestCase):
         self.assertIn("files", res.json()["errors"])
         self.assertEqual(DesignRequest.objects.count(), 0)
 
+    def test_errors_carry_codes_the_frontend_can_translate(self):
+        res = self.post({**self.valid_payload, "name": "", "brief": ""})
+        data = res.json()
+        self.assertEqual(data["code"], "invalid_form")
+        self.assertEqual(data["error_codes"], {"name": "name_required", "brief": "brief_required"})
+        self.assertEqual(set(data["errors"]), {"name", "brief"})  # English fallback text still sent
+
+    def test_file_errors_have_distinct_codes(self):
+        four = [make_upload(f"ref{i}.jpg", content_type="image/jpeg") for i in range(4)]
+        self.assertEqual(self.post(self.valid_payload, files=four).json()["error_codes"]["files"], "files_too_many")
+        bad = make_upload("brief.docx", content=b"x", content_type="application/msword")
+        self.assertEqual(self.post(self.valid_payload, files=[bad]).json()["error_codes"]["files"], "files_wrong_type")
+        big = make_upload("big.png", content=b"0" * (20 * 1024 * 1024 + 1), content_type="image/png")
+        self.assertEqual(self.post(self.valid_payload, files=[big]).json()["error_codes"]["files"], "files_too_large")
+
+    def test_arabic_browsing_language_is_stored(self):
+        res = self.post({**self.valid_payload, "browsing_language": "ar"})
+        self.assertEqual(res.status_code, 201, res.content)
+        self.assertEqual(res.json()["browsing_language"], "ar")
+        self.assertEqual(DesignRequest.objects.get().browsing_language, "ar")
+
     def test_non_numeric_product_id_rejected_not_500(self):
         payload = {**self.valid_payload, "product": "not-an-id"}
         res = self.post(payload)

@@ -27,26 +27,31 @@ class DesignRequestCreateView(APIView):
 
     def post(self, request):
         errors = {}
+        codes = {}
+
+        def fail(field, code, message):
+            errors[field] = message
+            codes[field] = code
 
         name = _required_text(request.data, "name")
         if not name:
-            errors["name"] = "Name is required."
+            fail("name", "name_required", "Name is required.")
 
         phone = _required_text(request.data, "phone")
         if not phone:
-            errors["phone"] = "Phone is required."
+            fail("phone", "phone_required", "Phone is required.")
 
         brief = _required_text(request.data, "brief")
         if not brief:
-            errors["brief"] = "Tell us what the flyer is for and what text to include."
+            fail("brief", "brief_required", "Tell us what the flyer is for and what text to include.")
 
         flyer_language = request.data.get("flyer_language") or ""
         if flyer_language not in dict(FLYER_LANGUAGE_CHOICES):
-            errors["flyer_language"] = "Choose English, Arabic or Both."
+            fail("flyer_language", "flyer_language_invalid", "Choose English, Arabic or Both.")
 
         browsing_language = request.data.get("browsing_language") or "en"
         if browsing_language not in dict(BROWSING_LANGUAGE_CHOICES):
-            errors["browsing_language"] = "Unrecognised browsing language."
+            fail("browsing_language", "browsing_language_invalid", "Unrecognised browsing language.")
 
         email = (request.data.get("email") or "").strip()
         business_name = (request.data.get("business_name") or "").strip()
@@ -59,7 +64,7 @@ class DesignRequestCreateView(APIView):
             except (TypeError, ValueError):
                 product = None
             if product is None:
-                errors["product"] = "Unknown product."
+                fail("product", "product_unknown", "Unknown product.")
 
         configuration_snapshot = {}
         configuration_raw = request.data.get("configuration")
@@ -69,25 +74,28 @@ class DesignRequestCreateView(APIView):
             except (TypeError, ValueError):
                 parsed = None
             if not isinstance(parsed, dict):
-                errors["configuration"] = "Configuration must be a JSON object."
+                fail("configuration", "configuration_invalid", "Configuration must be a JSON object.")
             else:
                 configuration_snapshot = parsed
 
         files = request.FILES.getlist("files")
         if len(files) > MAX_DESIGN_REQUEST_FILES:
-            errors["files"] = f"Up to {MAX_DESIGN_REQUEST_FILES} reference files are allowed."
+            fail("files", "files_too_many", f"Up to {MAX_DESIGN_REQUEST_FILES} reference files are allowed.")
         else:
             for uploaded_file in files:
                 ext = os.path.splitext(uploaded_file.name)[1].lower()
                 if ext not in ALLOWED_DESIGN_REQUEST_EXTENSIONS:
-                    errors["files"] = "Reference files must be JPG, PNG or PDF."
+                    fail("files", "files_wrong_type", "Reference files must be JPG, PNG or PDF.")
                     break
                 if uploaded_file.size > MAX_DESIGN_REQUEST_FILE_SIZE:
-                    errors["files"] = "Each reference file must be 20MB or smaller."
+                    fail("files", "files_too_large", "Each reference file must be 20MB or smaller.")
                     break
 
         if errors:
-            return Response({"detail": "Please check the form.", "errors": errors}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"detail": "Please check the form.", "code": "invalid_form", "errors": errors, "error_codes": codes},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         # allocate_design_request_number()'s row lock is a no-op on backends (e.g.
         # SQLite) without real SELECT ... FOR UPDATE support, so retry on a

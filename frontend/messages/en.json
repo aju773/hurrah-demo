@@ -227,6 +227,20 @@
     "sameAsBack": "Use the same artwork for the back",
     "designHelp": "No file? Get design help"
   },
+  "ArtworkTemplates": {
+    "title": "Artwork templates and guide",
+    "intro": "Download a template for your size to see the cut line, bleed edge and safe area, then design on it.",
+    "listLabel": "Artwork templates",
+    "dimensions": "{width} × {height} mm",
+    "download": "Download PDF",
+    "unavailable": "Templates aren't available right now. Please try again later.",
+    "guideTitle": "How to prepare your file",
+    "guideBleed": "Bleed: extend your background and images {bleed} mm past the cut edge on every side.",
+    "guideSafe": "Safe area: keep text and logos at least {safe} mm inside the cut edge.",
+    "guideColour": "Colour: use CMYK. Screen (RGB) colours are converted for print and may look duller.",
+    "guideFonts": "Fonts: embed all fonts, or convert text to outlines, when you export the PDF.",
+    "guideResolution": "Resolution: keep images at {ppiWarn} ppi or more at printed size. Below {ppiError} ppi we ask you to fix the file."
+  },
   "ArtworkSlot": {
     "detected": "Detected",
     "error": "Error",

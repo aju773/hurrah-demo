@@ -9,6 +9,7 @@ import ConfigurationSummary from "./ConfigurationSummary";
 import useDraftOrder, { clearPersistedDraft } from "@/lib/useDraftOrder";
 import DesignHelpDrawer from "./DesignHelpDrawer";
 import ArtworkSlots from "./ArtworkSlots";
+import ArtworkTemplatesPanel from "./ArtworkTemplatesPanel";
 import ReopenPagePicker from "./ReopenPagePicker";
 import { pickerTargetFor } from "@/lib/pagePicker";
 import { reopenedActions, toBackPayload, toFrontPayload } from "@/lib/reopenPicker";
@@ -257,6 +258,8 @@ export default function FlyersConfigurator({ initialCatalogue, initialConfigurat
         onFrontRemoved={() => removeArtwork("front")}
         onBackRemoved={() => removeArtwork("back")}
       />
+
+      <ArtworkTemplatesPanel />
 
       {reopenPicker}
 

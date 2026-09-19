@@ -62,6 +62,10 @@ _Avoid_: Margin, overprint
 The area inside the Trim size, 5mm in from each edge, where important text and logos should sit so cutting cannot touch them. Shown as a guide; not checked in the demo.
 _Avoid_: Safe zone, margin, live area
 
+**Artwork template**:
+A downloadable 2-page PDF (Front and Back) for one Size, offered for every active Size of a Product. Its page is the Trim size plus the Product's Bleed, with the trim and bleed boxes set to match, and guides drawn for the cut line, the Bleed edge and the Safe area, labelled with the Size name and measurements. Uploaded unchanged it is an exact Size match with Bleed at the Product value and "Ready to print". Built from live catalogue data and cached until a Size, Bleed or Safe value changes.
+_Avoid_: Dieline, layout guide, blank
+
 **Fit**:
 Printing Artwork on a different Size by shrinking or enlarging it until the whole design fits inside the trim, leaving white borders where the shapes differ. An instruction; the file itself is not changed.
 _Avoid_: Scale to fit, shrink, resize

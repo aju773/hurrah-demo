@@ -98,6 +98,12 @@ _Avoid_: Lead, enquiry, design order
 The language the customer was using the site in (English or Arabic). Kept on a Design request so staff reply in it. Not the language of the flyer itself, which the brief states separately.
 _Avoid_: Locale (in customer-facing talk), design language
 
+### Hints
+
+**Hints**:
+Small, dismissible, non-modal tips shown once per step (options and upload, findings and preview, approval) on a visitor's first visit. Never block the page or trap focus; remembered per visitor in the browser, brought back by "Show hints", and switched off by a runtime flag for scripted demo runs.
+_Avoid_: Tour, coach marks, tooltips, onboarding
+
 ### Proof and turnaround
 
 **Proof**:

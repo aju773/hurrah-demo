@@ -382,5 +382,13 @@
     "loading": "Loading your pages…",
     "loadError": "We couldn't open your pages. Please try again.",
     "sourceExpired": "This file is no longer stored. Upload it again to choose pages."
+  },
+  "Hints": {
+    "options": "Start here: choose your size, paper, sides, quantity and turnaround, then drop your PDF in the Front slot.",
+    "findings": "These are the checks on your file. Fix anything marked Must fix, then look over the previews beside them.",
+    "approval": "Check your proof, add your name and mobile number, then tick the box to approve it and send your order.",
+    "gotIt": "Got it",
+    "dismissAll": "Dismiss all hints",
+    "show": "Show hints"
   }
 }

@@ -7,3 +7,23 @@ body {
 html[dir="rtl"] body {
   font-family: var(--font-cairo), var(--font-plus-jakarta-sans), sans-serif;
 }
+
+/* First-visit hints fade in; visitors who prefer reduced motion get none. */
+@keyframes hint-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.hint-in {
+  animation: hint-in 200ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hint-in {
+    animation: none;
+  }
+}

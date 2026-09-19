@@ -8,6 +8,7 @@ import ArtworkPreview from "./ArtworkPreview";
 import PreviewLoupe from "./PreviewLoupe";
 import EnlargedPreview from "./EnlargedPreview";
 import { Legend, ToggleButton } from "./PreviewControls";
+import FirstVisitHint from "./FirstVisitHint";
 
 // A group is "located" (ticket 08) when it has a place to jump to on the
 // preview — a bbox, or an edge ring for a bleed code — matching exactly what
@@ -91,6 +92,7 @@ export default function CheckAndPreviewStep({ frontId, backId, sameAsFront, size
 
       <div className="grid grid-cols-12 gap-[20px] w-full items-start">
         <div className="col-span-12 lg:col-span-5 flex flex-col gap-[8px]">
+          <FirstVisitHint step="findings" />
           {groups.length === 0 ? (
             <p className="text-[#575c64] text-[13px]">{t("noFindings")}</p>
           ) : (

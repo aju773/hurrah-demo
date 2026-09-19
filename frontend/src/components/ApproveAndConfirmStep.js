@@ -7,6 +7,7 @@ import Countdown from "./Countdown";
 import { combineFindings, warningShortName } from "@/lib/findings";
 import { fetchPreview } from "@/lib/preview";
 import ArtworkPreview from "./ArtworkPreview";
+import FirstVisitHint from "./FirstVisitHint";
 
 // +971 is prefilled: every customer is on a UAE mobile.
 const EMPTY_DETAILS = { name: "", mobile: "+971", area: "", address_line: "", email: "", company: "", note: "" };
@@ -253,6 +254,7 @@ export default function ApproveAndConfirmStep({
 
           <DetailsForm t={t} details={details} onChange={updateDetails} commerceEnabled={commerceEnabled} />
 
+          <FirstVisitHint step="approval" />
           <div className="flex flex-col gap-[8px] bg-white rounded-[12px] shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)] p-[12px]">
             <Tick
               checked={ticks.approval}

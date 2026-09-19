@@ -10,6 +10,7 @@ import useDraftOrder, { clearPersistedDraft } from "@/lib/useDraftOrder";
 import DesignHelpDrawer from "./DesignHelpDrawer";
 import ArtworkSlots from "./ArtworkSlots";
 import ArtworkTemplatesPanel from "./ArtworkTemplatesPanel";
+import FirstVisitHint, { ShowHintsLink } from "./FirstVisitHint";
 import ReopenPagePicker from "./ReopenPagePicker";
 import { pickerTargetFor } from "@/lib/pagePicker";
 import { reopenedActions, toBackPayload, toFrontPayload } from "@/lib/reopenPicker";
@@ -179,6 +180,9 @@ export default function FlyersConfigurator({ initialCatalogue, initialConfigurat
           onChoosePages={openChoosePages}
         />
         {reopenPicker}
+        <div className="flex justify-end">
+          <ShowHintsLink />
+        </div>
       </div>
     );
   }
@@ -207,6 +211,9 @@ export default function FlyersConfigurator({ initialCatalogue, initialConfigurat
           onEdit={editFromApprove}
           onSubmitted={handleOrderSubmitted}
         />
+        <div className="flex justify-end">
+          <ShowHintsLink />
+        </div>
       </div>
     );
   }
@@ -281,6 +288,7 @@ export default function FlyersConfigurator({ initialCatalogue, initialConfigurat
       <div className="grid grid-cols-12 gap-[20px] w-full items-start">
         {/* Options panel */}
         <div id="options-panel" tabIndex={-1} className="col-span-12 lg:col-span-7 flex flex-col gap-[16px]">
+          <FirstVisitHint step="options" />
           {catalogue.options.map((option) => (
             <div key={option.code} className="bg-[#f0f3ff] rounded-[12px] p-[12px] flex flex-col gap-[8px]">
               <span className="text-[#5d3f3e] text-[10px] font-bold tracking-[0.5px] uppercase">{option.name}</span>
@@ -448,6 +456,10 @@ export default function FlyersConfigurator({ initialCatalogue, initialConfigurat
         >
           {state.returnToApprove ? t("returnToApproval") : t("continue")}
         </button>
+      </div>
+
+      <div className="flex justify-end">
+        <ShowHintsLink />
       </div>
 
       <DesignHelpDrawer

@@ -168,7 +168,7 @@ class F2FixtureTests(SimpleTestCase):
 
 
 class WriteFixturePdfsCommandTests(SimpleTestCase):
-    def test_writes_the_three_demo_fixtures_as_pdfs(self):
+    def test_writes_the_four_demo_fixtures_as_pdfs(self):
         import tempfile
         from io import StringIO
         from pathlib import Path
@@ -178,6 +178,9 @@ class WriteFixturePdfsCommandTests(SimpleTestCase):
         with tempfile.TemporaryDirectory() as out:
             call_command("write_fixture_pdfs", "--out", out, stdout=StringIO())
             names = sorted(p.name for p in Path(out).iterdir())
-            self.assertEqual(names, ["f1-layla-a4-no-bleed.pdf", "f2-omar-a5-clean.pdf", "f3-password-protected.pdf"])
+            self.assertEqual(names, [
+                "f1-layla-a4-no-bleed.pdf", "f2-omar-a5-clean.pdf",
+                "f3-password-protected.pdf", "f4-damaged-repairable.pdf",
+            ])
             for name in names:
                 self.assertTrue((Path(out) / name).read_bytes().startswith(b"%PDF"))

@@ -243,6 +243,17 @@ def build_f3(user_password="secret"):
     return encrypted
 
 
+def build_f4():
+    """F4: F2's print-ready A5 flyer with a wrong startxref offset, so the file is
+    damaged but repairable: Preflight reconstructs it and adds a `file_repaired`
+    Warning (everything else stays OK)."""
+    data = build_f2().read()
+    index = data.rindex(b"startxref")
+    tail = data[index:].split(b"\n")
+    tail[1] = b"9"
+    return io.BytesIO(data[:index] + b"\n".join(tail))
+
+
 def build_five_page_mixed():
     """A 5-page PDF with mixed sizes where the flyer is on pages 3 and 4, for the
     page picker: an A4 cover, an A6 divider, then an A5 Front and Back (148x210mm

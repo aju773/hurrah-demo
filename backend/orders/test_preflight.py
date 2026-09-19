@@ -13,7 +13,7 @@ from pikepdf import Array, Dictionary, Name, Page
 from rest_framework.test import APIClient
 
 from . import preflight
-from .fixtures_pdf import build_f1, build_f2, build_f3, build_pdf, mm, _rgb_image_xobject
+from .fixtures_pdf import build_f1, build_f2, build_f3, build_f4, build_pdf, mm, _rgb_image_xobject
 from .models import Artwork, Option, OptionValue, Product
 from .pdf_utils import analyze_pdf_bytes
 
@@ -132,6 +132,16 @@ class PreflightEndpointTests(TestCase):
         self.assertEqual(len(repaired), 1)
         self.assertEqual(repaired[0]["severity"], "warning")
         self.assertEqual(front["preflight_report"]["headline_severity"], "warning")
+        self.assertTrue(front["is_valid"])
+
+    def test_demo_damaged_fixture_is_repaired_with_only_that_warning(self):
+        res = self.upload(build_f4())
+        self.assertEqual(res.status_code, 201, res.content)
+        front = res.json()["front"]
+        self.assertEqual(front["matched_size_code"], "a5")
+        report = front["preflight_report"]
+        self.assertEqual([(f["code"], f["severity"]) for f in report["findings"] if f["severity"] != "ok"], [("file_repaired", "warning")])
+        self.assertEqual(report["headline_severity"], "warning")
         self.assertTrue(front["is_valid"])
 
     def test_intact_file_is_not_marked_repaired(self):

@@ -12,7 +12,7 @@ from django.core.management import call_command
 from django.test import TestCase, override_settings
 from django.utils import timezone
 
-from .models import Artwork, Order, OrderLine, Product, SourceFile
+from .models import Artwork, DemoClock, Order, OrderLine, Product, SourceFile
 from .numbering import allocate_order_number
 from .test_lifecycle import make_order
 
@@ -143,6 +143,23 @@ class ResetDemoUploadsTests(CleanupBase):
         self.assertEqual(Order.objects.count(), 0)
         self.assertEqual(Artwork.objects.count(), 0)
         self.assertEqual(self.files_on_disk(), set())
+
+    def test_fix_clock_pins_the_demo_clock_to_a_tuesday_0930_dubai(self):
+        from .clock import DUBAI_TZ
+        from .demo_clock import current_time
+
+        call_command("reset_demo", "--noinput", "--fix-clock", stdout=StringIO())
+        now = current_time()
+        self.assertEqual((now.astimezone(DUBAI_TZ).weekday(), now.hour, now.minute), (1, 9, 30))
+        # Repeatable: a second reset leaves the same single clock row.
+        call_command("reset_demo", "--noinput", "--fix-clock", stdout=StringIO())
+        self.assertEqual(DemoClock.objects.count(), 1)
+        self.assertEqual(current_time(), now)
+
+    def test_reset_without_the_flag_leaves_the_clock_alone(self):
+        DemoClock.objects.create(fixed_at=None)
+        self.run_reset()
+        self.assertIsNone(DemoClock.objects.get().fixed_at)
 
     def test_next_order_is_hur_10001_and_a_second_reset_is_harmless(self):
         make_order()

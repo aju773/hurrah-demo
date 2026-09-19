@@ -1,8 +1,11 @@
+from datetime import datetime
+
 from django.core.management.base import BaseCommand
 from django.db import transaction
 
+from orders.clock import DUBAI_TZ
 from orders.cleanup import purge_unattached_uploads
-from orders.models import DesignRequest, DesignRequestFile, Order, OrderLine, OrderStatusChange
+from orders.models import DemoClock, DesignRequest, DesignRequestFile, Order, OrderLine, OrderStatusChange
 
 
 class Command(BaseCommand):
@@ -10,22 +13,28 @@ class Command(BaseCommand):
 
         python manage.py reset_demo          (asks first; --noinput skips the question)
 
-    The demo clock is not touched. It is the "Demo clock" setting in the admin (one
-    row, `fixed_at`); for the demo, set it to a Tuesday at 09:30 Dubai time so the
-    Same-day cut-off always lets Same-day through. Leave it empty to use real time.
+    The demo clock is not touched unless you pass --fix-clock. It is the "Demo clock"
+    setting in the admin (one row, `fixed_at`); for the demo, set it to a Tuesday at
+    09:30 Dubai time so the Same-day cut-off always lets Same-day through (that is what
+    --fix-clock does). Leave it empty to use real time.
     """
+
+    # Tuesday 22 Sep 2026, 09:30 Dubai: before every Cut-off, so Same-day always works.
+    DEMO_NOW = datetime(2026, 9, 22, 9, 30, tzinfo=DUBAI_TZ)
 
     help = (
         "Clear demo data before a run: Orders, their lines and status changes, Design requests "
         "(with their reference files), and every upload (Artwork, page-picker sources and their "
         "files). Order numbering restarts at HUR-10001 and Design requests at DR-0001. The catalogue "
-        "and the demo clock setting (Admin > Demo clock: fix it to a Tuesday 09:30 Dubai so "
-        "Same-day always works) are left alone."
+        "is left alone, and so is the demo clock setting (Admin > Demo clock) unless --fix-clock "
+        "pins it to a Tuesday 09:30 Dubai so Same-day always works."
     )
 
     def add_arguments(self, parser):
         parser.add_argument("--noinput", "--no-input", action="store_true", dest="noinput",
                             help="Do not ask for confirmation.")
+        parser.add_argument("--fix-clock", action="store_true", dest="fix_clock",
+                            help="Also pin the demo clock to a Tuesday 09:30 Dubai.")
 
     def handle(self, *args, **options):
         orders = Order.objects.count()
@@ -52,6 +61,10 @@ class Command(BaseCommand):
 
         # No Order is left, so every remaining upload is unattached.
         uploads = purge_unattached_uploads(everything=True)
+
+        if options["fix_clock"]:
+            DemoClock.objects.all().delete()
+            DemoClock.objects.create(fixed_at=self.DEMO_NOW)
 
         self.stdout.write(
             f"Removed {orders} order{'' if orders == 1 else 's'}, "

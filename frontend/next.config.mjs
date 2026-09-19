@@ -4,6 +4,8 @@ const withNextIntl = createNextIntlPlugin("./src/i18n/request.js");
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // The scripted-run frontend (playwright.config.js) builds into its own folder.
+  distDir: process.env.NEXT_DIST_DIR || ".next",
   allowedDevOrigins: ["127.0.0.1"],
   // The first-draft standalone upload page is gone; the Flyers configurator is
   // the only upload surface, so old links land there.

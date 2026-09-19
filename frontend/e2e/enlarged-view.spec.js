@@ -13,7 +13,7 @@ test("opening F1's low-resolution finding shows the enlarged view with the findi
   await expect(dialog.getByText("Preview only — your file prints at its full quality.")).toBeVisible();
 
   // The chosen Finding is outlined and pulsing in the enlarged preview.
-  const highlight = dialog.locator("svg rect.animate-pulse").first();
+  const highlight = dialog.locator("svg rect[class*='animate-pulse']").first();
   await expect(highlight).toBeVisible();
   const box = await highlight.boundingBox();
   expect(box.width).toBeGreaterThan(1);

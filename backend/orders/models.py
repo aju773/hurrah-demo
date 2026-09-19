@@ -195,6 +195,10 @@ class Artwork(models.Model):
     page_image = models.ImageField(upload_to="renders/%Y/%m/%d/", blank=True)
     thumbnail_image = models.ImageField(upload_to="renders/%Y/%m/%d/", blank=True)
 
+    # The browser's id for one upload, kept across Retry so a resend can't make a
+    # second copy, and used to clean up a cancelled upload. Blank for old rows.
+    upload_key = models.CharField(max_length=64, blank=True, db_index=True)
+
     uploaded_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

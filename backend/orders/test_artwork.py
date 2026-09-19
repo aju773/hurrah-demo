@@ -277,6 +277,66 @@ class ArtworkFilenameTests(TestCase):
         self.assertEqual(artwork.original_filename, "منشور.pdf")
 
 
+@override_settings(MEDIA_ROOT=tempfile.mkdtemp())
+class ArtworkUploadKeyTests(TestCase):
+    """An upload_key makes a resend of the same upload safe: a retry after a
+    dropped connection returns the Artwork the first attempt made instead of a
+    duplicate, and a cancelled upload can be cleaned up by its key."""
+
+    def setUp(self):
+        cache.clear()
+        self.client = APIClient()
+        self.product = make_product()
+
+    def upload(self, key, slot="front", pages=1):
+        buf = build_pdf(*[{"media": (148, 210)}] * pages)
+        body = {"file": as_upload(buf), "slot": slot, "product": self.product.id, "upload_key": key}
+        return self.client.post("/api/artworks/", body, format="multipart")
+
+    def test_resending_the_same_key_creates_one_artwork(self):
+        first = self.upload("key-1")
+        second = self.upload("key-1")
+        self.assertEqual(first.status_code, 201)
+        self.assertEqual(second.status_code, 201)
+        self.assertEqual(first.json()["front"]["id"], second.json()["front"]["id"])
+        self.assertEqual(Artwork.objects.count(), 1)
+
+    def test_a_two_page_replay_returns_both_slots(self):
+        first = self.upload("key-2", pages=2)
+        second = self.upload("key-2", pages=2)
+        self.assertEqual(first.json()["back"]["id"], second.json()["back"]["id"])
+        self.assertEqual(second.json()["page_count"], 2)
+        self.assertEqual(Artwork.objects.count(), 2)
+
+    def test_different_keys_are_different_uploads(self):
+        self.upload("key-a")
+        self.upload("key-b")
+        self.assertEqual(Artwork.objects.count(), 2)
+
+    def test_no_key_never_dedupes(self):
+        self.upload("")
+        self.upload("")
+        self.assertEqual(Artwork.objects.count(), 2)
+
+    def test_delete_by_key_removes_what_that_upload_stored(self):
+        self.upload("key-x", pages=2)
+        keep = self.upload("key-y")
+        res = self.client.delete("/api/artworks/?upload_key=key-x")
+        self.assertEqual(res.status_code, 204)
+        self.assertEqual(list(Artwork.objects.values_list("id", flat=True)), [keep.json()["front"]["id"]])
+
+    def test_delete_by_key_with_nothing_stored_is_fine(self):
+        self.assertEqual(self.client.delete("/api/artworks/?upload_key=nope").status_code, 204)
+
+    def test_delete_without_a_key_is_refused(self):
+        self.assertEqual(self.client.delete("/api/artworks/").status_code, 400)
+
+    @override_settings(ARTWORK_UPLOAD_RATE="1/min")
+    def test_cleanup_is_not_rate_limited(self):
+        self.upload("key-z")
+        self.assertEqual(self.client.delete("/api/artworks/?upload_key=key-z").status_code, 204)
+
+
 @override_settings(MEDIA_ROOT=tempfile.mkdtemp(), ARTWORK_UPLOAD_RATE="3/min")
 class ArtworkUploadRateLimitTests(TestCase):
     def setUp(self):

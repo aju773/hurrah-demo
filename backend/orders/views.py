@@ -72,7 +72,7 @@ def _preflight_thresholds(product):
     }
 
 
-def _save_artwork(product, slot, uploaded_file, page_result, source_page_count, page_index, file_bytes, file_repaired):
+def _save_artwork(product, slot, uploaded_file, page_result, source_page_count, page_index, file_bytes, file_repaired, upload_key=""):
     matched_size_id = page_result.get("matched_size_id")
     report = preflight.run_preflight(
         file_bytes,
@@ -85,6 +85,7 @@ def _save_artwork(product, slot, uploaded_file, page_result, source_page_count, 
     artwork = Artwork.objects.create(
         product=product,
         slot=slot,
+        upload_key=upload_key,
         file=uploaded_file,
         original_filename=uploaded_file.name,
         source_page_count=source_page_count,
@@ -118,6 +119,29 @@ def _save_artwork(product, slot, uploaded_file, page_result, source_page_count, 
     return artwork
 
 
+MAX_UPLOAD_KEY_LENGTH = 64
+
+
+def _upload_payload(request, created, page_count):
+    errors = [
+        {"code": artwork.error_code, "slot": slot_name, "message": artwork.error_message}
+        for slot_name, artwork in created.items()
+        if artwork.error_code
+    ]
+    return {
+        "page_count": page_count,
+        "front": ArtworkSerializer(created[SLOT_FRONT], context={"request": request}).data if SLOT_FRONT in created else None,
+        "back": ArtworkSerializer(created[SLOT_BACK], context={"request": request}).data if SLOT_BACK in created else None,
+        "errors": errors,
+    }
+
+
+def _on_an_order(artwork):
+    from .models import OrderLine
+
+    return OrderLine.objects.filter(front_artwork_id=artwork.id).exists() or OrderLine.objects.filter(back_artwork_id=artwork.id).exists()
+
+
 class ServerBusy(APIException):
     """429 in the upload error shape; `wait` becomes the Retry-After header."""
 
@@ -142,6 +166,10 @@ class ArtworkUploadThrottle(SimpleRateThrottle):
 
     def get_cache_key(self, request, view):
         return self.cache_format % {"scope": self.scope, "ident": self.get_ident(request)}
+
+    def allow_request(self, request, view):
+        # Only uploads are limited; cleaning up a cancelled one must always work.
+        return request.method != "POST" or super().allow_request(request, view)
 
 
 class ArtworkUploadView(APIView):
@@ -175,6 +203,14 @@ class ArtworkUploadView(APIView):
             return Response({"detail": f"slot must be one of {sorted(VALID_SLOTS)}."}, status=status.HTTP_400_BAD_REQUEST)
 
         product = get_object_or_404(Product, pk=product_id)
+
+        upload_key = str(request.data.get("upload_key") or "")[:MAX_UPLOAD_KEY_LENGTH]
+        if upload_key:
+            # A resend of an upload that already went through (Retry after a
+            # dropped connection): hand back what it made rather than a copy.
+            earlier = list(Artwork.objects.filter(product=product, upload_key=upload_key).order_by("id"))
+            if earlier:
+                return Response(_upload_payload(request, {a.slot: a for a in earlier}, earlier[0].source_page_count), status=status.HTTP_201_CREATED)
 
         file_bytes = uploaded_file.read()
         uploaded_file.seek(0)
@@ -214,11 +250,11 @@ class ArtworkUploadView(APIView):
         file_repaired = file_check["repaired"]
         created = {}
         if slot == SLOT_FRONT and page_count == 2:
-            created[SLOT_FRONT] = _save_artwork(product, SLOT_FRONT, uploaded_file, pages[0], page_count, 1, file_bytes, file_repaired)
+            created[SLOT_FRONT] = _save_artwork(product, SLOT_FRONT, uploaded_file, pages[0], page_count, 1, file_bytes, file_repaired, upload_key)
             uploaded_file.seek(0)
-            created[SLOT_BACK] = _save_artwork(product, SLOT_BACK, uploaded_file, pages[1], page_count, 2, file_bytes, file_repaired)
+            created[SLOT_BACK] = _save_artwork(product, SLOT_BACK, uploaded_file, pages[1], page_count, 2, file_bytes, file_repaired, upload_key)
         else:
-            artwork = _save_artwork(product, slot, uploaded_file, pages[0], page_count, 1, file_bytes, file_repaired)
+            artwork = _save_artwork(product, slot, uploaded_file, pages[0], page_count, 1, file_bytes, file_repaired, upload_key)
             created[slot] = artwork
 
             if slot == SLOT_BACK and front_id:
@@ -241,19 +277,18 @@ class ArtworkUploadView(APIView):
                     artwork.preflight_report["headline_severity"] = preflight.ERROR
                     artwork.save(update_fields=["is_valid", "error_code", "error_message", "preflight_report"])
 
-        errors = [
-            {"code": artwork.error_code, "slot": slot_name, "message": artwork.error_message}
-            for slot_name, artwork in created.items()
-            if artwork.error_code
-        ]
+        return Response(_upload_payload(request, created, page_count), status=status.HTTP_201_CREATED)
 
-        data = {
-            "page_count": page_count,
-            "front": ArtworkSerializer(created[SLOT_FRONT], context={"request": request}).data if SLOT_FRONT in created else None,
-            "back": ArtworkSerializer(created[SLOT_BACK], context={"request": request}).data if SLOT_BACK in created else None,
-            "errors": errors,
-        }
-        return Response(data, status=status.HTTP_201_CREATED)
+    def delete(self, request):
+        """Remove whatever an upload stored, by its upload_key: the browser calls
+        this when the customer cancels while the file was being checked."""
+        upload_key = str(request.query_params.get("upload_key") or "")[:MAX_UPLOAD_KEY_LENGTH]
+        if not upload_key:
+            return Response({"detail": "upload_key is required."}, status=status.HTTP_400_BAD_REQUEST)
+        for artwork in Artwork.objects.filter(upload_key=upload_key):
+            if not _on_an_order(artwork):
+                artwork.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class ArtworkDetailView(generics.RetrieveDestroyAPIView):
@@ -266,10 +301,8 @@ class ArtworkDetailView(generics.RetrieveDestroyAPIView):
     serializer_class = ArtworkSerializer
 
     def destroy(self, request, *args, **kwargs):
-        from .models import OrderLine
-
         artwork = self.get_object()
-        if OrderLine.objects.filter(front_artwork_id=artwork.id).exists() or OrderLine.objects.filter(back_artwork_id=artwork.id).exists():
+        if _on_an_order(artwork):
             return Response({"detail": "This artwork is on an order and can't be changed."}, status=status.HTTP_400_BAD_REQUEST)
         return super().destroy(request, *args, **kwargs)
 

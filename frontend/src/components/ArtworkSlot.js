@@ -5,16 +5,38 @@ import { useTranslations } from "next-intl";
 import { headlineText, slotErrorMessage } from "@/lib/findings";
 import { preflightHeadline } from "@/lib/preflight";
 
+// Progress is announced to screen readers a quarter at a time, not on every tick.
+const ANNOUNCE_STEP = 25;
+
 const TRIM_SOURCES = ["trimbox", "crop", "media", "media_minus_bleed"];
 
 /**
- * One Front/Back upload slot: drop zone, "Checking your file…" spinner state,
- * a detected summary (size/orientation/bleed) or an error message, and a
- * remove-file control. Purely presentational — ArtworkSlots owns the upload.
+ * One Front/Back upload slot: drop zone, a progress bar while the file is sent,
+ * a separate "Checking your file…" stage, a detected summary (size/orientation/
+ * bleed) or an error message with Retry, and Cancel / remove controls. Purely
+ * presentational — ArtworkSlots owns the upload. `progress` is bytes sent as
+ * 0–1; `canRetry` says the file is still in memory and the error is worth
+ * retrying. A polite status region announces each stage and the result; an
+ * error is an alert. `cancelled` marks an empty slot the customer just cancelled.
  * `error` is the upload's {code, message}; the code picks the translated text.
  * File names, sizes in mm and the size code stay left-to-right in Arabic.
  */
-export default function ArtworkSlot({ id, label, status, fileName, artwork, error, disabled, onFile, onRemove }) {
+export default function ArtworkSlot({
+  id,
+  label,
+  status,
+  fileName,
+  artwork,
+  error,
+  progress = 0,
+  cancelled = false,
+  canRetry = false,
+  disabled,
+  onFile,
+  onRemove,
+  onCancel,
+  onRetry,
+}) {
   const t = useTranslations("ArtworkSlot");
   const tErrors = useTranslations("ArtworkErrors");
   const tPreflight = useTranslations("Preflight");
@@ -28,7 +50,9 @@ export default function ArtworkSlot({ id, label, status, fileName, artwork, erro
   }
 
   const isEmpty = status === "empty";
+  const isUploading = status === "uploading";
   const isChecking = status === "checking";
+  const percent = Math.round(Math.min(Math.max(progress, 0), 1) * 100);
   const isDone = status === "ok" || status === "error";
   const hasSlotError = status === "error" || (artwork && !artwork.is_valid);
   const headline = status === "ok" ? preflightHeadline(artwork) : null;
@@ -38,6 +62,17 @@ export default function ArtworkSlot({ id, label, status, fileName, artwork, erro
     ? t("custom", { width: artwork.trim_width_mm, height: artwork.trim_height_mm })
     : null;
   const errorText = slotErrorMessage(tErrors, error ?? (artwork?.error_code ? { code: artwork.error_code, message: artwork.error_message } : null));
+
+  let liveMessage = "";
+  if (isUploading) {
+    liveMessage = t("uploadingAnnounce", { fileName, percent: Math.floor(percent / ANNOUNCE_STEP) * ANNOUNCE_STEP });
+  } else if (isChecking) {
+    liveMessage = t("checking");
+  } else if (status === "ok" && !hasSlotError) {
+    liveMessage = headline ? headlineText(tPreflight, headline) : t("detected");
+  } else if (isEmpty && cancelled) {
+    liveMessage = t("cancelled");
+  }
 
   return (
     <div
@@ -62,6 +97,10 @@ export default function ArtworkSlot({ id, label, status, fileName, artwork, erro
       </div>
 
       <div className="p-[16px] w-full">
+        <p role="status" aria-live="polite" className="sr-only">
+          {liveMessage}
+        </p>
+
         {isEmpty && (
           <div
             onDragOver={(e) => e.preventDefault()}
@@ -101,10 +140,35 @@ export default function ArtworkSlot({ id, label, status, fileName, artwork, erro
           </div>
         )}
 
+        {isUploading && (
+          <div className="flex flex-col items-center justify-center gap-[8px] rounded-[12px] px-[16px] py-[32px] w-full bg-[rgba(240,243,255,0.6)]">
+            <p className="text-[#575c64] text-[13px] flex items-center gap-[6px] max-w-full">
+              <bdi dir="ltr" className="truncate">{t("uploading", { fileName })}</bdi>
+              <bdi dir="ltr" className="font-semibold shrink-0">{t("uploadingPercent", { percent })}</bdi>
+            </p>
+            <div
+              role="progressbar"
+              aria-label={t("uploading", { fileName })}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={percent}
+              className="h-[8px] w-full max-w-[240px] rounded-full bg-[#e2e8f8] overflow-hidden"
+            >
+              <div className="h-full bg-[#bb0027] transition-[width] duration-150 motion-reduce:transition-none" style={{ width: `${percent}%` }} />
+            </div>
+            <button type="button" onClick={onCancel} className="text-[#575c64] text-[12px] font-semibold underline">
+              {t("cancel")}
+            </button>
+          </div>
+        )}
+
         {isChecking && (
           <div className="flex flex-col items-center justify-center rounded-[12px] px-[16px] py-[32px] w-full bg-[rgba(240,243,255,0.6)]">
-            <div className="size-[24px] border-2 border-[#e2e8f8] border-t-[#bb0027] rounded-full animate-spin mb-[8px]" />
-            <p className="text-[#575c64] text-[13px]">{t("checking")}</p>
+            <div className="size-[24px] border-2 border-[#e2e8f8] border-t-[#bb0027] rounded-full animate-spin motion-reduce:animate-none mb-[8px]" />
+            <p className="text-[#575c64] text-[13px] mb-[8px]">{t("checking")}</p>
+            <button type="button" onClick={onCancel} className="text-[#575c64] text-[12px] font-semibold underline">
+              {t("cancel")}
+            </button>
           </div>
         )}
 
@@ -114,9 +178,16 @@ export default function ArtworkSlot({ id, label, status, fileName, artwork, erro
               <bdi dir="ltr" className="text-[#151c27] text-[12px] truncate" style={{ maxWidth: "260px" }}>
                 {fileName}
               </bdi>
-              <button type="button" onClick={onRemove} className="text-[#575c64] text-[11px] font-semibold underline shrink-0">
-                {hasSlotError ? t("uploadAnother") : t("remove")}
-              </button>
+              <div className="flex items-center gap-[12px] shrink-0">
+                {status === "error" && canRetry && (
+                  <button type="button" onClick={onRetry} className="text-[#bb0027] text-[11px] font-bold underline">
+                    {t("retry")}
+                  </button>
+                )}
+                <button type="button" onClick={onRemove} className="text-[#575c64] text-[11px] font-semibold underline">
+                  {hasSlotError ? t("uploadAnother") : t("remove")}
+                </button>
+              </div>
             </div>
 
             {headline && (
@@ -127,7 +198,7 @@ export default function ArtworkSlot({ id, label, status, fileName, artwork, erro
             )}
 
             {hasSlotError ? (
-              <p className="text-[#bb0027] text-[12px]">{errorText}</p>
+              <p role="alert" className="text-[#bb0027] text-[12px]">{errorText}</p>
             ) : (
               artwork && (
                 <div className="bg-[#f0f3ff] rounded-[10px] p-[10px] flex flex-col gap-[2px]">

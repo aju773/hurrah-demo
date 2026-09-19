@@ -3,7 +3,7 @@
 import { useId } from "react";
 import { EDGE_CODES } from "@/lib/findings";
 
-const SEVERITY_COLOURS = { error: "#d7263d", warning: "#c98200", note: "#2563eb" };
+const SEVERITY_COLOURS = { error: "#d7263d", warning: "#946000", note: "#2563eb" };
 const VIEWBOX_PAD = 6;
 
 // Shared viewBox geometry (trim-mm, padded) so the enlarged view (ticket 08)
@@ -209,7 +209,7 @@ export default function ArtworkPreview({
               stroke={colour}
               strokeWidth={isEdge ? bleed : 1.4}
               strokeOpacity={isEdge ? 0.6 : undefined}
-              className="animate-pulse"
+              className="motion-safe:animate-pulse"
             />
           );
         });

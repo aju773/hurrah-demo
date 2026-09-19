@@ -41,12 +41,12 @@ export default async function OrderConfirmationPage({ params }) {
     return (
       <div className="relative mx-auto bg-[#f9f9ff]" style={{ maxWidth: "1512px" }}>
         <SiteHeader commerceEnabled={commerceEnabled} />
-        <div className="flex flex-col items-center justify-center gap-[16px] px-[32px] py-[64px]">
+        <main id="main" className="flex flex-col items-center justify-center gap-[16px] px-[32px] py-[64px]">
           <h1 className="text-[#151c27] text-[20px] font-bold">{t("notFound")}</h1>
           <Link href="/flyers" className="bg-[#e51937] px-[24px] py-[12px] rounded-[12px] text-white text-[14px] font-semibold">
             {t("orderMore")}
           </Link>
-        </div>
+        </main>
         <SiteFooter commerceEnabled={commerceEnabled} />
       </div>
     );
@@ -57,7 +57,7 @@ export default async function OrderConfirmationPage({ params }) {
   return (
     <div className="relative mx-auto bg-[#f9f9ff]" style={{ maxWidth: "1512px" }} dir={locale === "ar" ? "rtl" : "ltr"}>
       <SiteHeader commerceEnabled={commerceEnabled} />
-      <div className="flex flex-col gap-[20px] px-[32px] py-[26px] w-full max-w-[720px] mx-auto">
+      <main id="main" className="flex flex-col gap-[20px] px-[32px] py-[26px] w-full max-w-[720px] mx-auto">
         <div className="flex justify-end">
           <LocaleControls />
         </div>
@@ -144,7 +144,7 @@ export default async function OrderConfirmationPage({ params }) {
             {t("orderMore")}
           </Link>
         </div>
-      </div>
+      </main>
       <SiteFooter commerceEnabled={commerceEnabled} />
     </div>
   );

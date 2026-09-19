@@ -8,6 +8,7 @@ export function ToggleButton({ active, onClick, label }) {
     <button
       type="button"
       onClick={onClick}
+      aria-pressed={active}
       className={`h-[32px] px-[12px] rounded-[8px] text-[12px] font-semibold ${active ? "bg-[#151c27] text-white" : "bg-white text-[#151c27] shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)]"}`}
     >
       {label}
@@ -35,7 +36,7 @@ function LegendItem({ colour, label, dashed, dotted, thick }) {
   };
   return (
     <span className="flex items-center gap-[4px]">
-      <i className="inline-block w-[18px]" style={style} />
+      <i aria-hidden="true" className="inline-block w-[18px]" style={style} />
       {label}
     </span>
   );

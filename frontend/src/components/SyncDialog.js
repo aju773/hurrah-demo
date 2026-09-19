@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import ArtworkPreview from "./ArtworkPreview";
+import useDialogA11y from "@/lib/useDialogA11y";
 import { FILL, FIT, computeSizeChoice, scaleNoteMessage } from "@/lib/sizeChoice";
 
 /**
@@ -40,6 +41,11 @@ export default function SyncDialog({
   // Local to one dialog: the parent remounts this component on `dialog.key`
   // (see FlyersConfigurator), so these reset to their defaults whenever a
   // different dialog opens, with no effect needed.
+  const titleId = useId();
+  const dialogRef = useRef(null);
+  // Blocking: the customer must answer it (that is what fixes the mismatch), so Escape
+  // does not dismiss it; focus stays inside and returns to where it was once answered.
+  useDialogA11y(dialogRef, { active: Boolean(dialog), closeOnEscape: false });
   const [resizeOpen, setResizeOpen] = useState(false);
   const [resizeMode, setResizeMode] = useState(FIT); // Fit is the default sub-choice
 
@@ -142,8 +148,15 @@ export default function SyncDialog({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-[16px]">
-      <div className={`bg-white rounded-[16px] shadow-lg w-full p-[20px] flex flex-col gap-[12px] ${resizeOpen ? "max-w-[680px]" : "max-w-[420px]"}`}>
-        <span className="text-[#151c27] text-[16px] font-bold">{title}</span>
+      <div
+        ref={dialogRef}
+        tabIndex={-1}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        className={`bg-white rounded-[16px] shadow-lg w-full p-[20px] flex flex-col gap-[12px] outline-none max-h-full overflow-y-auto ${resizeOpen ? "max-w-[680px]" : "max-w-[420px]"}`}
+      >
+        <h2 id={titleId} className="text-[#151c27] text-[16px] font-bold">{title}</h2>
         {body}
         {resizeOpen && canComputeResize && (
           <ResizeChoice
@@ -208,7 +221,7 @@ function ResizeChoice({
           productSafeMm={productSafeMm}
         />
       </div>
-      <span className="text-[#151c27] text-[13px]">{translatedScaleNote(t, active)}</span>
+      <span aria-live="polite" className="text-[#151c27] text-[13px]">{translatedScaleNote(t, active)}</span>
       <button
         type="button"
         onClick={onConfirm}
@@ -225,10 +238,14 @@ function ResizeOption({ label, sub, selected, onSelect, image, orderedTrimMm, pr
     <button
       type="button"
       onClick={onSelect}
+      aria-pressed={selected}
       className={`flex flex-col gap-[6px] p-[8px] rounded-[8px] bg-white border-2 text-start ${selected ? "border-[#e51937]" : "border-transparent"}`}
     >
       <ArtworkPreview slot="front" image={image} orderedTrimMm={orderedTrimMm} productBleedMm={productBleedMm} productSafeMm={productSafeMm} groups={[]} withGuides />
-      <span className="text-[#151c27] text-[12px] font-semibold">{label}</span>
+      <span className="text-[#151c27] text-[12px] font-semibold">
+        {selected && <span aria-hidden="true" className="text-[#e51937]">✓ </span>}
+        {label}
+      </span>
       <span className="text-[#575c64] text-[11px]">{sub}</span>
     </button>
   );

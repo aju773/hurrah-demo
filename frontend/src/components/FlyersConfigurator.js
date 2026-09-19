@@ -76,6 +76,16 @@ export default function FlyersConfigurator({ initialCatalogue, initialConfigurat
     priorFrontId.current = state.slots.front?.id ?? null;
   }, [state.slots.front]);
 
+  // Moving to another step replaces the whole page content, which would leave keyboard
+  // focus on a control that is gone: park it at the top of the main content instead.
+  const priorStep = useRef(state.step);
+  useEffect(() => {
+    if (rehydrating || priorStep.current === state.step) return;
+    priorStep.current = state.step;
+    document.getElementById("main")?.focus({ preventScroll: true });
+    window.scrollTo?.({ top: 0 });
+  }, [rehydrating, state.step]);
+
   // Step 3's "Edit options" / "Change file" land here with a focus target:
   // put the cursor on the option area or the Front/Back slot, then forget it.
   useEffect(() => {
@@ -242,7 +252,7 @@ export default function FlyersConfigurator({ initialCatalogue, initialConfigurat
       </div>
 
       {state.notices?.length > 0 && (
-        <div className="bg-[#fff8e1] border border-[#ffc72c] rounded-[8px] p-[12px] text-[#6f5400] text-[13px]">
+        <div role="status" className="bg-[#fff8e1] border border-[#ffc72c] rounded-[8px] p-[12px] text-[#6f5400] text-[13px]">
           {state.notices.map((notice, i) => (
             <div key={i}>{notice.reason}</div>
           ))}
@@ -304,7 +314,7 @@ export default function FlyersConfigurator({ initialCatalogue, initialConfigurat
                   onExpire={refresh}
                 />
               ) : (
-              <div className="flex flex-wrap gap-[8px]" {...(option.code === "quantity" ? { role: "radiogroup", "aria-label": option.name } : {})}>
+              <div className="flex flex-wrap gap-[8px]" {...(option.code === "quantity" ? { role: "radiogroup", "aria-label": option.name } : { role: "group", "aria-label": option.name })}>
                 {option.values.map((value) => {
                   const reason = blocked[option.code]?.[value.code];
                   const selected = selection[option.code] === value.code;
@@ -312,9 +322,10 @@ export default function FlyersConfigurator({ initialCatalogue, initialConfigurat
                     <button
                       key={value.code}
                       type="button"
-                      {...(option.code === "quantity" ? { role: "radio", "aria-checked": selected } : {})}
+                      {...(option.code === "quantity" ? { role: "radio", "aria-checked": selected } : { "aria-pressed": selected })}
                       disabled={Boolean(reason)}
                       title={reason?.reason ?? ""}
+                      aria-description={reason?.reason}
                       onClick={() => pick(option.code, value.code)}
                       className={`h-[36px] px-[14px] rounded-[8px] text-[12px] font-semibold transition-colors ${
                         reason
@@ -324,6 +335,7 @@ export default function FlyersConfigurator({ initialCatalogue, initialConfigurat
                           : "bg-white text-[#151c27] shadow-[0px_1px_1px_rgba(0,0,0,0.05)]"
                       }`}
                     >
+                      {selected && <span aria-hidden="true">✓ </span>}
                       {value.label}
                     </button>
                   );
@@ -430,7 +442,7 @@ export default function FlyersConfigurator({ initialCatalogue, initialConfigurat
                           ) : (
                             <div className="flex flex-col">
                               <span className="text-[13px] font-bold">{t("aed", { amount: cell.quote.total_aed })}</span>
-                              <span className={`text-[10px] ${isSelected ? "text-[#ffdad9]" : "text-[#575c64]"}`}>
+                              <span className={`text-[10px] ${isSelected ? "text-white" : "text-[#575c64]"}`}>
                                 {t("gridCellDetail", { subtotal: cell.quote.subtotal_aed, perPiece: cell.quote.per_piece_aed })}
                               </span>
                             </div>

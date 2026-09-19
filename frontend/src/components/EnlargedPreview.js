@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import ArtworkPreview, { findingCenterMm, previewGeometry } from "./ArtworkPreview";
 import { Legend, ToggleButton } from "./PreviewControls";
+import useDialogA11y from "@/lib/useDialogA11y";
 
 const MM_TO_PX = 96 / 25.4; // CSS px per mm at "actual size" (96dpi)
 const ZOOM_MULT = { "200": 2, "400": 4 };
@@ -19,19 +20,13 @@ export default function EnlargedPreview({ t, initialSlot, initialSelectedKey, pr
   const [withGuides, setWithGuides] = useState(true);
   const [selectedKey, setSelectedKey] = useState(initialSelectedKey ?? null);
   const scrollRef = useRef(null);
+  const dialogRef = useRef(null);
+  useDialogA11y(dialogRef, { onClose });
 
   const sameAsFront = Boolean(preview.back?.same_as_front);
   const image = slot === "front" ? preview.front : sameAsFront ? preview.front : preview.back;
   const geom = previewGeometry(orderedTrimMm, productBleedMm);
   const widthPx = zoom === "fit" ? null : geom.vw * ZOOM_MULT[zoom] * MM_TO_PX;
-
-  useEffect(() => {
-    function onKey(e) {
-      if (e.key === "Escape") onClose();
-    }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
 
   useEffect(() => {
     const container = scrollRef.current;
@@ -42,7 +37,8 @@ export default function EnlargedPreview({ t, initialSlot, initialSelectedKey, pr
     const [cx, cy] = findingCenterMm(group, geom);
     const left = (cx - geom.vx) * pxPerMm - container.clientWidth / 2;
     const top = (cy - geom.vy) * pxPerMm - container.clientHeight / 2;
-    container.scrollTo({ left: Math.max(0, left), top: Math.max(0, top), behavior: "smooth" });
+    const reduceMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    container.scrollTo({ left: Math.max(0, left), top: Math.max(0, top), behavior: reduceMotion ? "auto" : "smooth" });
     // Re-run whenever the zoomed content actually changes; geom/groups are
     // derived fresh each render from stable props.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -51,10 +47,13 @@ export default function EnlargedPreview({ t, initialSlot, initialSelectedKey, pr
   return (
     <div className="fixed inset-0 z-50 flex justify-end bg-black/40" onClick={onClose}>
       <div
-        className="h-full w-full max-w-[560px] bg-white shadow-xl flex flex-col p-[16px] gap-[12px] overflow-hidden"
+        ref={dialogRef}
+        tabIndex={-1}
+        className="h-full w-full max-w-[560px] bg-white shadow-xl flex flex-col p-[16px] gap-[12px] overflow-hidden outline-none"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
+        aria-label={t("enlargedView")}
       >
         <div className="flex items-center justify-between">
           <div className="flex gap-[8px]">
@@ -75,7 +74,7 @@ export default function EnlargedPreview({ t, initialSlot, initialSelectedKey, pr
           <ToggleButton active={withGuides} onClick={() => setWithGuides(true)} label={t("withGuides")} />
         </div>
 
-        <div ref={scrollRef} dir="ltr" className="flex-1 overflow-auto bg-[#f0f3ff] rounded-[12px] p-[10px]">
+        <div ref={scrollRef} dir="ltr" tabIndex={0} role="region" aria-label={t("scrollArea")} className="flex-1 overflow-auto bg-[#f0f3ff] rounded-[12px] p-[10px]">
           <div style={widthPx ? { width: `${widthPx}px` } : undefined}>
             <ArtworkPreview
               slot={slot}

@@ -27,3 +27,44 @@ html[dir="rtl"] body {
     animation: none;
   }
 }
+
+/* Keyboard focus is always visible: a dark ring with a white gap, so it reads on
+   light and dark surfaces. In the base layer so a component's own focus style wins. */
+@layer base {
+  :where(a, button, input, select, textarea, summary, [role="button"], [tabindex]):focus-visible {
+    outline: 2px solid #151c27;
+    outline-offset: 2px;
+    box-shadow: 0 0 0 4px #ffffff;
+  }
+}
+
+/* "Skip to main content": off-screen until it takes keyboard focus. */
+.skip-link {
+  position: absolute;
+  inset-inline-start: 8px;
+  top: 8px;
+  z-index: 100;
+  padding: 10px 16px;
+  border-radius: 8px;
+  background: #151c27;
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 600;
+  transform: translateY(-200%);
+}
+
+.skip-link:focus {
+  transform: none;
+}
+
+/* Reduced motion: no spinners, pulses, fades or smooth scrolling. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

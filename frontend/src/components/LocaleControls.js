@@ -53,7 +53,7 @@ export function DraftTranslationPill() {
   const t = useTranslations("LanguageToggle");
   if (locale !== "ar") return null;
   return (
-    <span className="rounded-full bg-[#fff4d6] px-[10px] py-[3px] text-[11px] font-semibold text-[#a86b00]">
+    <span className="rounded-full bg-[#fff4d6] px-[10px] py-[3px] text-[11px] font-semibold text-[#7a4f00]">
       {t("draftTranslation")}
     </span>
   );

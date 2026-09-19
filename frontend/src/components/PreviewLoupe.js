@@ -21,7 +21,7 @@ function usePointerFine() {
 
 /** Wraps a preview with a ~3x round hover loupe (ticket 08). Clicking the
  * preview (loupe or not) still opens the enlarged view via `onClick`. */
-export default function PreviewLoupe({ children, onClick }) {
+export default function PreviewLoupe({ children, onClick, label }) {
   const containerRef = useRef(null);
   const [hover, setHover] = useState(null);
   const canHover = usePointerFine();
@@ -35,14 +35,25 @@ export default function PreviewLoupe({ children, onClick }) {
     <div
       ref={containerRef}
       dir="ltr"
-      className="relative cursor-pointer"
+      role="button"
+      tabIndex={0}
+      aria-label={label}
+      className="relative cursor-pointer rounded-[4px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#151c27]"
       onClick={onClick}
+      onKeyDown={(e) => {
+        if (e.target !== e.currentTarget) return;
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onClick?.();
+        }
+      }}
       onMouseMove={canHover ? handleMove : undefined}
       onMouseLeave={canHover ? () => setHover(null) : undefined}
     >
       {children}
       {canHover && hover && (
         <div
+          aria-hidden="true"
           className="absolute rounded-full border-2 border-white shadow-[0_6px_24px_rgba(0,0,0,0.4)] overflow-hidden pointer-events-none bg-white"
           style={{ width: LOUPE_SIZE, height: LOUPE_SIZE, left: hover.x - LOUPE_SIZE / 2, top: hover.y - LOUPE_SIZE / 2 }}
         >

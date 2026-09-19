@@ -1,6 +1,6 @@
 import { Plus_Jakarta_Sans, Cairo } from "next/font/google";
 import { NextIntlClientProvider, hasLocale } from "next-intl";
-import { setRequestLocale } from "next-intl/server";
+import { getTranslations, setRequestLocale } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { routing } from "@/i18n/routing";
 import "../globals.css";
@@ -35,6 +35,7 @@ export default async function RootLayout({ children, params }) {
   setRequestLocale(locale);
 
   const dir = locale === "ar" ? "rtl" : "ltr";
+  const t = await getTranslations({ locale, namespace: "SiteHeader" });
 
   return (
     <html
@@ -43,6 +44,9 @@ export default async function RootLayout({ children, params }) {
       className={`${plusJakartaSans.variable} ${cairo.variable} h-full`}
     >
       <body className="min-h-full bg-[#f9f9ff]">
+        <a href="#main" className="skip-link">
+          {t("skipToContent")}
+        </a>
         <NextIntlClientProvider>{children}</NextIntlClientProvider>
       </body>
     </html>

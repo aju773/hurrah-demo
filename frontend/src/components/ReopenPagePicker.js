@@ -6,6 +6,7 @@ import { API_BASE_URL } from "@/lib/api";
 import { assignPages, newUploadKey } from "@/lib/uploadArtwork";
 import { changedFromInitial } from "@/lib/reopenPicker";
 import PagePicker from "./PagePicker";
+import useDialogA11y from "@/lib/useDialogA11y";
 
 /**
  * The Page picker reopened on a file already stored (Step 1 or Step 2): it lists the
@@ -113,9 +114,12 @@ export default function ReopenPagePicker({ target, slots, orderedSize, onAssigne
 }
 
 function Overlay({ children, onClose }) {
+  const t = useTranslations("PagePicker");
+  const dialogRef = useRef(null);
+  useDialogA11y(dialogRef, { onClose });
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-[16px]" onKeyDown={(e) => e.key === "Escape" && onClose()}>
-      <div role="dialog" aria-modal="true" tabIndex={-1} ref={(el) => el?.focus()} className="bg-white rounded-[16px] shadow-lg p-[20px] flex flex-col gap-[12px] outline-none">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-[16px]">
+      <div role="dialog" aria-modal="true" aria-label={t("title")} tabIndex={-1} ref={dialogRef} className="bg-white rounded-[16px] shadow-lg p-[20px] flex flex-col gap-[12px] outline-none">
         {children}
       </div>
     </div>

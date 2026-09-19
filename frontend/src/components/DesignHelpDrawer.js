@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { API_BASE_URL, DESIGN_REQUEST_MAX_FILES } from "@/lib/api";
 import { isolateLtr } from "@/lib/bidi";
 import LocaleControls from "./LocaleControls";
+import useDialogA11y from "@/lib/useDialogA11y";
 
 const FLYER_LANGUAGE_OPTIONS = [
   { code: "en", labelKey: "langEn" },
@@ -44,6 +45,9 @@ export default function DesignHelpDrawer({ open, onClose, product, configuration
   const [errorMessage, setErrorMessage] = useState("");
   const [result, setResult] = useState(null);
   const [whatsappNumber, setWhatsappNumber] = useState("");
+  const titleId = useId();
+  const panelRef = useRef(null);
+  const successRef = useRef(null);
 
   useEffect(() => {
     if (!open || whatsappNumber) return;
@@ -118,6 +122,14 @@ export default function DesignHelpDrawer({ open, onClose, product, configuration
     }
   }
 
+  useDialogA11y(panelRef, { active: open, onClose: close });
+
+  // The form is replaced by the confirmation: put focus on it so it is read out
+  // and keyboard users are not left on a button that is gone.
+  useEffect(() => {
+    if (status === "success") successRef.current?.focus();
+  }, [status]);
+
   if (!open) return null;
 
   const prefillBeforeSubmit = buildPrefill(t, configurationLine);
@@ -126,9 +138,17 @@ export default function DesignHelpDrawer({ open, onClose, product, configuration
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
       <div className="absolute inset-0 bg-black/50" onClick={close} />
-      <div className="relative bg-white h-full flex flex-col overflow-hidden" style={{ width: "440px", maxWidth: "100%" }}>
+      <div
+        ref={panelRef}
+        tabIndex={-1}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        className="relative bg-white h-full flex flex-col overflow-hidden outline-none"
+        style={{ width: "440px", maxWidth: "100%" }}
+      >
         <div className="bg-[#2a313d] flex items-center justify-between px-[20px] py-[16px] shrink-0">
-          <span className="text-white text-[16px] font-semibold">{t("title")}</span>
+          <h2 id={titleId} className="text-white text-[16px] font-semibold">{t("title")}</h2>
           <div className="flex items-center gap-[12px]">
             <LocaleControls />
             <button type="button" onClick={close} className="text-white text-[20px] leading-none" aria-label={t("close")}>
@@ -140,7 +160,7 @@ export default function DesignHelpDrawer({ open, onClose, product, configuration
         <div className="flex-1 overflow-auto p-[20px]">
           {status === "success" && result ? (
             <div className="flex flex-col gap-[16px]">
-              <div className="bg-[rgba(26,127,55,0.08)] border border-[#1a7f37] rounded-[12px] p-[16px]">
+              <div ref={successRef} tabIndex={-1} role="status" className="bg-[rgba(26,127,55,0.08)] border border-[#1a7f37] rounded-[12px] p-[16px] outline-none">
                 <p className="text-[#1a7f37] text-[14px] font-semibold">
                   {t("successTitle", { number: isolateLtr(result.number) })}
                 </p>
@@ -170,7 +190,11 @@ export default function DesignHelpDrawer({ open, onClose, product, configuration
                 <p className="text-[#151c27] text-[13px] font-semibold mt-[2px]">{configurationLine || t("notDecided")}</p>
               </div>
 
-              {errorMessage && <p className="text-[#bb0027] text-[12px]">{errorMessage}</p>}
+              {errorMessage && (
+                <p role="alert" className="text-[#bb0027] text-[12px]">
+                  <span aria-hidden="true">⛔</span> {errorMessage}
+                </p>
+              )}
 
               <Field label={t("fieldName")} error={errors.name}>
                 <input
@@ -228,6 +252,7 @@ export default function DesignHelpDrawer({ open, onClose, product, configuration
                     <button
                       key={option.code}
                       type="button"
+                      aria-pressed={form.flyer_language === option.code}
                       onClick={() => updateField("flyer_language", option.code)}
                       className={`h-[36px] px-[14px] rounded-[8px] text-[12px] font-semibold ${
                         form.flyer_language === option.code ? "bg-[#e51937] text-white" : "bg-[#f0f3ff] text-[#151c27]"
@@ -287,7 +312,11 @@ function Field({ label, error, children }) {
     <label className="flex flex-col gap-[4px]">
       <span className="text-[#5d3f3e] text-[11px] font-semibold">{label}</span>
       {children}
-      {error && <span className="text-[#bb0027] text-[11px]">{error}</span>}
+      {error && (
+        <span role="alert" className="text-[#bb0027] text-[11px]">
+          <span aria-hidden="true">⛔</span> {error}
+        </span>
+      )}
     </label>
   );
 }

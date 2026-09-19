@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { useTranslations } from "next-intl";
+import useDialogA11y from "@/lib/useDialogA11y";
 import { chooseBack, chooseFront, enlargedThumbnailUrl, evaluateChoice, pageSizeLabel } from "@/lib/pagePicker";
 
 /**
@@ -31,9 +32,8 @@ export default function PagePicker({ source, orderedSize, mode = "both", fixed =
   const showFront = mode !== "back";
   const showBack = mode !== "front" && !choice.same;
 
-  useEffect(() => {
-    dialogRef.current?.focus();
-  }, []);
+  // Escape cancels the picker, except while pages are being checked; an enlarged page over it takes Escape first.
+  useDialogA11y(dialogRef, { onClose: onCancel, closeOnEscape: !busy });
 
   const result = evaluateChoice({ pages: source.pages, front: choice.front, back: choice.back, same: choice.same, orderedSize, mode, fixed });
 
@@ -44,10 +44,6 @@ export default function PagePicker({ source, orderedSize, mode = "both", fixed =
   const orientationText = (page) => t(page.orientation);
 
   const errorText = error ? (error.code && tErrors.has(error.code) ? tErrors(error.code) : error.message) : null;
-
-  function onKeyDown(e) {
-    if (e.key === "Escape" && !busy && enlarged == null) onCancel();
-  }
 
   const summary =
     mode === "both"
@@ -66,7 +62,7 @@ export default function PagePicker({ source, orderedSize, mode = "both", fixed =
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-stretch sm:items-center justify-center bg-black/40 sm:p-[16px]" onKeyDown={onKeyDown}>
+    <div className="fixed inset-0 z-50 flex items-stretch sm:items-center justify-center bg-black/40 sm:p-[16px]">
       <div
         ref={dialogRef}
         role="dialog"
@@ -166,7 +162,8 @@ export default function PagePicker({ source, orderedSize, mode = "both", fixed =
               {problem.tone === "error" ? t("errorPrefix") : t("warningPrefix")} {problem.text}
             </p>
           ))}
-          {errorText && <p role="alert" className="text-[#bb0027] text-[12px]">{errorText}</p>}
+          {errorText && <p role="alert" className="text-[#bb0027] text-[12px]"><span aria-hidden="true">⛔</span> {t("errorPrefix")} {errorText}</p>}
+          <p role="status" className="sr-only">{busy ? t("checking") : ""}</p>
         </div>
 
         <div className="flex flex-wrap gap-[8px] justify-end">
@@ -188,10 +185,8 @@ export default function PagePicker({ source, orderedSize, mode = "both", fixed =
           page={source.pages.find((p) => p.number === enlarged)}
           label={t("enlargedTitle", { page: enlarged })}
           closeLabel={t("closeEnlarged")}
-          onClose={() => {
-            setEnlarged(null);
-            openerRef.current?.focus();
-          }}
+          returnFocus={openerRef}
+          onClose={() => setEnlarged(null)}
         />
       )}
     </div>
@@ -199,25 +194,15 @@ export default function PagePicker({ source, orderedSize, mode = "both", fixed =
 }
 
 /** One page at a bigger size over the picker. Escape or the button closes just
- * this view (never the picker under it); the picker gives focus back to the thumbnail. */
-function EnlargedPage({ page, label, closeLabel, onClose }) {
+ * this view (never the picker under it); focus goes back to the thumbnail. */
+function EnlargedPage({ page, label, closeLabel, returnFocus, onClose }) {
   const closeRef = useRef(null);
-  useEffect(() => {
-    closeRef.current?.focus();
-  }, []);
+  const dialogRef = useRef(null);
+  useDialogA11y(dialogRef, { onClose, initialFocus: closeRef, returnFocus });
   if (!page) return null;
   return (
-    <div
-      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-[16px]"
-      onClick={onClose}
-      onKeyDown={(e) => {
-        if (e.key === "Escape") {
-          e.stopPropagation();
-          onClose();
-        }
-      }}
-    >
-      <div role="dialog" aria-modal="true" aria-label={label} className="relative max-h-full max-w-full flex flex-col gap-[8px] items-center" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-[16px]" onClick={onClose}>
+      <div ref={dialogRef} tabIndex={-1} role="dialog" aria-modal="true" aria-label={label} className="outline-none relative max-h-full max-w-full flex flex-col gap-[8px] items-center" onClick={(e) => e.stopPropagation()}>
         <button ref={closeRef} type="button" onClick={onClose} className="self-end h-[36px] px-[14px] rounded-[8px] bg-white text-[#151c27] text-[13px] font-semibold">
           {closeLabel}
         </button>

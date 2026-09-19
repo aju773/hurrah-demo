@@ -131,6 +131,7 @@ export default function ArtworkSlot({
               ref={inputRef}
               type="file"
               accept="application/pdf"
+              aria-label={label}
               className="hidden"
               disabled={disabled}
               onChange={(e) => {
@@ -166,7 +167,7 @@ export default function ArtworkSlot({
 
         {isChecking && (
           <div className="flex flex-col items-center justify-center rounded-[12px] px-[16px] py-[32px] w-full bg-[rgba(240,243,255,0.6)]">
-            <div className="size-[24px] border-2 border-[#e2e8f8] border-t-[#bb0027] rounded-full animate-spin motion-reduce:animate-none mb-[8px]" />
+            <div aria-hidden="true" className="size-[24px] border-2 border-[#e2e8f8] border-t-[#bb0027] rounded-full animate-spin motion-reduce:animate-none mb-[8px]" />
             <p className="text-[#575c64] text-[13px] mb-[8px]">{t("checking")}</p>
             <button type="button" onClick={onCancel} className="text-[#575c64] text-[12px] font-semibold underline">
               {t("cancel")}
@@ -199,13 +200,16 @@ export default function ArtworkSlot({
 
             {headline && (
               <p className="text-[13px] font-semibold flex items-center gap-[6px]" style={{ color: headline.severity === "warning" ? "#6f5400" : "#151c27" }}>
-                <span>{headline.icon}</span>
+                <span aria-hidden="true">{headline.icon}</span>
                 <span>{headlineText(tPreflight, headline)}</span>
               </p>
             )}
 
             {hasSlotError ? (
-              <p role="alert" className="text-[#bb0027] text-[12px]">{errorText}</p>
+              <p role="alert" className="text-[#bb0027] text-[12px]">
+                <span aria-hidden="true">⛔</span> <span className="sr-only">{t("error")}: </span>
+                {errorText}
+              </p>
             ) : (
               artwork && (
                 <div className="bg-[#f0f3ff] rounded-[10px] p-[10px] flex flex-col gap-[2px]">

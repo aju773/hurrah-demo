@@ -17,12 +17,15 @@ export default function CopyButton({ text, label, copiedLabel, copyPageLink = fa
   }
 
   return (
-    <button
-      type="button"
-      onClick={handleCopy}
-      className="h-[32px] px-[12px] rounded-[8px] text-[12px] font-semibold bg-[#f0f3ff] text-[#151c27]"
-    >
-      {copied ? copiedLabel : label}
-    </button>
+    <>
+      <button
+        type="button"
+        onClick={handleCopy}
+        className="h-[32px] px-[12px] rounded-[8px] text-[12px] font-semibold bg-[#f0f3ff] text-[#151c27]"
+      >
+        {copied ? copiedLabel : label}
+      </button>
+      <span role="status" className="sr-only">{copied ? copiedLabel : ""}</span>
+    </>
   );
 }

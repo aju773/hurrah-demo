@@ -26,10 +26,12 @@ const CHECK_LABEL_KEYS = {
   size: "checkSize",
 };
 
+const SEVERITY_LABEL_KEYS = { error: "severityError", warning: "severityWarning", note: "severityNote" };
+
 const HEADLINE_CLASS = {
   ok: "bg-[#e5f4ec] text-[#1f7a4d]",
-  warning: "bg-[#fff4d6] text-[#a86b00]",
-  error: "bg-[#fde8eb] text-[#d7263d]",
+  warning: "bg-[#fff4d6] text-[#7a4f00]",
+  error: "bg-[#fde8eb] text-[#b0001d]",
 };
 
 /**
@@ -68,11 +70,21 @@ export default function CheckAndPreviewStep({ frontId, backId, sameAsFront, size
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [frontId, backId, sameAsFront, sizeCode, sizeChoice?.mode, sizeChoice?.choice, sizeChoice?.applies_to?.join(",")]);
 
+  // One live region for the whole step, mounted before the preview arrives, so the
+  // result ("Must fix before ordering", "Ready to print"…) is announced when it lands.
   if (error) {
-    return <div className="p-[24px] text-[#bb0027] text-[14px]">{t("loadError")}</div>;
+    return (
+      <div role="alert" className="p-[24px] text-[#bb0027] text-[14px]">
+        {t("loadError")}
+      </div>
+    );
   }
   if (!preview) {
-    return <div className="p-[24px] text-[#575c64] text-[14px]">{t("loading")}</div>;
+    return (
+      <div role="status" aria-live="polite" className="p-[24px] text-[#575c64] text-[14px]">
+        {t("loading")}
+      </div>
+    );
   }
 
   const groups = combineFindings({
@@ -86,7 +98,11 @@ export default function CheckAndPreviewStep({ frontId, backId, sameAsFront, size
 
   return (
     <div className="flex flex-col gap-[16px] w-full">
-      <div className={`rounded-[8px] px-[16px] py-[10px] text-[16px] font-semibold ${HEADLINE_CLASS[overallHeadline.severity]}`}>
+      <div
+        role="status"
+        aria-live="polite"
+        className={`rounded-[8px] px-[16px] py-[10px] text-[16px] font-semibold ${HEADLINE_CLASS[overallHeadline.severity]}`}
+      >
         {headlineText(tPreflight, overallHeadline)}
       </div>
 
@@ -101,6 +117,7 @@ export default function CheckAndPreviewStep({ frontId, backId, sameAsFront, size
                 key={group.key}
                 group={group}
                 slotLabel={t(group.slot === "front" ? "front" : "back")}
+                severityLabel={t(SEVERITY_LABEL_KEYS[group.severity])}
                 message={findingMessage(tFindings, group)}
                 countText={findingCountText(tFindings, group)}
                 locatable={isLocatable(group)}
@@ -125,6 +142,7 @@ export default function CheckAndPreviewStep({ frontId, backId, sameAsFront, size
               label={t("front")}
               headline={headlineText(tPreflight, slotHeadline(groups, "front"))}
               ariaLabel={t("previewLabel", { side: t("front") })}
+              enlargeLabel={t("enlargePreview", { side: t("front") })}
               image={preview.front}
               orderedTrimMm={preview.ordered_trim_mm}
               productBleedMm={preview.product_bleed_mm}
@@ -150,6 +168,7 @@ export default function CheckAndPreviewStep({ frontId, backId, sameAsFront, size
                 label={t("back")}
                 headline={headlineText(tPreflight, slotHeadline(groups, "back"))}
                 ariaLabel={t("previewLabel", { side: t("back") })}
+                enlargeLabel={t("enlargePreview", { side: t("back") })}
                 image={preview.back}
                 orderedTrimMm={preview.ordered_trim_mm}
                 productBleedMm={preview.product_bleed_mm}
@@ -168,6 +187,11 @@ export default function CheckAndPreviewStep({ frontId, backId, sameAsFront, size
         </div>
       </div>
 
+      {!nextEnabled && (
+        <p id="next-disabled-reason" className="text-[#b0001d] text-[13px] font-semibold text-end">
+          <span aria-hidden="true">⛔</span> {t("nextDisabledError")}
+        </p>
+      )}
       <div className="flex items-center justify-end gap-[12px]">
         <button type="button" onClick={onBack} className="h-[44px] px-[24px] rounded-[8px] text-[14px] font-semibold bg-white text-[#151c27] shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)]">
           {t("backButton")}
@@ -180,7 +204,7 @@ export default function CheckAndPreviewStep({ frontId, backId, sameAsFront, size
         <button
           type="button"
           disabled={!nextEnabled}
-          title={!nextEnabled ? t("nextDisabledError") : ""}
+          aria-describedby={!nextEnabled ? "next-disabled-reason" : undefined}
           onClick={onNext}
           className="h-[44px] px-[24px] rounded-[8px] text-[14px] font-semibold bg-[#e51937] text-white disabled:opacity-40 disabled:cursor-not-allowed"
         >
@@ -214,9 +238,9 @@ function findingCountText(tFindings, group) {
   return ` (${parts.join(", ")})`;
 }
 
-function FindingRow({ group, slotLabel, message, countText, locatable, onOpen }) {
+function FindingRow({ group, slotLabel, severityLabel, message, countText, locatable, onOpen }) {
   const icon = { error: "⛔", warning: "⚠️", note: "ℹ️" }[group.severity];
-  const badgeClass = { error: "bg-[#d7263d]", warning: "bg-[#c98200]", note: "bg-[#2563eb]" }[group.severity];
+  const badgeClass = { error: "bg-[#d7263d]", warning: "bg-[#946000]", note: "bg-[#2563eb]" }[group.severity];
   const Wrapper = locatable ? "button" : "div";
   return (
     <Wrapper
@@ -229,7 +253,7 @@ function FindingRow({ group, slotLabel, message, countText, locatable, onOpen })
       </span>
       <div className="flex flex-col gap-[2px]">
         <span className="text-[#151c27] text-[13px] font-semibold">
-          {icon} {slotLabel}
+          <span aria-hidden="true">{icon}</span> {severityLabel} · {slotLabel}
         </span>
         <span className="text-[#575c64] text-[12px]">
           {message}
@@ -240,10 +264,10 @@ function FindingRow({ group, slotLabel, message, countText, locatable, onOpen })
   );
 }
 
-function PreviewCell({ slot, label, headline, ariaLabel, image, orderedTrimMm, productBleedMm, productSafeMm, groups, withGuides, onOpen, onSelectFinding, choosePagesLabel, onChoosePages }) {
+function PreviewCell({ slot, label, headline, ariaLabel, enlargeLabel, image, orderedTrimMm, productBleedMm, productSafeMm, groups, withGuides, onOpen, onSelectFinding, choosePagesLabel, onChoosePages }) {
   return (
     <div className="bg-[#f0f3ff] rounded-[12px] p-[10px] flex flex-col gap-[6px]">
-      <PreviewLoupe onClick={onOpen}>
+      <PreviewLoupe onClick={onOpen} label={enlargeLabel}>
         <ArtworkPreview
           slot={slot}
           image={image}

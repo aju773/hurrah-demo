@@ -17,7 +17,8 @@
     "navPackaging": "Packaging & Boxes",
     "navApparel": "Custom Apparel",
     "navPrintEssentials": "Print Essentials",
-    "freeArtCheck": "Free Art Check & Sample Kit"
+    "freeArtCheck": "Free Art Check & Sample Kit",
+    "skipToContent": "انتقل إلى المحتوى الرئيسي"
   },
   "SiteFooter": {
     "tagline": "The premier marketplace for commercial merchandising, corporate gifts, bespoke packaging, and printing essentials in the UAE.",
@@ -113,7 +114,13 @@
     "zoomFit": "احتواء",
     "previewOnlyNote": "معاينة فقط — يُطبع ملفك بجودته الكاملة.",
     "previewLabel": "معاينة {side}",
-    "choosePages": "اختيار الصفحات"
+    "choosePages": "اختيار الصفحات",
+    "enlargedView": "معاينة مكبّرة",
+    "scrollArea": "معاينة مكبّرة، قابلة للتمرير",
+    "enlargePreview": "تكبير معاينة {side}",
+    "severityError": "خطأ",
+    "severityWarning": "تحذير",
+    "severityNote": "ملاحظة"
   },
   "ApproveAndConfirmStep": {
     "loading": "جارٍ تحميل نسخة الإثبات…",

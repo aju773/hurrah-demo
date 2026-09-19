@@ -166,6 +166,10 @@ describe("slotErrorMessage", () => {
     expect(slotErrorMessage(fakeT({}), { code: "mystery", message: "Something odd." })).toBe("Something odd.");
   });
 
+  it("uses the generic upload_failed wording for an unknown code with no message", () => {
+    expect(slotErrorMessage(fakeT({ upload_failed: "فشل الرفع" }), { code: "mystery", message: null })).toBe("فشل الرفع");
+  });
+
   it("returns null when there is no error", () => {
     expect(slotErrorMessage(fakeT({}), undefined)).toBeNull();
   });

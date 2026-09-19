@@ -2,18 +2,16 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { API_BASE_URL, ARTWORK_ERROR_MESSAGES } from "@/lib/api";
+import { API_BASE_URL } from "@/lib/api";
+import { uploadErrorFrom } from "@/lib/artworkErrors";
 import ArtworkSlot from "./ArtworkSlot";
 import DesignHelpDrawer from "./DesignHelpDrawer";
 
 const EMPTY_SLOT = { status: "empty", fileName: "", file: null, artwork: null, error: null };
 
-// A slot's error is the server's {code, message}; the code picks the translated
-// text in ArtworkSlot, and the English message covers a code we don't know yet.
-function errorOf(code) {
-  return { code, message: ARTWORK_ERROR_MESSAGES[code] };
-}
-
+// A slot's error is {code, message}: the code picks the translated text in
+// ArtworkSlot, and the server's English message covers a code we don't know yet.
+// The file is never judged by its name here; the server checks what it is.
 async function uploadSlot({ file, slot, productId, frontId }) {
   const form = new FormData();
   form.append("file", file);
@@ -21,15 +19,14 @@ async function uploadSlot({ file, slot, productId, frontId }) {
   form.append("product", productId);
   if (frontId) form.append("front_id", frontId);
 
-  const res = await fetch(`${API_BASE_URL}/api/artworks/`, { method: "POST", body: form });
+  let res;
+  try {
+    res = await fetch(`${API_BASE_URL}/api/artworks/`, { method: "POST", body: form });
+  } catch {
+    return { ok: false, data: {}, error: uploadErrorFrom({ status: 0, data: {}, networkFailed: true }) };
+  }
   const data = await res.json().catch(() => ({}));
-  return { ok: res.ok, data };
-}
-
-function firstError(data) {
-  const first = data?.errors?.[0];
-  if (!first) return errorOf("upload_failed");
-  return { code: first.code, message: first.message || ARTWORK_ERROR_MESSAGES[first.code] };
+  return { ok: res.ok, data, error: res.ok ? null : uploadErrorFrom({ status: res.status, data }) };
 }
 
 /**
@@ -64,15 +61,11 @@ export default function ArtworkSlots({
   const frontFilledBothRef = useRef(false);
 
   async function handleFrontFile(file) {
-    if (!file.name.toLowerCase().endsWith(".pdf")) {
-      setFront({ status: "error", fileName: file.name, file, artwork: null, error: errorOf("not_a_pdf") });
-      return;
-    }
     setFront({ status: "checking", fileName: file.name, file, artwork: null, error: null });
 
-    const { ok, data } = await uploadSlot({ file, slot: "front", productId });
+    const { ok, data, error } = await uploadSlot({ file, slot: "front", productId });
     if (!ok) {
-      setFront({ status: "error", fileName: file.name, file, artwork: null, error: firstError(data) });
+      setFront({ status: "error", fileName: file.name, file, artwork: null, error });
       return;
     }
 
@@ -91,9 +84,9 @@ export default function ArtworkSlots({
 
   async function syncBackToFront(file, frontId) {
     setBack({ status: "checking", fileName: file.name, file, artwork: null, error: null });
-    const { ok, data } = await uploadSlot({ file, slot: "back", productId, frontId });
+    const { ok, data, error } = await uploadSlot({ file, slot: "back", productId, frontId });
     if (!ok) {
-      setBack({ status: "error", fileName: file.name, file, artwork: null, error: firstError(data) });
+      setBack({ status: "error", fileName: file.name, file, artwork: null, error });
       return;
     }
     setBack({ status: "ok", fileName: file.name, file, artwork: data.back, error: null });
@@ -101,15 +94,11 @@ export default function ArtworkSlots({
   }
 
   async function handleBackFile(file) {
-    if (!file.name.toLowerCase().endsWith(".pdf")) {
-      setBack({ status: "error", fileName: file.name, file, artwork: null, error: errorOf("not_a_pdf") });
-      return;
-    }
     setBack({ status: "checking", fileName: file.name, file, artwork: null, error: null });
 
-    const { ok, data } = await uploadSlot({ file, slot: "back", productId, frontId: front.artwork?.id });
+    const { ok, data, error } = await uploadSlot({ file, slot: "back", productId, frontId: front.artwork?.id });
     if (!ok) {
-      setBack({ status: "error", fileName: file.name, file, artwork: null, error: firstError(data) });
+      setBack({ status: "error", fileName: file.name, file, artwork: null, error });
       return;
     }
     setBack({ status: "ok", fileName: file.name, file, artwork: data.back, error: null });

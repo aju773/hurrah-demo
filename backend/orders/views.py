@@ -1,12 +1,27 @@
+from django.conf import settings
 from django.core.files.base import ContentFile
 from django.shortcuts import get_object_or_404
 from rest_framework import generics, status
+from rest_framework.exceptions import APIException
 from rest_framework.response import Response
+from rest_framework.throttling import SimpleRateThrottle
 from rest_framework.views import APIView
 
 from . import preflight, size_choice
 from .models import Artwork, Product, SLOT_BACK, SLOT_CHOICES, SLOT_FRONT
-from .pdf_utils import ERROR_BACK_ONE_PAGE, ERROR_BACK_SIZE_DIFFERS, ERROR_MESSAGES_EN, ERROR_NOT_A_PDF, ERROR_TOO_MANY_PAGES, analyze_pdf
+from .pdf_utils import (
+    ERROR_BACK_ONE_PAGE,
+    ERROR_BACK_SIZE_DIFFERS,
+    ERROR_MESSAGES_EN,
+    ERROR_NOT_A_PDF,
+    ERROR_PAGE_CHOICE_NEEDED,
+    ERROR_SERVER_BUSY,
+    ERROR_TOO_MANY_PAGES,
+    MAX_PAGES,
+    analyze_pdf,
+    looks_like_pdf,
+    sanitise_filename,
+)
 from .rendering import render_artwork_images
 from .serializers import ArtworkSerializer, ProductSerializer
 
@@ -103,14 +118,48 @@ def _save_artwork(product, slot, uploaded_file, page_result, source_page_count, 
     return artwork
 
 
+class ServerBusy(APIException):
+    """429 in the upload error shape; `wait` becomes the Retry-After header."""
+
+    status_code = status.HTTP_429_TOO_MANY_REQUESTS
+
+    def __init__(self, wait=None):
+        self.wait = wait
+        super().__init__(
+            {"errors": [{"code": ERROR_SERVER_BUSY, "slot": None, "message": ERROR_MESSAGES_EN[ERROR_SERVER_BUSY]}]}
+        )
+
+
+class ArtworkUploadThrottle(SimpleRateThrottle):
+    """A modest per-visitor cap on upload requests so the demo server isn't
+    flooded. The rate ("30/min") is settings.ARTWORK_UPLOAD_RATE, read per
+    request; None turns the limit off."""
+
+    scope = "artwork_upload"
+
+    def get_rate(self):
+        return getattr(settings, "ARTWORK_UPLOAD_RATE", None)
+
+    def get_cache_key(self, request, view):
+        return self.cache_format % {"scope": self.scope, "ident": self.get_ident(request)}
+
+
 class ArtworkUploadView(APIView):
     """Accepts a PDF into a Front or Back slot, detects its trim size/bleed/
     orientation in a process pool worker, and stores the per-slot result.
 
-    A 2-page PDF dropped into Front auto-fills both slots. Errors are returned
-    as {"errors": [{"code", "slot", "message"}], ...} — see pdf_utils.ERROR_MESSAGES_EN
-    for the codes: not_a_pdf, too_many_pages, back_one_page, back_size_differs.
+    A 2-page PDF dropped into Front auto-fills both slots. The file is judged by
+    its content, never its name. Errors are returned as {"errors": [{"code",
+    "slot", "message"}], ...}: not_a_pdf, file_too_large, file_unreadable,
+    too_many_pages (over 50), page_choice_needed (3-50 pages, until the page
+    picker), back_one_page, back_size_differs, and server_busy (429, over the
+    rate limit). See pdf_utils.ERROR_MESSAGES_EN.
     """
+
+    throttle_classes = [ArtworkUploadThrottle]
+
+    def throttled(self, request, wait):
+        raise ServerBusy(wait)
 
     def post(self, request):
         uploaded_file = request.FILES.get("file")
@@ -127,16 +176,17 @@ class ArtworkUploadView(APIView):
 
         product = get_object_or_404(Product, pk=product_id)
 
-        if not uploaded_file.name.lower().endswith(".pdf"):
-            return _error_response(ERROR_NOT_A_PDF)
-
         file_bytes = uploaded_file.read()
         uploaded_file.seek(0)
         file_check = preflight.check_file(file_bytes)
         if file_check["status"] == "too_large":
             return _error_response(FILE_TOO_LARGE)
+        if not looks_like_pdf(file_bytes):
+            return _error_response(ERROR_NOT_A_PDF)
         if file_check["status"] == "unreadable":
             return _error_response(FILE_UNREADABLE)
+
+        uploaded_file.name = sanitise_filename(uploaded_file.name)
 
         size_values = _size_values_for(product)
         try:
@@ -144,16 +194,19 @@ class ArtworkUploadView(APIView):
                 uploaded_file, size_values, product.size_tolerance_mm, product.bleed_min_mm, product.bleed_max_mm
             )
         except Exception:
-            return _error_response(ERROR_NOT_A_PDF)
+            return _error_response(FILE_UNREADABLE)
 
         if "error" in result:
-            return _error_response(result["error"])
+            # It has a PDF header but pikepdf can't open or repair it.
+            return _error_response(FILE_UNREADABLE)
 
         page_count = result["page_count"]
         pages = result["pages"]
 
-        if page_count > 2:
+        if page_count > MAX_PAGES:
             return _error_response(ERROR_TOO_MANY_PAGES, page_count=page_count)
+        if page_count > 2:
+            return _error_response(ERROR_PAGE_CHOICE_NEEDED, page_count=page_count)
         if slot == SLOT_BACK and page_count == 2:
             return _error_response(ERROR_BACK_ONE_PAGE, page_count=page_count, slot=SLOT_BACK)
 

@@ -18,6 +18,7 @@ request thread that triggered the upload.
 """
 
 import io
+import re
 from concurrent.futures import ProcessPoolExecutor
 
 import pikepdf
@@ -37,13 +38,54 @@ ERROR_NOT_A_PDF = "not_a_pdf"
 ERROR_TOO_MANY_PAGES = "too_many_pages"
 ERROR_BACK_ONE_PAGE = "back_one_page"
 ERROR_BACK_SIZE_DIFFERS = "back_size_differs"
+ERROR_PAGE_CHOICE_NEEDED = "page_choice_needed"
+ERROR_NETWORK_FAILED = "network_failed"
+ERROR_SERVER_BUSY = "server_busy"
 
+MAX_PAGES = 50
+
+# The server's English fallback for every customer-facing upload error code, each
+# a reason plus a next step. The translated wording lives in the frontend message
+# files (ArtworkErrors); file_unreadable and file_too_large are in views.py, from
+# orders/preflight.py. network_failed is raised by the browser, never the server.
+# page_choice_needed stands in for the page picker until ticket 09 replaces it.
 ERROR_MESSAGES_EN = {
-    ERROR_NOT_A_PDF: "This file isn't a valid PDF.",
-    ERROR_TOO_MANY_PAGES: "Upload 1 or 2 pages.",
-    ERROR_BACK_ONE_PAGE: "Back takes one page.",
-    ERROR_BACK_SIZE_DIFFERS: "Back must be the same size as front.",
+    ERROR_NOT_A_PDF: "This file isn't a PDF. Save or export your design as a PDF, then upload that.",
+    ERROR_TOO_MANY_PAGES: f"This PDF has more than {MAX_PAGES} pages. Keep only your flyer pages, save them as a new PDF, then upload that.",
+    ERROR_BACK_ONE_PAGE: "Back takes one page. Upload a PDF with just the back.",
+    ERROR_BACK_SIZE_DIFFERS: "Back must be the same size as front. Upload a back in the same size, or change the front.",
+    ERROR_PAGE_CHOICE_NEEDED: "This PDF has more than 2 pages, and Front and Back take up to 2. Save just your flyer pages as a 1- or 2-page PDF, then upload that.",
+    ERROR_NETWORK_FAILED: "We couldn't reach the server. Check your connection, then try again.",
+    ERROR_SERVER_BUSY: "We're busy right now. Wait a minute, then try again.",
 }
+
+PDF_HEADER = b"%PDF-"
+# Readers accept the header anywhere in the first KB, after a short preamble.
+PDF_HEADER_WINDOW = 1024
+
+
+def looks_like_pdf(file_bytes):
+    """Content sniff: a real PDF carries %PDF- near the start, whatever it is named."""
+    return PDF_HEADER in file_bytes[:PDF_HEADER_WINDOW]
+
+
+MAX_FILENAME_CHARS = 100
+DEFAULT_FILENAME = "artwork.pdf"
+# Path separators, shell/markup characters and control, bidi-override and
+# zero-width characters (a name like "flyer\u202efdp.exe" would display reversed).
+_UNSAFE_FILENAME_CHARS = re.compile(r'[\\/<>:"|?*\x00-\x1f\x7f\u200b-\u200f\u202a-\u202e\u2066-\u2069\ufeff]')
+
+
+def sanitise_filename(name):
+    """A safe display and storage name for an uploaded file: no path, markup or
+    control characters, at most MAX_FILENAME_CHARS long, always ending in .pdf
+    (the content has already been checked to be a PDF)."""
+    base = re.split(r"[\\/]", name or "")[-1]
+    stem = base[:-4] if base.lower().endswith(".pdf") else base.rsplit(".", 1)[0] if "." in base else base
+    stem = _UNSAFE_FILENAME_CHARS.sub("", stem)
+    stem = re.sub(r"\s+", " ", stem).strip(" .")
+    stem = stem[: MAX_FILENAME_CHARS - len(".pdf")].strip(" .")
+    return f"{stem}.pdf" if stem else DEFAULT_FILENAME
 
 
 def _rect(box):

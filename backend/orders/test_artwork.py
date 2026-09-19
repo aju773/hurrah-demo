@@ -1,13 +1,20 @@
 """API tests for the Front/Back artwork upload endpoint (orders/views.ArtworkUploadView)."""
 
+import io
 import shutil
 import tempfile
+from unittest.mock import patch
 
+from django.core.cache import cache
 from django.test import TestCase, override_settings
 from rest_framework.test import APIClient
 
-from .fixtures_pdf import build_f2, build_pdf
+from . import preflight
+from .fixtures_pdf import build_f2, build_f3, build_pdf
 from .models import Artwork, Option, OptionValue, Product
+from .pdf_utils import ERROR_MESSAGES_EN
+from .test_preflight import _damaged_but_repairable
+from .views import PREFLIGHT_ERROR_MESSAGES_EN
 
 
 def make_product():
@@ -82,12 +89,26 @@ class ArtworkUploadEndpointTests(TestCase):
         self.assertIn("back_one_page", codes)
         self.assertEqual(Artwork.objects.count(), 0)
 
-    def test_three_pages_is_error(self):
+    def test_three_pages_asks_for_a_two_page_file_until_the_picker_exists(self):
         res = self.upload(build_pdf(*[{"media": (148, 210)}] * 3))
         self.assertEqual(res.status_code, 400)
         codes = [e["code"] for e in res.json()["errors"]]
-        self.assertIn("too_many_pages", codes)
+        self.assertEqual(codes, ["page_choice_needed"])
         self.assertEqual(res.json()["page_count"], 3)
+        self.assertEqual(Artwork.objects.count(), 0)
+
+    def test_fifty_pages_is_not_over_the_cap(self):
+        res = self.upload(build_pdf(*[{"media": (148, 210)}] * 50))
+        self.assertEqual(res.json()["errors"][0]["code"], "page_choice_needed")
+
+    def test_fifty_one_pages_is_too_many_pages(self):
+        res = self.upload(build_pdf(*[{"media": (148, 210)}] * 51))
+        self.assertEqual(res.status_code, 400)
+        error = res.json()["errors"][0]
+        self.assertEqual(error["code"], "too_many_pages")
+        self.assertIn("50", error["message"])
+        self.assertNotIn("1 or 2", error["message"])
+        self.assertEqual(res.json()["page_count"], 51)
 
     def test_back_size_differs_from_front(self):
         front_res = self.upload(build_pdf({"media": (148, 210)}), slot="front")
@@ -142,3 +163,157 @@ class ArtworkUploadEndpointTests(TestCase):
         serialized = str(body)
         for forbidden in ("price", "quote", "quantity"):
             self.assertNotIn(forbidden, serialized.lower())
+
+
+def _upload_bytes(client, product, data, name, slot="front"):
+    from django.core.files.uploadedfile import SimpleUploadedFile
+
+    body = {"file": SimpleUploadedFile(name, data), "slot": slot, "product": product.id}
+    return client.post("/api/artworks/", body, format="multipart")
+
+
+@override_settings(MEDIA_ROOT=tempfile.mkdtemp())
+class ArtworkContentValidationTests(TestCase):
+    """A file is accepted or refused by what it is, not what it is called."""
+
+    def setUp(self):
+        cache.clear()
+        self.client = APIClient()
+        self.product = make_product()
+
+    def refused(self, data, name, code):
+        res = _upload_bytes(self.client, self.product, data, name)
+        self.assertEqual(res.status_code, 400, res.content)
+        error = res.json()["errors"][0]
+        self.assertEqual(error["code"], code)
+        self.assertEqual(error["message"], {**ERROR_MESSAGES_EN, **PREFLIGHT_ERROR_MESSAGES_EN}[code])
+        self.assertEqual(Artwork.objects.count(), 0)
+
+    def test_jpg_saved_as_pdf_is_not_a_pdf(self):
+        self.refused(b"\xff\xd8\xff\xe0\x00\x10JFIF" + b"\x00" * 200, "flyer.pdf", "not_a_pdf")
+
+    def test_png_named_pdf_is_not_a_pdf(self):
+        self.refused(b"\x89PNG\r\n\x1a\n" + b"\x00" * 200, "flyer.PDF", "not_a_pdf")
+
+    def test_real_pdf_with_a_wrong_extension_is_accepted(self):
+        res = _upload_bytes(self.client, self.product, build_pdf({"media": (148, 210)}).read(), "flyer.jpg")
+        self.assertEqual(res.status_code, 201, res.content)
+        self.assertEqual(res.json()["front"]["matched_size_code"], "a5")
+
+    def test_pdf_with_no_extension_is_accepted(self):
+        res = _upload_bytes(self.client, self.product, build_pdf({"media": (148, 210)}).read(), "flyer")
+        self.assertEqual(res.status_code, 201, res.content)
+
+    def test_pdf_header_after_a_short_preamble_is_accepted(self):
+        data = b"\n\n" + build_pdf({"media": (148, 210)}).read()
+        res = _upload_bytes(self.client, self.product, data, "flyer.pdf")
+        self.assertEqual(res.status_code, 201, res.content)
+
+    def test_pdf_header_but_unrepairable_is_file_unreadable(self):
+        self.refused(b"%PDF-1.4\n" + b"garbage " * 50, "flyer.pdf", "file_unreadable")
+
+    def test_password_protected_is_file_unreadable(self):
+        self.refused(build_f3().read(), "flyer.pdf", "file_unreadable")
+
+    def test_oversize_is_file_too_large_even_when_not_a_pdf(self):
+        with patch.object(preflight, "MAX_UPLOAD_MB", 0):
+            self.refused(b"\xff\xd8\xff" + b"\x00" * 50, "flyer.pdf", "file_too_large")
+
+    def test_repairable_damage_is_accepted_with_a_warning(self):
+        res = _upload_bytes(self.client, self.product, _damaged_but_repairable(build_pdf({"media": (148, 210)})).read(), "flyer.pdf")
+        self.assertEqual(res.status_code, 201, res.content)
+        codes = [f["code"] for f in res.json()["front"]["preflight_report"]["findings"]]
+        self.assertIn("file_repaired", codes)
+
+    def test_every_refusal_message_says_what_to_do_next(self):
+        for code in ("not_a_pdf", "file_too_large", "file_unreadable", "too_many_pages", "back_size_differs", "network_failed", "server_busy"):
+            self.assertIn(code, {**ERROR_MESSAGES_EN, **PREFLIGHT_ERROR_MESSAGES_EN}, code)
+            message = ({**ERROR_MESSAGES_EN, **PREFLIGHT_ERROR_MESSAGES_EN})[code]
+            self.assertGreater(len(message.split(".")), 2, message)  # a reason plus a next step
+
+
+@override_settings(MEDIA_ROOT=tempfile.mkdtemp())
+class ArtworkFilenameTests(TestCase):
+    def setUp(self):
+        cache.clear()
+        self.client = APIClient()
+        self.product = make_product()
+
+    def upload_named(self, name):
+        res = _upload_bytes(self.client, self.product, build_pdf({"media": (148, 210)}).read(), name)
+        self.assertEqual(res.status_code, 201, res.content)
+        return Artwork.objects.get(pk=res.json()["front"]["id"])
+
+    def test_path_traversal_is_stripped(self):
+        artwork = self.upload_named("../../etc/passwd.pdf")
+        self.assertEqual(artwork.original_filename, "passwd.pdf")
+        self.assertNotIn("..", artwork.file.name)
+
+    def test_markup_and_control_characters_are_removed(self):
+        artwork = self.upload_named('<img src=x onerror=alert(1)>\x00\x1f"flyer".pdf')
+        self.assertNotRegex(artwork.original_filename, r'[<>"\x00-\x1f]')
+        self.assertTrue(artwork.original_filename.endswith(".pdf"))
+
+    def test_bidi_override_characters_are_removed(self):
+        artwork = self.upload_named("flyer\u202efdp.exe.pdf")
+        self.assertNotIn("\u202e", artwork.original_filename)
+
+    def test_long_names_are_shortened_and_keep_the_extension(self):
+        artwork = self.upload_named("a" * 400 + ".pdf")
+        self.assertLessEqual(len(artwork.original_filename), 100)
+        self.assertTrue(artwork.original_filename.endswith(".pdf"))
+
+    def test_empty_name_gets_a_default(self):
+        artwork = self.upload_named("...")
+        self.assertEqual(artwork.original_filename, "artwork.pdf")
+
+    def test_stored_file_is_always_a_pdf_extension(self):
+        artwork = self.upload_named("flyer.jpg")
+        self.assertEqual(artwork.original_filename, "flyer.pdf")
+        self.assertTrue(artwork.file.name.endswith(".pdf"))
+
+    def test_arabic_names_are_kept(self):
+        artwork = self.upload_named("منشور.pdf")
+        self.assertEqual(artwork.original_filename, "منشور.pdf")
+
+
+@override_settings(MEDIA_ROOT=tempfile.mkdtemp(), ARTWORK_UPLOAD_RATE="3/min")
+class ArtworkUploadRateLimitTests(TestCase):
+    def setUp(self):
+        cache.clear()
+        self.client = APIClient()
+        self.product = make_product()
+
+    def upload(self, **extra):
+        return _upload_bytes_from(self.client, self.product, **extra)
+
+    def test_requests_over_the_limit_are_refused_with_server_busy(self):
+        for _ in range(3):
+            self.assertEqual(self.upload().status_code, 201)
+        res = self.upload()
+        self.assertEqual(res.status_code, 429)
+        error = res.json()["errors"][0]
+        self.assertEqual(error["code"], "server_busy")
+        self.assertEqual(error["message"], ERROR_MESSAGES_EN["server_busy"])
+        self.assertEqual(Artwork.objects.count(), 3)
+        self.assertIn("Retry-After", res)
+
+    def test_a_different_visitor_is_not_limited(self):
+        for _ in range(3):
+            self.upload()
+        res = self.client.post(
+            "/api/artworks/",
+            {"file": as_upload(build_pdf({"media": (148, 210)})), "slot": "front", "product": self.product.id},
+            format="multipart",
+            REMOTE_ADDR="10.9.9.9",
+        )
+        self.assertEqual(res.status_code, 201)
+
+    @override_settings(ARTWORK_UPLOAD_RATE=None)
+    def test_no_rate_means_no_limit(self):
+        for _ in range(6):
+            self.assertEqual(self.upload().status_code, 201)
+
+
+def _upload_bytes_from(client, product, slot="front"):
+    return _upload_bytes(client, product, build_pdf({"media": (148, 210)}).read(), "flyer.pdf", slot=slot)

@@ -198,8 +198,8 @@
     "font_not_embedded_error": "A font isn't included, so text would print in the wrong font.",
     "rgb_colour_note": "Your file uses screen colours; we'll convert them for print, and bright blues and greens may look slightly duller.",
     "file_repaired_warning": "Your file was damaged; we repaired it, so check the preview carefully.",
-    "file_unreadable_error": "We couldn't open this file (password-protected, damaged or not a PDF).",
-    "file_too_large_error": "Files can be up to 100 MB.",
+    "file_unreadable_error": "We couldn't open this file. If it's password-protected, remove the password; otherwise export it again as a PDF, then upload that.",
+    "file_too_large_error": "Files can be up to 100 MB. Reduce the image quality or export a smaller PDF, then upload that.",
     "check_incomplete_warning": "We couldn't finish checking your file; our team will check it.",
     "fit_border_warning": "Your design is shrunk to fit, leaving a white border.",
     "fill_crop_warning": "Your design is enlarged to fill, cutting off the edges.",
@@ -207,13 +207,16 @@
     "lowestPpi": "lowest {value} ppi"
   },
   "ArtworkErrors": {
-    "not_a_pdf": "This file isn't a valid PDF.",
-    "too_many_pages": "Upload 1 or 2 pages.",
-    "back_one_page": "Back takes one page.",
-    "back_size_differs": "Back must be the same size as front.",
-    "file_unreadable": "We couldn't open this file (password-protected, damaged or not a PDF).",
-    "file_too_large": "Files can be up to 100 MB.",
-    "upload_failed": "Upload failed."
+    "not_a_pdf": "This file isn't a PDF. Save or export your design as a PDF, then upload that.",
+    "too_many_pages": "This PDF has more than 50 pages. Keep only your flyer pages, save them as a new PDF, then upload that.",
+    "back_one_page": "Back takes one page. Upload a PDF with just the back.",
+    "back_size_differs": "Back must be the same size as front. Upload a back in the same size, or change the front.",
+    "page_choice_needed": "This PDF has more than 2 pages, and Front and Back take up to 2. Save just your flyer pages as a 1- or 2-page PDF, then upload that.",
+    "file_unreadable": "We couldn't open this file. If it's password-protected, remove the password; otherwise export it again as a PDF, then upload that.",
+    "file_too_large": "Files can be up to 100 MB. Reduce the image quality or export a smaller PDF, then upload that.",
+    "network_failed": "We couldn't reach the server. Check your connection, then try again.",
+    "server_busy": "We're busy right now. Wait a minute, then try again.",
+    "upload_failed": "Upload failed. Try again, or upload a different file."
   },
   "ArtworkSlots": {
     "front": "Front",

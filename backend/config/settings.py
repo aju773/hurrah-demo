@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/6.1/ref/settings/
 """
 
 import os
+import sys
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -148,6 +149,11 @@ MEDIA_URL = 'media/'
 MEDIA_ROOT = os.environ.get('MEDIA_ROOT', BASE_DIR / 'media')
 
 FILE_UPLOAD_MAX_MEMORY_SIZE = 20 * 1024 * 1024  # 20MB
+
+# Per-visitor cap on artwork upload requests ("30/min"); empty turns it off. Off
+# under `manage.py test` (one visitor, hundreds of uploads); the rate-limit tests
+# switch it on with override_settings.
+ARTWORK_UPLOAD_RATE = os.environ.get('ARTWORK_UPLOAD_RATE', '' if 'test' in sys.argv else '30/min') or None
 
 # ASSUMPTION (demo): placeholder hotline number for the "Need a design?" WhatsApp link.
 DESIGN_HELP_WHATSAPP_NUMBER = "+971500000000"

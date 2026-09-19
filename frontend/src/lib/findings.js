@@ -123,7 +123,8 @@ export function findingMessage(t, group) {
  * language, falling back to the server's English message for an unknown code. */
 export function slotErrorMessage(t, error) {
   if (!error) return null;
-  return t.has(error.code) ? t(error.code) : error.message ?? null;
+  if (t.has(error.code)) return t(error.code);
+  return error.message ?? (t.has("upload_failed") ? t("upload_failed") : null);
 }
 
 export function slotHeadline(groups, slot) {
@@ -137,8 +138,7 @@ export function canGoNext(groups) {
 
 // Short names for the step 3 "I accept…" warnings tick (spec story 79: "a
 // warning tick listing them by short name"). Plain JS, not next-intl
-// messages, the same way lib/api.js's ARTWORK_ERROR_MESSAGES are — these
-// aren't UI copy the client owns, they're server Finding codes relabelled.
+// messages — these aren't UI copy the client owns, they're server Finding codes relabelled.
 const WARNING_SHORT_NAMES = {
   bleed_missing: { en: "missing bleed", ar: "بدون نزيف" },
   bleed_short: { en: "short bleed", ar: "نزيف غير كافٍ" },

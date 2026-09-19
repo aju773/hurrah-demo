@@ -3,6 +3,8 @@ import { Link } from "@/i18n/navigation";
 import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
 import CopyButton from "@/components/CopyButton";
+import LocaleControls from "@/components/LocaleControls";
+import { isolateLtr } from "@/lib/bidi";
 import { API_BASE_URL } from "@/lib/api";
 
 async function getOrder(token, locale) {
@@ -50,10 +52,12 @@ export default async function OrderConfirmationPage({ params }) {
     <div className="relative mx-auto bg-[#f9f9ff]" style={{ maxWidth: "1512px" }} dir={locale === "ar" ? "rtl" : "ltr"}>
       <SiteHeader />
       <div className="flex flex-col gap-[20px] px-[32px] py-[26px] w-full max-w-[720px] mx-auto">
+        <div className="flex justify-end">
+          <LocaleControls />
+        </div>
+
         <div className="flex items-center justify-between gap-[12px]">
-          <h1 className="text-[#151c27] text-[22px] font-bold">
-            <bdi dir="ltr">{t("received", { number: order.number })}</bdi>
-          </h1>
+          <h1 className="text-[#151c27] text-[22px] font-bold">{t("received", { number: isolateLtr(order.number) })}</h1>
           <CopyButton text={order.number} label={t("copy")} copiedLabel={t("copied")} />
         </div>
 

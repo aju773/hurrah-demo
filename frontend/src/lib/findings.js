@@ -87,17 +87,43 @@ export function passedChecks(groups, { resized = false } = {}) {
 /** The order headline: worst Severity across both sides (spec story 66). */
 export function orderHeadline(groups) {
   if (groups.some((g) => g.severity === "error")) {
-    return { severity: "error", icon: "⛔", text: "Must fix before ordering" };
+    return { severity: "error", icon: "⛔", count: 0, text: "Must fix before ordering" };
   }
   const warningCount = groups.filter((g) => g.severity === "warning").length;
   if (warningCount > 0) {
     return {
       severity: "warning",
       icon: "⚠️",
+      count: warningCount,
       text: `Can print — ${warningCount} thing${warningCount === 1 ? "" : "s"} to check`,
     };
   }
-  return { severity: "ok", icon: "✅", text: "Ready to print" };
+  return { severity: "ok", icon: "✅", count: 0, text: "Ready to print" };
+}
+
+/** The headline as translated text: `t` is a next-intl translator over the
+ * "Preflight" messages (headlineOk / headlineWarning with a plural `count` /
+ * headlineError). `text` on the headline stays the English wording. */
+export function headlineText(t, headline) {
+  if (headline.severity === "error") return t("headlineError");
+  if (headline.severity === "warning") return t("headlineWarning", { count: headline.count });
+  return t("headlineOk");
+}
+
+/** A Finding group's sentence in the viewer's language. Server codes are the
+ * message keys ("<code>_<severity>": low_ppi is a Warning and an Error with
+ * different wording); a code the message file doesn't know yet keeps the
+ * server's English sentence. `t` is a next-intl translator with `t.has`. */
+export function findingMessage(t, group) {
+  const key = `${group.code}_${group.severity}`;
+  return t.has(key) ? t(key) : group.message;
+}
+
+/** A slot's upload error ({code, message} from the artwork API) in the viewer's
+ * language, falling back to the server's English message for an unknown code. */
+export function slotErrorMessage(t, error) {
+  if (!error) return null;
+  return t.has(error.code) ? t(error.code) : error.message ?? null;
 }
 
 export function slotHeadline(groups, slot) {

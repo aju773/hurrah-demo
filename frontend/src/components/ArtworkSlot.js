@@ -1,21 +1,23 @@
 "use client";
 
 import { useRef } from "react";
+import { useTranslations } from "next-intl";
+import { headlineText, slotErrorMessage } from "@/lib/findings";
 import { preflightHeadline } from "@/lib/preflight";
 
-const TRIM_SOURCE_LABELS = {
-  trimbox: "from TrimBox",
-  crop: "from CropBox",
-  media: "page size, no bleed",
-  media_minus_bleed: "page size minus bleed",
-};
+const TRIM_SOURCES = ["trimbox", "crop", "media", "media_minus_bleed"];
 
 /**
  * One Front/Back upload slot: drop zone, "Checking your file…" spinner state,
  * a detected summary (size/orientation/bleed) or an error message, and a
  * remove-file control. Purely presentational — ArtworkSlots owns the upload.
+ * `error` is the upload's {code, message}; the code picks the translated text.
+ * File names, sizes in mm and the size code stay left-to-right in Arabic.
  */
 export default function ArtworkSlot({ label, status, fileName, artwork, error, disabled, onFile, onRemove }) {
+  const t = useTranslations("ArtworkSlot");
+  const tErrors = useTranslations("ArtworkErrors");
+  const tPreflight = useTranslations("Preflight");
   const inputRef = useRef(null);
 
   function handleDrop(e) {
@@ -33,8 +35,9 @@ export default function ArtworkSlot({ label, status, fileName, artwork, error, d
   const sizeLabel = artwork?.matched_size_code
     ? artwork.matched_size_code.toUpperCase()
     : artwork
-    ? `Custom (${artwork.trim_width_mm} × ${artwork.trim_height_mm} mm)`
+    ? t("custom", { width: artwork.trim_width_mm, height: artwork.trim_height_mm })
     : null;
+  const errorText = slotErrorMessage(tErrors, error ?? (artwork?.error_code ? { code: artwork.error_code, message: artwork.error_message } : null));
 
   return (
     <div className="bg-white flex flex-col overflow-clip rounded-[16px] shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)] w-full">
@@ -42,12 +45,12 @@ export default function ArtworkSlot({ label, status, fileName, artwork, error, d
         <span className="text-[#ebf1ff] text-[16px] font-semibold tracking-[-0.16px]">{label}</span>
         {isDone && !hasSlotError && (
           <span className="bg-[#1a7f37] text-white text-[10px] font-semibold tracking-[0.4px] uppercase px-[8px] py-[2px] rounded-[4px]">
-            Detected
+            {t("detected")}
           </span>
         )}
         {hasSlotError && (
           <span className="bg-[#bb0027] text-white text-[10px] font-semibold tracking-[0.4px] uppercase px-[8px] py-[2px] rounded-[4px]">
-            Error
+            {t("error")}
           </span>
         )}
       </div>
@@ -62,7 +65,7 @@ export default function ArtworkSlot({ label, status, fileName, artwork, error, d
             }`}
           >
             <p className="text-[#151c27] text-[14px] font-semibold text-center mb-[4px]">
-              Drag &amp; drop a PDF here
+              {t("dragDrop")}
             </p>
             <button
               type="button"
@@ -70,10 +73,12 @@ export default function ArtworkSlot({ label, status, fileName, artwork, error, d
               onClick={() => inputRef.current?.click()}
               className="text-[#575c64] text-[12px] text-center mb-[8px]"
             >
-              or <span className="text-[#bb0027] font-bold underline">browse from your computer</span>
+              {t.rich("browsePrompt", {
+                link: (chunks) => <span className="text-[#bb0027] font-bold underline">{chunks}</span>,
+              })}
             </button>
             <span className="bg-white text-[#575c64] text-[11px] font-bold tracking-[0.22px] px-[12px] py-[6px] rounded-full">
-              PDF only
+              {t("pdfOnly")}
             </span>
             <input
               ref={inputRef}
@@ -93,52 +98,64 @@ export default function ArtworkSlot({ label, status, fileName, artwork, error, d
         {isChecking && (
           <div className="flex flex-col items-center justify-center rounded-[12px] px-[16px] py-[32px] w-full bg-[rgba(240,243,255,0.6)]">
             <div className="size-[24px] border-2 border-[#e2e8f8] border-t-[#bb0027] rounded-full animate-spin mb-[8px]" />
-            <p className="text-[#575c64] text-[13px]">Checking your file…</p>
+            <p className="text-[#575c64] text-[13px]">{t("checking")}</p>
           </div>
         )}
 
         {isDone && (
           <div className="flex flex-col gap-[8px]">
             <div className="flex items-center justify-between bg-[#f0f3ff] px-[10px] py-[8px] rounded-[10px] w-full">
-              <span className="text-[#151c27] text-[12px] truncate" style={{ maxWidth: "260px" }}>
+              <bdi dir="ltr" className="text-[#151c27] text-[12px] truncate" style={{ maxWidth: "260px" }}>
                 {fileName}
-              </span>
+              </bdi>
               <button type="button" onClick={onRemove} className="text-[#575c64] text-[11px] font-semibold underline shrink-0">
-                {hasSlotError ? "Upload another file" : "Remove"}
+                {hasSlotError ? t("uploadAnother") : t("remove")}
               </button>
             </div>
 
             {headline && (
               <p className="text-[13px] font-semibold flex items-center gap-[6px]" style={{ color: headline.severity === "warning" ? "#6f5400" : "#151c27" }}>
                 <span>{headline.icon}</span>
-                <span>{headline.text}</span>
+                <span>{headlineText(tPreflight, headline)}</span>
               </p>
             )}
 
             {hasSlotError ? (
-              <p className="text-[#bb0027] text-[12px]">{error || artwork?.error_message}</p>
+              <p className="text-[#bb0027] text-[12px]">{errorText}</p>
             ) : (
               artwork && (
                 <div className="bg-[#f0f3ff] rounded-[10px] p-[10px] flex flex-col gap-[2px]">
                   <div className="flex items-center justify-between text-[12px]">
-                    <span className="text-[#5d3f3e]">Size</span>
-                    <span className="text-[#151c27] font-bold">{sizeLabel}</span>
+                    <span className="text-[#5d3f3e]">{t("size")}</span>
+                    {artwork.matched_size_code ? (
+                      <bdi dir="ltr" className="text-[#151c27] font-bold">{sizeLabel}</bdi>
+                    ) : (
+                      <span className="text-[#151c27] font-bold">{sizeLabel}</span>
+                    )}
                   </div>
                   <div className="flex items-center justify-between text-[12px]">
-                    <span className="text-[#5d3f3e]">Dimensions</span>
-                    <span className="text-[#151c27]">
+                    <span className="text-[#5d3f3e]">{t("dimensions")}</span>
+                    <bdi dir="ltr" className="text-[#151c27]">
                       {artwork.trim_width_mm} × {artwork.trim_height_mm} mm
-                    </span>
+                    </bdi>
                   </div>
                   <div className="flex items-center justify-between text-[12px]">
-                    <span className="text-[#5d3f3e]">Orientation</span>
-                    <span className="text-[#151c27] capitalize">{artwork.orientation}</span>
+                    <span className="text-[#5d3f3e]">{t("orientation")}</span>
+                    <span className="text-[#151c27]">{artwork.orientation ? t(artwork.orientation) : ""}</span>
                   </div>
                   <div className="flex items-center justify-between text-[12px]">
-                    <span className="text-[#5d3f3e]">Bleed</span>
+                    <span className="text-[#5d3f3e]">{t("bleed")}</span>
                     <span className="text-[#151c27]">
-                      {artwork.bleed_mm == null ? "Unknown" : artwork.bleed_mm > 0 ? `${artwork.bleed_mm}mm` : "None"}
-                      {artwork.trim_source ? ` (${TRIM_SOURCE_LABELS[artwork.trim_source] ?? artwork.trim_source})` : ""}
+                      {artwork.bleed_mm == null ? (
+                        t("bleedUnknown")
+                      ) : artwork.bleed_mm > 0 ? (
+                        <bdi dir="ltr">{t("mm", { value: artwork.bleed_mm })}</bdi>
+                      ) : (
+                        t("bleedNone")
+                      )}
+                      {artwork.trim_source
+                        ? ` (${TRIM_SOURCES.includes(artwork.trim_source) ? t(artwork.trim_source) : artwork.trim_source})`
+                        : ""}
                     </span>
                   </div>
                 </div>

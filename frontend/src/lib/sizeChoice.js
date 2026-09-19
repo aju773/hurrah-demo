@@ -70,3 +70,15 @@ export function scaleNote(result) {
   if (!result.cropMm) return `Scaled to ${result.scalePct}%. Fills exactly, nothing cut off.`;
   return `Scaled to ${result.scalePct}%. ${result.cropMm.toFixed(1)}mm cut off ${edgeLabel} — check nothing important is lost.`;
 }
+
+/** The same note as `scaleNote`, as a message key plus values so the dialog can
+ * translate it (`edges` is "topBottom" or "leftRight", also message keys). */
+export function scaleNoteMessage(result) {
+  const edges = result.edges ? (result.edges[0] === "top" ? "topBottom" : "leftRight") : null;
+  if (result.mode === FIT) {
+    if (!result.whiteBorderMm) return { key: "noteFitExact", values: { pct: result.scalePct } };
+    return { key: "noteFitBorder", values: { pct: result.scalePct, amount: result.whiteBorderMm.toFixed(1), edges } };
+  }
+  if (!result.cropMm) return { key: "noteFillExact", values: { pct: result.scalePct } };
+  return { key: "noteFillCrop", values: { pct: result.scalePct, amount: result.cropMm.toFixed(1), edges } };
+}

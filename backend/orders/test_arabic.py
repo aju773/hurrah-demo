@@ -83,3 +83,33 @@ class ArabicStatusMessageTests(TestCase):
             self.assertNotRegex(text, r"[A-Za-z]")
             seen.add(text)
         self.assertEqual(len(seen), 12)
+
+
+class FrontendMessageCoverageTests(TestCase):
+    """Every code the server can send has an Arabic sentence in the frontend message
+    file (frontend/messages/ar.json). Skipped when the frontend isn't checked out
+    next to the backend (e.g. a backend-only deploy)."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        import json
+        from pathlib import Path
+
+        path = Path(__file__).resolve().parents[2] / "frontend" / "messages" / "ar.json"
+        if not path.exists():
+            from unittest import SkipTest
+            raise SkipTest("frontend messages not present")
+        cls.messages = json.loads(path.read_text(encoding="utf-8"))
+
+    def test_every_preflight_finding_has_an_arabic_message(self):
+        from . import preflight
+
+        for code, severity in preflight.MESSAGES_EN:
+            self.assertIn(f"{code}_{severity}", self.messages["Findings"], (code, severity))
+
+    def test_every_artwork_error_code_has_an_arabic_message(self):
+        from .pdf_utils import ERROR_MESSAGES_EN
+
+        for code in [*ERROR_MESSAGES_EN, "file_unreadable", "file_too_large"]:
+            self.assertIn(code, self.messages["ArtworkErrors"], code)

@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { useRouter } from "@/i18n/navigation";
-import { deliveryLine } from "@/lib/clock";
+import DeliveryLine from "./DeliveryLine";
 import useDraftOrder, { clearPersistedDraft } from "@/lib/useDraftOrder";
 import DesignHelpDrawer from "./DesignHelpDrawer";
 import ArtworkSlots from "./ArtworkSlots";
@@ -182,6 +182,8 @@ export default function FlyersConfigurator({ initialCatalogue, initialConfigurat
       <ArtworkSlots
         key={artworkResetKey}
         productId={catalogue.product_id}
+        initialFrontId={state.slots.front?.id}
+        initialBackId={state.slots.back?.id}
         sameAsBack={state.slots.sameBack}
         onSameAsBackChange={(checked) => {
           if (checked !== state.slots.sameBack) toggleSameBack();
@@ -408,7 +410,7 @@ function Countdown({ clock, locale, onExpire }) {
     return () => clearTimeout(retry);
   }, [secondsLeft, retryCount, onExpire]);
 
-  return <span className="text-[#575c64] text-[12px]">{deliveryLine(clock, secondsLeft, locale)}</span>;
+  return <DeliveryLine clock={clock} secondsLeft={secondsLeft} locale={locale} className="text-[#575c64] text-[12px]" />;
 }
 
 function Line({ label, value }) {

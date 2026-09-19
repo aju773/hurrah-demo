@@ -1,11 +1,18 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import { API_BASE_URL, ARTWORK_ERROR_MESSAGES } from "@/lib/api";
 import ArtworkSlot from "./ArtworkSlot";
 import DesignHelpDrawer from "./DesignHelpDrawer";
 
-const EMPTY_SLOT = { status: "empty", fileName: "", file: null, artwork: null, error: "" };
+const EMPTY_SLOT = { status: "empty", fileName: "", file: null, artwork: null, error: null };
+
+// A slot's error is the server's {code, message}; the code picks the translated
+// text in ArtworkSlot, and the English message covers a code we don't know yet.
+function errorOf(code) {
+  return { code, message: ARTWORK_ERROR_MESSAGES[code] };
+}
 
 async function uploadSlot({ file, slot, productId, frontId }) {
   const form = new FormData();
@@ -19,10 +26,10 @@ async function uploadSlot({ file, slot, productId, frontId }) {
   return { ok: res.ok, data };
 }
 
-function firstErrorMessage(data, fallback) {
+function firstError(data) {
   const first = data?.errors?.[0];
-  if (!first) return fallback;
-  return first.message || ARTWORK_ERROR_MESSAGES[first.code] || fallback;
+  if (!first) return errorOf("upload_failed");
+  return { code: first.code, message: first.message || ARTWORK_ERROR_MESSAGES[first.code] };
 }
 
 /**
@@ -37,6 +44,8 @@ function firstErrorMessage(data, fallback) {
  */
 export default function ArtworkSlots({
   productId,
+  initialFrontId,
+  initialBackId,
   sameAsBack,
   onSameAsBackChange,
   onFrontResult,
@@ -44,6 +53,7 @@ export default function ArtworkSlots({
   onFrontRemoved,
   onBackRemoved,
 }) {
+  const t = useTranslations("ArtworkSlots");
   const [front, setFront] = useState(EMPTY_SLOT);
   const [back, setBack] = useState(EMPTY_SLOT);
   const [designHelpOpen, setDesignHelpOpen] = useState(false);
@@ -55,24 +65,24 @@ export default function ArtworkSlots({
 
   async function handleFrontFile(file) {
     if (!file.name.toLowerCase().endsWith(".pdf")) {
-      setFront({ status: "error", fileName: file.name, file, artwork: null, error: ARTWORK_ERROR_MESSAGES.not_a_pdf });
+      setFront({ status: "error", fileName: file.name, file, artwork: null, error: errorOf("not_a_pdf") });
       return;
     }
-    setFront({ status: "checking", fileName: file.name, file, artwork: null, error: "" });
+    setFront({ status: "checking", fileName: file.name, file, artwork: null, error: null });
 
     const { ok, data } = await uploadSlot({ file, slot: "front", productId });
     if (!ok) {
-      setFront({ status: "error", fileName: file.name, file, artwork: null, error: firstErrorMessage(data, "Upload failed.") });
+      setFront({ status: "error", fileName: file.name, file, artwork: null, error: firstError(data) });
       return;
     }
 
-    setFront({ status: "ok", fileName: file.name, file, artwork: data.front, error: "" });
+    setFront({ status: "ok", fileName: file.name, file, artwork: data.front, error: null });
     onFrontResult?.(data.front, data.back);
     frontFilledBothRef.current = Boolean(data.back);
 
     if (data.back) {
       // A 2-page PDF dropped into Front auto-fills Back from page 2.
-      setBack({ status: "ok", fileName: file.name, file, artwork: data.back, error: "" });
+      setBack({ status: "ok", fileName: file.name, file, artwork: data.back, error: null });
       onSameAsBackChange?.(false);
     } else if (sameAsBack) {
       await syncBackToFront(file, data.front?.id);
@@ -80,29 +90,29 @@ export default function ArtworkSlots({
   }
 
   async function syncBackToFront(file, frontId) {
-    setBack({ status: "checking", fileName: file.name, file, artwork: null, error: "" });
+    setBack({ status: "checking", fileName: file.name, file, artwork: null, error: null });
     const { ok, data } = await uploadSlot({ file, slot: "back", productId, frontId });
     if (!ok) {
-      setBack({ status: "error", fileName: file.name, file, artwork: null, error: firstErrorMessage(data, "Upload failed.") });
+      setBack({ status: "error", fileName: file.name, file, artwork: null, error: firstError(data) });
       return;
     }
-    setBack({ status: "ok", fileName: file.name, file, artwork: data.back, error: "" });
+    setBack({ status: "ok", fileName: file.name, file, artwork: data.back, error: null });
     onBackResult?.(data.back);
   }
 
   async function handleBackFile(file) {
     if (!file.name.toLowerCase().endsWith(".pdf")) {
-      setBack({ status: "error", fileName: file.name, file, artwork: null, error: ARTWORK_ERROR_MESSAGES.not_a_pdf });
+      setBack({ status: "error", fileName: file.name, file, artwork: null, error: errorOf("not_a_pdf") });
       return;
     }
-    setBack({ status: "checking", fileName: file.name, file, artwork: null, error: "" });
+    setBack({ status: "checking", fileName: file.name, file, artwork: null, error: null });
 
     const { ok, data } = await uploadSlot({ file, slot: "back", productId, frontId: front.artwork?.id });
     if (!ok) {
-      setBack({ status: "error", fileName: file.name, file, artwork: null, error: firstErrorMessage(data, "Upload failed.") });
+      setBack({ status: "error", fileName: file.name, file, artwork: null, error: firstError(data) });
       return;
     }
-    setBack({ status: "ok", fileName: file.name, file, artwork: data.back, error: "" });
+    setBack({ status: "ok", fileName: file.name, file, artwork: data.back, error: null });
     onBackResult?.(data.back);
     frontFilledBothRef.current = false; // Back is now its own upload, not Front's page 2.
   }
@@ -130,6 +140,32 @@ export default function ArtworkSlots({
     }
   }
 
+  // A draft that already holds Artwork (a language switch or a refresh remounts
+  // this component) shows those cards again: the Artwork is fetched by id, never
+  // re-uploaded or re-checked. Mount-only on purpose — after that, uploads and
+  // removals in this component are the source of truth.
+  useEffect(() => {
+    let cancelled = false;
+    async function load(id) {
+      if (!id) return null;
+      const res = await fetch(`${API_BASE_URL}/api/artworks/${id}/`, { cache: "no-store" }).catch(() => null);
+      return res?.ok ? res.json() : null;
+    }
+    (async () => {
+      const [frontData, backData] = await Promise.all([load(initialFrontId), load(initialBackId)]);
+      if (cancelled) return;
+      const asSlot = (data) => ({ status: "ok", fileName: data.original_filename, file: null, artwork: data, error: null });
+      if (frontData) setFront(asSlot(frontData));
+      if (backData) setBack(asSlot(backData));
+      // A 2-page PDF's page 2 in Back: removing Front has to clear it too.
+      frontFilledBothRef.current = Boolean(frontData && backData && frontData.source_page_count === 2 && backData.page_index === 2);
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Drives the actual re-upload whenever "same as back" turns on — whether
   // from the checkbox above or from a sync dialog's "use the same artwork
   // for the back" choice (ticket 05), which sets this prop from outside.
@@ -144,7 +180,7 @@ export default function ArtworkSlots({
     <div className="flex flex-col gap-[16px] w-full">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-[16px] w-full">
         <ArtworkSlot
-          label="Front"
+          label={t("front")}
           status={front.status}
           fileName={front.fileName}
           artwork={front.artwork}
@@ -153,7 +189,7 @@ export default function ArtworkSlots({
           onRemove={handleRemoveFront}
         />
         <ArtworkSlot
-          label="Back"
+          label={t("back")}
           status={back.status}
           fileName={back.fileName}
           artwork={back.artwork}
@@ -171,7 +207,7 @@ export default function ArtworkSlots({
           onChange={(e) => handleSameAsBackToggle(e.target.checked)}
           className="size-[16px]"
         />
-        Use the same artwork for the back
+        {t("sameAsBack")}
       </label>
 
       <button
@@ -179,7 +215,7 @@ export default function ArtworkSlots({
         onClick={() => setDesignHelpOpen(true)}
         className="self-start text-[#bb0027] text-[12px] font-bold underline"
       >
-        No file? Get design help
+        {t("designHelp")}
       </button>
 
       <DesignHelpDrawer

@@ -165,3 +165,19 @@ class F2FixtureTests(SimpleTestCase):
             self.assertEqual(page["trim_source"], "trimbox")
             self.assertEqual(page["bleed_mm"], 3.0)
             self.assertEqual((page["trim_width_mm"], page["trim_height_mm"]), (148.0, 210.0))
+
+
+class WriteFixturePdfsCommandTests(SimpleTestCase):
+    def test_writes_the_three_demo_fixtures_as_pdfs(self):
+        import tempfile
+        from io import StringIO
+        from pathlib import Path
+
+        from django.core.management import call_command
+
+        with tempfile.TemporaryDirectory() as out:
+            call_command("write_fixture_pdfs", "--out", out, stdout=StringIO())
+            names = sorted(p.name for p in Path(out).iterdir())
+            self.assertEqual(names, ["f1-layla-a4-no-bleed.pdf", "f2-omar-a5-clean.pdf", "f3-password-protected.pdf"])
+            for name in names:
+                self.assertTrue((Path(out) / name).read_bytes().startswith(b"%PDF"))

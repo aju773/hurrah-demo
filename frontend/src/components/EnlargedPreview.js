@@ -75,7 +75,7 @@ export default function EnlargedPreview({ t, initialSlot, initialSelectedKey, pr
           <ToggleButton active={withGuides} onClick={() => setWithGuides(true)} label={t("withGuides")} />
         </div>
 
-        <div ref={scrollRef} className="flex-1 overflow-auto bg-[#f0f3ff] rounded-[12px] p-[10px]">
+        <div ref={scrollRef} dir="ltr" className="flex-1 overflow-auto bg-[#f0f3ff] rounded-[12px] p-[10px]">
           <div style={widthPx ? { width: `${widthPx}px` } : undefined}>
             <ArtworkPreview
               slot={slot}
@@ -87,6 +87,7 @@ export default function EnlargedPreview({ t, initialSlot, initialSelectedKey, pr
               withGuides={withGuides}
               selectedKey={selectedKey}
               onSelectFinding={(group) => setSelectedKey(group.key)}
+              ariaLabel={t("previewLabel", { side: t(slot === "front" ? "front" : "back") })}
             />
           </div>
         </div>

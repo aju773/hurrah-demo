@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { FILL, FIT, computeSizeChoice, scaleNote } from "./sizeChoice";
+import { FILL, FIT, computeSizeChoice, scaleNote, scaleNoteMessage } from "./sizeChoice";
 
 describe("computeSizeChoice", () => {
   it("Layla: A4 file (210x297) fit inside an A5 order (148x210)", () => {
@@ -50,5 +50,26 @@ describe("scaleNote", () => {
   it("describes a fill with a crop", () => {
     const note = scaleNote({ mode: FILL, scalePct: 108, cropMm: 34, edges: ["left", "right"] });
     expect(note).toBe("Scaled to 108%. 34.0mm cut off left & right — check nothing important is lost.");
+  });
+});
+
+describe("scaleNoteMessage", () => {
+  it("names the message and its values for a shrink with a border", () => {
+    expect(scaleNoteMessage({ mode: FIT, scalePct: 74, whiteBorderMm: 31, edges: ["top", "bottom"] })).toEqual({
+      key: "noteFitBorder",
+      values: { pct: 74, amount: "31.0", edges: "topBottom" },
+    });
+  });
+
+  it("names the message for a fill with a crop on the sides", () => {
+    expect(scaleNoteMessage({ mode: FILL, scalePct: 108, cropMm: 34, edges: ["left", "right"] })).toEqual({
+      key: "noteFillCrop",
+      values: { pct: 108, amount: "34.0", edges: "leftRight" },
+    });
+  });
+
+  it("has separate messages for an exact fit and an exact fill", () => {
+    expect(scaleNoteMessage({ mode: FIT, scalePct: 100, whiteBorderMm: 0, edges: null }).key).toBe("noteFitExact");
+    expect(scaleNoteMessage({ mode: FILL, scalePct: 100, cropMm: 0, edges: null }).key).toBe("noteFillExact");
   });
 });

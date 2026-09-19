@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { API_BASE_URL, FLYERS_SLUG } from "@/lib/api";
-import { deliveryLine } from "@/lib/clock";
+import DeliveryLine from "./DeliveryLine";
 import { combineFindings, warningShortName } from "@/lib/findings";
 import { fetchPreview } from "@/lib/preview";
 import ArtworkPreview from "./ArtworkPreview";
@@ -140,7 +140,12 @@ export default function ApproveAndConfirmStep({
         setSubmitError(t("staleNotice"));
       } else if (data.code === "invalid_delivery") {
         setSubmitError(t("invalidDelivery"));
+      } else if (data.code === "artwork_has_errors") {
+        setSubmitError(t("hasErrors"));
+      } else if (data.code && t.has(`error_${data.code}`)) {
+        setSubmitError(t(`error_${data.code}`));
       } else {
+        // A code we don't know yet: the server's English sentence beats nothing.
         setSubmitError(data.detail || t("genericError"));
       }
     } catch {
@@ -269,7 +274,11 @@ function Countdown({ clock, locale, onExpire }) {
     return () => clearTimeout(retry);
   }, [secondsLeft, retryCount, onExpire]);
 
-  return <p className="text-[#575c64] text-[13px]">{deliveryLine(clock, secondsLeft, locale)}</p>;
+  return (
+    <p className="text-[#575c64] text-[13px]">
+      <DeliveryLine clock={clock} secondsLeft={secondsLeft} locale={locale} />
+    </p>
+  );
 }
 
 function DeliveryForm({ t, delivery, onChange }) {
@@ -277,17 +286,17 @@ function DeliveryForm({ t, delivery, onChange }) {
     <div className="bg-white rounded-[12px] shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)] p-[16px] flex flex-col gap-[10px]">
       <span className="text-[#151c27] text-[14px] font-semibold">{t("deliveryDetails")}</span>
       <Field label={t("fieldName")} value={delivery.name} onChange={(v) => onChange("name", v)} required />
-      <Field label={t("fieldMobile")} value={delivery.mobile} onChange={(v) => onChange("mobile", v)} required />
+      <Field label={t("fieldMobile")} value={delivery.mobile} onChange={(v) => onChange("mobile", v)} required ltr />
       <Field label={t("fieldArea")} value={delivery.area} onChange={(v) => onChange("area", v)} required />
       <Field label={t("fieldAddress")} value={delivery.address_line} onChange={(v) => onChange("address_line", v)} required />
-      <Field label={t("fieldEmail")} value={delivery.email} onChange={(v) => onChange("email", v)} />
+      <Field label={t("fieldEmail")} value={delivery.email} onChange={(v) => onChange("email", v)} ltr />
       <Field label={t("fieldCompany")} value={delivery.company} onChange={(v) => onChange("company", v)} />
       <Field label={t("fieldNote")} value={delivery.note} onChange={(v) => onChange("note", v)} />
     </div>
   );
 }
 
-function Field({ label, value, onChange, required }) {
+function Field({ label, value, onChange, required, ltr }) {
   return (
     <label className="flex flex-col gap-[4px]">
       <span className="text-[#5d3f3e] text-[11px] font-semibold">
@@ -296,6 +305,7 @@ function Field({ label, value, onChange, required }) {
       </span>
       <input
         type="text"
+        dir={ltr ? "ltr" : undefined}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         className="h-[38px] px-[10px] rounded-[8px] border border-[#e2e8f8] text-[13px] text-[#151c27]"

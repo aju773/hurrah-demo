@@ -34,6 +34,7 @@ export default function PreviewLoupe({ children, onClick }) {
   return (
     <div
       ref={containerRef}
+      dir="ltr"
       className="relative cursor-pointer"
       onClick={onClick}
       onMouseMove={canHover ? handleMove : undefined}

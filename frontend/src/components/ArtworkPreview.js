@@ -61,6 +61,7 @@ export default function ArtworkPreview({
   withGuides,
   selectedKey,
   onSelectFinding,
+  ariaLabel,
 }) {
   const uid = useId().replace(/:/g, "");
   const clipId = `clip-${uid}`;
@@ -96,7 +97,14 @@ export default function ArtworkPreview({
   if (!image) return null;
 
   return (
-    <svg viewBox={`${vx} ${vy} ${vw} ${vh}`} className="w-full h-auto block" role="img" aria-label={`${slot} preview`}>
+    <svg
+      viewBox={`${vx} ${vy} ${vw} ${vh}`}
+      className="w-full h-auto block"
+      dir="ltr"
+      style={{ direction: "ltr" }}
+      role="img"
+      aria-label={ariaLabel ?? `${slot} preview`}
+    >
       <defs>
         <clipPath id={clipId}>
           <rect x={clip.x} y={clip.y} width={clip.w} height={clip.h} />

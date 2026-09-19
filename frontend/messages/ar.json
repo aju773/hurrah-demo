@@ -52,7 +52,8 @@
     "fallbackProductName": "Flyer Print Order"
   },
   "FlyersPage": {
-    "loadError": "حدث خطأ أثناء تحميل صفحة الفلايرز. يرجى تحديث الصفحة."
+    "loadError": "حدث خطأ أثناء تحميل صفحة الفلايرز. يرجى تحديث الصفحة.",
+    "title": "فلايرز"
   },
   "FlyersConfigurator": {
     "loading": "جارٍ تحميل الخيارات…",
@@ -82,9 +83,6 @@
   "CheckAndPreviewStep": {
     "loading": "جارٍ تحميل المعاينة…",
     "loadError": "حدث خطأ أثناء تحميل المعاينة. يرجى المحاولة مرة أخرى.",
-    "headlineOk": "✅ جاهز للطباعة",
-    "headlineWarning": "⚠️ يمكن الطباعة — {count, plural, one {أمر واحد} other {# أمور}} للمراجعة",
-    "headlineError": "⛔ يجب الإصلاح قبل الطلب",
     "noFindings": "لم يتم العثور على مشاكل.",
     "passed": "تم اجتيازه: {items}",
     "checkBleed": "الهامش",
@@ -108,7 +106,8 @@
     "nextDisabledError": "أصلح كل خطأ أعلاه للمتابعة.",
     "close": "إغلاق",
     "zoomFit": "احتواء",
-    "previewOnlyNote": "معاينة فقط — يُطبع ملفك بجودته الكاملة."
+    "previewOnlyNote": "معاينة فقط — يُطبع ملفك بجودته الكاملة.",
+    "previewLabel": "معاينة {side}"
   },
   "ApproveAndConfirmStep": {
     "loading": "جارٍ تحميل نسخة الإثبات…",
@@ -139,7 +138,12 @@
     "genericError": "حدث خطأ ما. يرجى المحاولة مرة أخرى.",
     "backButton": "→ رجوع",
     "submit": "الموافقة والإرسال",
-    "submitting": "جارٍ الإرسال…"
+    "submitting": "جارٍ الإرسال…",
+    "error_missing_tick": "يرجى تحديد مربعات الموافقة للمتابعة.",
+    "error_artwork_locked": "هذا التصميم مرتبط بطلب آخر بالفعل.",
+    "error_invalid_artwork": "لا يمكن استخدام هذا التصميم لهذا الطلب. ارجع وتحقق منه.",
+    "error_not_available": "هذا التوليف غير متاح.",
+    "error_invalid_configuration": "اختياراتك غير صالحة. يرجى مراجعتها والمحاولة مرة أخرى."
   },
   "OrderConfirmation": {
     "notFound": "تعذر العثور على هذا الطلب.",
@@ -160,5 +164,144 @@
     "whatsapp": "راسلنا عبر واتساب",
     "whatsappPrefill": "مرحبًا هُرَّة، لدي سؤال بخصوص الطلب {number}.",
     "orderMore": "اطلب المزيد من الفلايرز"
+  },
+  "LanguageToggle": {
+    "label": "اللغة",
+    "switchToEnglish": "التبديل إلى الإنجليزية",
+    "switchToArabic": "التبديل إلى العربية",
+    "draftTranslation": "مسودة ترجمة / Draft translation"
+  },
+  "Preflight": {
+    "headlineOk": "✅ جاهز للطباعة",
+    "headlineWarning": "⚠️ يمكن الطباعة — {count, plural, one {أمر واحد} other {# أمور}} للمراجعة",
+    "headlineError": "⛔ يجب الإصلاح قبل الطلب"
+  },
+  "Findings": {
+    "bleed_missing_warning": "يمتد تصميمك حتى الحافة دون هامش إضافي، لذا قد يظهر خط أبيض رفيع بعد القص.",
+    "bleed_short_warning": "ملفك لا يحتوي على هامش كافٍ، لذا قد يظهر خط أبيض رفيع.",
+    "low_ppi_warning": "إحدى الصور منخفضة الدقة، لذا قد تبدو غير حادة قليلًا.",
+    "low_ppi_error": "إحدى الصور منخفضة الدقة جدًا وستُطبع غير واضحة.",
+    "font_not_embedded_error": "أحد الخطوط غير مضمَّن، لذا ستُطبع النصوص بخط مختلف.",
+    "rgb_colour_note": "يستخدم ملفك ألوان الشاشة؛ سنحوّلها للطباعة، وقد تبدو الألوان الزرقاء والخضراء الزاهية أخف قليلًا.",
+    "file_repaired_warning": "كان ملفك تالفًا وقمنا بإصلاحه، يرجى مراجعة المعاينة بعناية.",
+    "file_unreadable_error": "تعذر علينا فتح هذا الملف (محمي بكلمة مرور أو تالف أو ليس ملف PDF).",
+    "file_too_large_error": "يمكن أن يصل حجم الملفات إلى 100 ميجابايت.",
+    "check_incomplete_warning": "لم نتمكن من إكمال فحص ملفك؛ سيتحقق منه فريقنا.",
+    "fit_border_warning": "تم تصغير تصميمك ليناسب المقاس، مما ترك حاشية بيضاء.",
+    "fill_crop_warning": "تم تكبير تصميمك ليملأ الصفحة، مما يقصّ الحواف.",
+    "repeatCount": "×{count}",
+    "lowestPpi": "الأدنى {value} ppi"
+  },
+  "ArtworkErrors": {
+    "not_a_pdf": "هذا الملف ليس بصيغة PDF صالحة.",
+    "too_many_pages": "ارفع صفحة أو صفحتين.",
+    "back_one_page": "الوجه الخلفي يقبل صفحة واحدة.",
+    "back_size_differs": "يجب أن يكون الوجه الخلفي بنفس مقاس الوجه الأمامي.",
+    "file_unreadable": "تعذر علينا فتح هذا الملف (محمي بكلمة مرور أو تالف أو ليس ملف PDF).",
+    "file_too_large": "يمكن أن يصل حجم الملفات إلى 100 ميجابايت.",
+    "upload_failed": "فشل الرفع."
+  },
+  "ArtworkSlots": {
+    "front": "الوجه الأمامي",
+    "back": "الوجه الخلفي",
+    "sameAsBack": "استخدم التصميم نفسه للوجه الخلفي",
+    "designHelp": "ليس لديك ملف؟ احصل على مساعدة في التصميم"
+  },
+  "ArtworkSlot": {
+    "detected": "تم الكشف",
+    "error": "خطأ",
+    "dragDrop": "اسحب ملف PDF وأفلته هنا",
+    "browsePrompt": "أو <link>تصفّح من جهازك</link>",
+    "pdfOnly": "PDF فقط",
+    "checking": "جارٍ فحص ملفك…",
+    "uploadAnother": "رفع ملف آخر",
+    "remove": "إزالة",
+    "size": "المقاس",
+    "dimensions": "الأبعاد",
+    "orientation": "الاتجاه",
+    "bleed": "الهامش",
+    "custom": "مخصص ({width} × {height} مم)",
+    "mm": "{value} مم",
+    "bleedUnknown": "غير معروف",
+    "bleedNone": "لا يوجد",
+    "portrait": "طولي",
+    "landscape": "عرضي",
+    "trimbox": "من TrimBox",
+    "crop": "من CropBox",
+    "media": "مقاس الصفحة، بدون هامش",
+    "media_minus_bleed": "مقاس الصفحة ناقص الهامش"
+  },
+  "SyncDialog": {
+    "sizeMismatchTitle": "ملفك بمقاس {file}، وطلبك بمقاس {ordered}.",
+    "confirmSwitch": "تأكيد — التحويل إلى {file}",
+    "changeOrder": "غيّر طلبي إلى {file}",
+    "uploadDifferent": "رفع ملف مختلف",
+    "unknownSizeTitle": "مقاس ملفك ({width} × {height} مم) لا يطابق أي مقاس فلاير.",
+    "frontOnlyTitle": "ملفك يحتوي على وجه أمامي فقط، وطلبك على وجهين.",
+    "switchToSingle": "تحويل الطلب إلى وجه واحد",
+    "useSame": "استخدم التصميم نفسه للوجه الخلفي",
+    "uploadBack": "سأرفع وجهًا خلفيًا",
+    "backOnSingleTitle": "ملفك يحتوي على وجه خلفي، وطلبك بوجه واحد.",
+    "switchToDouble": "تحويل الطلب إلى وجهين",
+    "printFrontOnly": "اطبع الوجه الأمامي فقط",
+    "keepAndResize": "الإبقاء على {size} وتغيير حجم ملفي",
+    "fitInside": "احتواء داخل الصفحة",
+    "fitInsideSub": "بدون قص",
+    "fillPage": "ملء الصفحة",
+    "fillPageSub": "قص الحواف",
+    "confirmFit": "تأكيد — احتواء داخل الصفحة",
+    "confirmFill": "تأكيد — ملء الصفحة",
+    "seeNewTotal": "عرض الإجمالي الجديد",
+    "gettingTotal": "جارٍ احتساب الإجمالي الجديد…",
+    "newTotal": "الإجمالي الجديد: {amount} درهم",
+    "noteFitExact": "تم التحجيم إلى {pct}%. يناسب تمامًا بلا حاشية.",
+    "noteFitBorder": "تم التصغير إلى {pct}%. حاشية بيضاء {amount} مم على {edges}.",
+    "noteFillExact": "تم التحجيم إلى {pct}%. يملأ الصفحة تمامًا، بلا قص.",
+    "noteFillCrop": "تم التحجيم إلى {pct}%. قصّ {amount} مم من {edges} — تأكد أن لا شيء مهم سيُفقد.",
+    "topBottom": "الأعلى والأسفل",
+    "leftRight": "اليسار واليمين"
+  },
+  "Clock": {
+    "by": "بحلول",
+    "deliveryLine": "وافق خلال <ltr>{countdown}</ltr> للتسليم {date}، <ltr>{window}</ltr> (دبي)"
+  },
+  "DesignHelp": {
+    "title": "بحاجة إلى تصميم؟",
+    "close": "إغلاق",
+    "successTitle": "تم استلام طلب التصميم {number}. سنراسلك عبر واتساب خلال ساعتي عمل (من الاثنين إلى الجمعة 9:00–18:00).",
+    "continueWhatsapp": "المتابعة على واتساب",
+    "backToFlyers": "العودة إلى الفلايرز",
+    "intro": "مساعدة مجانية في التصميم — نقدّم لك عرض السعر بعد استلام الملخص",
+    "currentConfiguration": "الاختيار الحالي",
+    "notDecided": "لم يتم تحديده بعد",
+    "fieldName": "الاسم",
+    "fieldPhone": "الهاتف / واتساب",
+    "fieldEmail": "البريد الإلكتروني (اختياري)",
+    "fieldBusiness": "اسم النشاط التجاري (اختياري)",
+    "fieldBrief": "ما الغرض من الفلاير، وما النص الذي يجب أن يتضمنه؟",
+    "fieldFlyerLanguage": "لغة الفلاير",
+    "langEn": "الإنجليزية",
+    "langAr": "العربية",
+    "langBoth": "كلاهما",
+    "fieldFiles": "شعار / ملفات مرجعية (اختياري، حتى {max}، JPG/PNG/PDF، بحجم 20 ميجابايت لكل ملف)",
+    "send": "إرسال الملخص",
+    "sending": "جارٍ الإرسال…",
+    "orWhatsapp": "أو راسلنا عبر واتساب",
+    "checkForm": "يرجى التحقق من النموذج.",
+    "serverUnreachable": "تعذر الوصول إلى الخادم. تأكد من أنه قيد التشغيل.",
+    "maxFiles": "يمكن رفع حتى {max} ملفات مرجعية.",
+    "prefillStart": "مرحبًا هُرَّة، أحتاج إلى تصميم فلاير.",
+    "prefillConfiguration": "الاختيار الحالي: {configuration}.",
+    "prefillRequest": "طلب التصميم {number}.",
+    "name_required": "الاسم مطلوب.",
+    "phone_required": "رقم الهاتف مطلوب.",
+    "brief_required": "أخبرنا ما الغرض من الفلاير وما النص الذي يجب أن يتضمنه.",
+    "flyer_language_invalid": "اختر الإنجليزية أو العربية أو كلاهما.",
+    "browsing_language_invalid": "لغة التصفح غير معروفة.",
+    "product_unknown": "منتج غير معروف.",
+    "configuration_invalid": "بيانات الاختيار غير صالحة.",
+    "files_too_many": "يمكن رفع حتى 3 ملفات مرجعية.",
+    "files_wrong_type": "يجب أن تكون الملفات المرجعية بصيغة JPG أو PNG أو PDF.",
+    "files_too_large": "يجب ألا يتجاوز حجم كل ملف مرجعي 20 ميجابايت."
   }
 }

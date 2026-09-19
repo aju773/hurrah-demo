@@ -52,7 +52,8 @@
     "fallbackProductName": "Flyer Print Order"
   },
   "FlyersPage": {
-    "loadError": "Something went wrong loading the Flyers page. Please refresh."
+    "loadError": "Something went wrong loading the Flyers page. Please refresh.",
+    "title": "Flyers"
   },
   "FlyersConfigurator": {
     "loading": "Loading options…",
@@ -82,9 +83,6 @@
   "CheckAndPreviewStep": {
     "loading": "Loading your preview…",
     "loadError": "Something went wrong loading your preview. Please try again.",
-    "headlineOk": "✅ Ready to print",
-    "headlineWarning": "⚠️ Can print — {count, plural, one {1 thing} other {# things}} to check",
-    "headlineError": "⛔ Must fix before ordering",
     "noFindings": "No problems found.",
     "passed": "Passed: {items}",
     "checkBleed": "bleed",
@@ -108,7 +106,8 @@
     "nextDisabledError": "Fix every Error above before continuing.",
     "close": "Close",
     "zoomFit": "Fit",
-    "previewOnlyNote": "Preview only — your file prints at its full quality."
+    "previewOnlyNote": "Preview only — your file prints at its full quality.",
+    "previewLabel": "{side} preview"
   },
   "ApproveAndConfirmStep": {
     "loading": "Loading your proof…",
@@ -139,7 +138,12 @@
     "genericError": "Something went wrong. Please try again.",
     "backButton": "← Back",
     "submit": "Approve & submit",
-    "submitting": "Submitting…"
+    "submitting": "Submitting…",
+    "error_missing_tick": "Please tick the approval boxes to continue.",
+    "error_artwork_locked": "This artwork is already on an order.",
+    "error_invalid_artwork": "This artwork can't be used for this order. Go back and check it.",
+    "error_not_available": "This combination isn't available.",
+    "error_invalid_configuration": "Your choices aren't valid. Please review them and try again."
   },
   "OrderConfirmation": {
     "notFound": "We couldn't find that order.",
@@ -160,5 +164,144 @@
     "whatsapp": "WhatsApp us",
     "whatsappPrefill": "Hi Hurrah, I have a question about order {number}.",
     "orderMore": "Order more flyers"
+  },
+  "LanguageToggle": {
+    "label": "Language",
+    "switchToEnglish": "Switch to English",
+    "switchToArabic": "Switch to Arabic",
+    "draftTranslation": "Draft translation"
+  },
+  "Preflight": {
+    "headlineOk": "✅ Ready to print",
+    "headlineWarning": "⚠️ Can print — {count, plural, one {1 thing} other {# things}} to check",
+    "headlineError": "⛔ Must fix before ordering"
+  },
+  "Findings": {
+    "bleed_missing_warning": "Your design goes to the edge but has no extra margin, so a thin white line may show after cutting.",
+    "bleed_short_warning": "Your file doesn't have enough bleed, so a thin white line may show.",
+    "low_ppi_warning": "An image is low resolution, so it may look a little soft.",
+    "low_ppi_error": "An image is very low resolution and will print blurry.",
+    "font_not_embedded_error": "A font isn't included, so text would print in the wrong font.",
+    "rgb_colour_note": "Your file uses screen colours; we'll convert them for print, and bright blues and greens may look slightly duller.",
+    "file_repaired_warning": "Your file was damaged; we repaired it, so check the preview carefully.",
+    "file_unreadable_error": "We couldn't open this file (password-protected, damaged or not a PDF).",
+    "file_too_large_error": "Files can be up to 100 MB.",
+    "check_incomplete_warning": "We couldn't finish checking your file; our team will check it.",
+    "fit_border_warning": "Your design is shrunk to fit, leaving a white border.",
+    "fill_crop_warning": "Your design is enlarged to fill, cutting off the edges.",
+    "repeatCount": "×{count}",
+    "lowestPpi": "lowest {value} ppi"
+  },
+  "ArtworkErrors": {
+    "not_a_pdf": "This file isn't a valid PDF.",
+    "too_many_pages": "Upload 1 or 2 pages.",
+    "back_one_page": "Back takes one page.",
+    "back_size_differs": "Back must be the same size as front.",
+    "file_unreadable": "We couldn't open this file (password-protected, damaged or not a PDF).",
+    "file_too_large": "Files can be up to 100 MB.",
+    "upload_failed": "Upload failed."
+  },
+  "ArtworkSlots": {
+    "front": "Front",
+    "back": "Back",
+    "sameAsBack": "Use the same artwork for the back",
+    "designHelp": "No file? Get design help"
+  },
+  "ArtworkSlot": {
+    "detected": "Detected",
+    "error": "Error",
+    "dragDrop": "Drag & drop a PDF here",
+    "browsePrompt": "or <link>browse from your computer</link>",
+    "pdfOnly": "PDF only",
+    "checking": "Checking your file…",
+    "uploadAnother": "Upload another file",
+    "remove": "Remove",
+    "size": "Size",
+    "dimensions": "Dimensions",
+    "orientation": "Orientation",
+    "bleed": "Bleed",
+    "custom": "Custom ({width} × {height} mm)",
+    "mm": "{value} mm",
+    "bleedUnknown": "Unknown",
+    "bleedNone": "None",
+    "portrait": "Portrait",
+    "landscape": "Landscape",
+    "trimbox": "from TrimBox",
+    "crop": "from CropBox",
+    "media": "page size, no bleed",
+    "media_minus_bleed": "page size minus bleed"
+  },
+  "SyncDialog": {
+    "sizeMismatchTitle": "Your file is {file}, your order is {ordered}.",
+    "confirmSwitch": "Confirm — switch to {file}",
+    "changeOrder": "Change my order to {file}",
+    "uploadDifferent": "Upload a different file",
+    "unknownSizeTitle": "Your file's size ({width} × {height} mm) doesn't match any flyer size.",
+    "frontOnlyTitle": "Your file has only a front, your order is double-sided.",
+    "switchToSingle": "Switch order to single-sided",
+    "useSame": "Use the same artwork for the back",
+    "uploadBack": "I'll upload a back",
+    "backOnSingleTitle": "Your file has a back side, your order is single-sided.",
+    "switchToDouble": "Switch order to double-sided",
+    "printFrontOnly": "Print the front only",
+    "keepAndResize": "Keep {size} and resize my file",
+    "fitInside": "Fit inside",
+    "fitInsideSub": "Nothing cut off",
+    "fillPage": "Fill the page",
+    "fillPageSub": "Edges cut off",
+    "confirmFit": "Confirm — fit inside",
+    "confirmFill": "Confirm — fill the page",
+    "seeNewTotal": "See the new total",
+    "gettingTotal": "Getting the new total…",
+    "newTotal": "New total: AED {amount}",
+    "noteFitExact": "Scaled to {pct}%. Fits exactly, no border.",
+    "noteFitBorder": "Shrunk to {pct}%. White border {amount}mm on {edges}.",
+    "noteFillExact": "Scaled to {pct}%. Fills exactly, nothing cut off.",
+    "noteFillCrop": "Scaled to {pct}%. {amount}mm cut off {edges} — check nothing important is lost.",
+    "topBottom": "top & bottom",
+    "leftRight": "left & right"
+  },
+  "Clock": {
+    "by": "by",
+    "deliveryLine": "Approve in <ltr>{countdown}</ltr> for delivery {date}, <ltr>{window}</ltr> (Dubai)"
+  },
+  "DesignHelp": {
+    "title": "Need a design?",
+    "close": "Close",
+    "successTitle": "Design request {number} received. We’ll WhatsApp you within 2 working hours (Mon–Fri 9:00–18:00).",
+    "continueWhatsapp": "Continue on WhatsApp",
+    "backToFlyers": "Back to Flyers",
+    "intro": "Free design help — we’ll quote after your brief",
+    "currentConfiguration": "Current configuration",
+    "notDecided": "Not decided yet",
+    "fieldName": "Name",
+    "fieldPhone": "Phone / WhatsApp",
+    "fieldEmail": "Email (optional)",
+    "fieldBusiness": "Business name (optional)",
+    "fieldBrief": "What’s the flyer for, and what text should it include?",
+    "fieldFlyerLanguage": "Flyer language",
+    "langEn": "English",
+    "langAr": "Arabic",
+    "langBoth": "Both",
+    "fieldFiles": "Logo / reference files (optional, up to {max}, JPG/PNG/PDF, 20MB each)",
+    "send": "Send brief",
+    "sending": "Sending…",
+    "orWhatsapp": "Or message us on WhatsApp",
+    "checkForm": "Please check the form.",
+    "serverUnreachable": "Could not reach the server. Is the Django backend running?",
+    "maxFiles": "Up to {max} reference files are allowed.",
+    "prefillStart": "Hi Hurrah, I need a flyer design.",
+    "prefillConfiguration": "Current choice: {configuration}.",
+    "prefillRequest": "Design request {number}.",
+    "name_required": "Name is required.",
+    "phone_required": "Phone is required.",
+    "brief_required": "Tell us what the flyer is for and what text to include.",
+    "flyer_language_invalid": "Choose English, Arabic or Both.",
+    "browsing_language_invalid": "Unrecognised browsing language.",
+    "product_unknown": "Unknown product.",
+    "configuration_invalid": "Configuration must be a JSON object.",
+    "files_too_many": "Up to 3 reference files are allowed.",
+    "files_wrong_type": "Reference files must be JPG, PNG or PDF.",
+    "files_too_large": "Each reference file must be 20MB or smaller."
   }
 }

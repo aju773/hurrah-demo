@@ -7,15 +7,16 @@ export function preflightHeadline(artwork) {
   const findings = artwork.preflight_report?.findings ?? [];
   const hasError = !artwork.is_valid || findings.some((f) => f.severity === "error");
   if (hasError) {
-    return { severity: "error", icon: "⛔", text: "Must fix before ordering" };
+    return { severity: "error", icon: "⛔", count: 0, text: "Must fix before ordering" };
   }
   const warningCount = findings.filter((f) => f.severity === "warning").length;
   if (warningCount > 0) {
     return {
       severity: "warning",
       icon: "⚠️",
+      count: warningCount,
       text: `Can print — ${warningCount} thing${warningCount === 1 ? "" : "s"} to check`,
     };
   }
-  return { severity: "ok", icon: "✅", text: "Ready to print" };
+  return { severity: "ok", icon: "✅", count: 0, text: "Ready to print" };
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { canGoNext, combineFindings, orderHeadline, passedChecks } from "./findings";
+import { canGoNext, combineFindings, findingMessage, orderHeadline, passedChecks, slotErrorMessage } from "./findings";
 
 function finding(overrides) {
   return { code: "low_ppi", severity: "warning", value: 200, slot: undefined, page: 1, bbox: null, message: "", ...overrides };
@@ -115,5 +115,58 @@ describe("canGoNext", () => {
 
     const warningOnly = combineFindings({ front: { findings: [finding()] }, back: null, sameAsFront: false });
     expect(canGoNext(warningOnly)).toBe(true);
+  });
+});
+
+// A stand-in for next-intl's `t` with `t.has`.
+function fakeT(messages) {
+  const t = (key) => messages[key];
+  t.has = (key) => key in messages;
+  return t;
+}
+
+describe("orderHeadline", () => {
+  it("carries the warning count so components can translate the plural", () => {
+    const groups = combineFindings({
+      front: { findings: [finding({ code: "bleed_missing" }), finding({ code: "low_ppi" })] },
+      back: null,
+      sameAsFront: false,
+    });
+    expect(orderHeadline(groups)).toMatchObject({ severity: "warning", count: 2 });
+  });
+});
+
+describe("findingMessage", () => {
+  const group = { code: "bleed_missing", severity: "warning", message: "English from the server" };
+
+  it("uses the translated message for a known code and severity", () => {
+    const t = fakeT({ bleed_missing_warning: "رسالة عربية" });
+    expect(findingMessage(t, group)).toBe("رسالة عربية");
+  });
+
+  it("keys on severity too, since low_ppi is a Warning and an Error with different wording", () => {
+    const t = fakeT({ low_ppi_warning: "soft", low_ppi_error: "blurry" });
+    expect(findingMessage(t, { code: "low_ppi", severity: "error", message: "x" })).toBe("blurry");
+    expect(findingMessage(t, { code: "low_ppi", severity: "warning", message: "x" })).toBe("soft");
+  });
+
+  it("falls back to the server's English sentence for an unknown code", () => {
+    expect(findingMessage(fakeT({}), { ...group, code: "brand_new_check" })).toBe("English from the server");
+  });
+});
+
+describe("slotErrorMessage", () => {
+  it("translates a known slot error code", () => {
+    expect(slotErrorMessage(fakeT({ back_one_page: "الخلفية صفحة واحدة" }), { code: "back_one_page", message: "Back takes one page." })).toBe(
+      "الخلفية صفحة واحدة"
+    );
+  });
+
+  it("falls back to the server's English message for an unknown code", () => {
+    expect(slotErrorMessage(fakeT({}), { code: "mystery", message: "Something odd." })).toBe("Something odd.");
+  });
+
+  it("returns null when there is no error", () => {
+    expect(slotErrorMessage(fakeT({}), undefined)).toBeNull();
   });
 });

@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import ArtworkPreview from "./ArtworkPreview";
-import { FILL, FIT, computeSizeChoice, scaleNote } from "@/lib/sizeChoice";
+import { FILL, FIT, computeSizeChoice, scaleNoteMessage } from "@/lib/sizeChoice";
 
 /**
  * The blocking dialog for one option–file difference (ticket 05, stories
@@ -23,6 +24,7 @@ export default function SyncDialog({
   fileBleedMm,
   fileImageUrl,
 }) {
+  const t = useTranslations("SyncDialog");
   // "front-only" and "back-on-single" always offer a switch; fetch its
   // preview as soon as the dialog appears instead of waiting for a click.
   const autoPreviewKind = dialog?.kind === "front-only" || dialog?.kind === "back-on-single";
@@ -53,8 +55,8 @@ export default function SyncDialog({
   const actions = [];
 
   if (dialog.kind === "size-mismatch") {
-    title = `Your file is ${sizeLabel(dialog.file)}, your order is ${sizeLabel(dialog.ordered)}.`;
-    body = <SwitchPreview preview={preview} onPreview={() => onPreviewSwitch(dialog.key)} />;
+    title = t("sizeMismatchTitle", { file: sizeLabel(dialog.file), ordered: sizeLabel(dialog.ordered) });
+    body = <SwitchPreview t={t} preview={preview} onPreview={() => onPreviewSwitch(dialog.key)} />;
     actions.push(
       <button
         key="switch"
@@ -63,21 +65,21 @@ export default function SyncDialog({
         onClick={() => onResolve(dialog.key, "switch")}
         className="h-[40px] px-[16px] rounded-[8px] text-[13px] font-semibold bg-[#e51937] text-white disabled:opacity-50"
       >
-        {preview?.status === "ready" ? `Confirm — switch to ${sizeLabel(dialog.file)}` : `Change my order to ${sizeLabel(dialog.file)}`}
+        {preview?.status === "ready" ? t("confirmSwitch", { file: sizeLabel(dialog.file) }) : t("changeOrder", { file: sizeLabel(dialog.file) })}
       </button>,
       <button key="replace" type="button" onClick={() => onResolve(dialog.key, "replace")} className="h-[40px] px-[16px] rounded-[8px] text-[13px] font-semibold border border-[#e2e8f8]">
-        Upload a different file
+        {t("uploadDifferent")}
       </button>
     );
   } else if (dialog.kind === "unknown-size") {
-    title = `Your file's size (${dialog.mm?.width} × ${dialog.mm?.height} mm) doesn't match any flyer size.`;
+    title = t("unknownSizeTitle", { width: dialog.mm?.width, height: dialog.mm?.height });
     actions.push(
       <button key="replace" type="button" onClick={() => onResolve(dialog.key, "replace")} className="h-[40px] px-[16px] rounded-[8px] text-[13px] font-semibold border border-[#e2e8f8]">
-        Upload a different file
+        {t("uploadDifferent")}
       </button>
     );
   } else if (dialog.kind === "front-only") {
-    title = "Your file has only a front, your order is double-sided.";
+    title = t("frontOnlyTitle");
     actions.push(
       <button
         key="switch"
@@ -86,17 +88,17 @@ export default function SyncDialog({
         onClick={() => onResolve(dialog.key, "switch")}
         className="h-[40px] px-[16px] rounded-[8px] text-[13px] font-semibold bg-[#e51937] text-white disabled:opacity-50"
       >
-        Switch order to single-sided
+        {t("switchToSingle")}
       </button>,
       <button key="same" type="button" onClick={() => onResolve(dialog.key, "same")} className="h-[40px] px-[16px] rounded-[8px] text-[13px] font-semibold border border-[#e2e8f8]">
-        Use the same artwork for the back
+        {t("useSame")}
       </button>,
       <button key="hint" type="button" onClick={() => onResolve(dialog.key, "upload-back")} className="h-[40px] px-[16px] rounded-[8px] text-[13px] font-semibold border border-[#e2e8f8]">
-        I&apos;ll upload a back
+        {t("uploadBack")}
       </button>
     );
   } else if (dialog.kind === "back-on-single") {
-    title = "Your file has a back side, your order is single-sided.";
+    title = t("backOnSingleTitle");
     actions.push(
       <button
         key="switch"
@@ -105,10 +107,10 @@ export default function SyncDialog({
         onClick={() => onResolve(dialog.key, "switch")}
         className="h-[40px] px-[16px] rounded-[8px] text-[13px] font-semibold bg-[#e51937] text-white disabled:opacity-50"
       >
-        Switch order to double-sided
+        {t("switchToDouble")}
       </button>,
       <button key="keep" type="button" onClick={() => onResolve(dialog.key, "keep")} className="h-[40px] px-[16px] rounded-[8px] text-[13px] font-semibold border border-[#e2e8f8]">
-        Print the front only
+        {t("printFrontOnly")}
       </button>
     );
   }
@@ -127,7 +129,7 @@ export default function SyncDialog({
           resizeOpen ? "border-[#e51937] text-[#e51937]" : "border-[#e2e8f8] text-[#151c27]"
         }`}
       >
-        Keep {orderedValue ? sizeLabel(orderedValue.code) : dialog.ordered} and resize my file
+        {t("keepAndResize", { size: orderedValue ? sizeLabel(orderedValue.code) : dialog.ordered })}
       </button>
     );
   }
@@ -139,6 +141,7 @@ export default function SyncDialog({
         {body}
         {resizeOpen && canComputeResize && (
           <ResizeChoice
+            t={t}
             resizeMode={resizeMode}
             onModeChange={setResizeMode}
             fitResult={fitResult}
@@ -161,6 +164,7 @@ export default function SyncDialog({
 }
 
 function ResizeChoice({
+  t,
   resizeMode,
   onModeChange,
   fitResult,
@@ -178,8 +182,8 @@ function ResizeChoice({
     <div className="bg-[#f0f3ff] rounded-[10px] p-[12px] flex flex-col gap-[10px]">
       <div className="grid grid-cols-2 gap-[10px]">
         <ResizeOption
-          label="Fit inside"
-          sub="Nothing cut off"
+          label={t("fitInside")}
+          sub={t("fitInsideSub")}
           selected={resizeMode === FIT}
           onSelect={() => onModeChange(FIT)}
           image={{ image_url: fileImageUrl, file_trim_mm: fileTrimMm, file_bleed_mm: fileBleedMm, transform: { mode: FIT, scale: fitResult.scale } }}
@@ -188,8 +192,8 @@ function ResizeChoice({
           productSafeMm={productSafeMm}
         />
         <ResizeOption
-          label="Fill the page"
-          sub="Edges cut off"
+          label={t("fillPage")}
+          sub={t("fillPageSub")}
           selected={resizeMode === FILL}
           onSelect={() => onModeChange(FILL)}
           image={{ image_url: fileImageUrl, file_trim_mm: fileTrimMm, file_bleed_mm: fileBleedMm, transform: { mode: FILL, scale: fillResult.scale } }}
@@ -198,13 +202,13 @@ function ResizeChoice({
           productSafeMm={productSafeMm}
         />
       </div>
-      <span className="text-[#151c27] text-[13px]">{scaleNote(active)}</span>
+      <span className="text-[#151c27] text-[13px]">{translatedScaleNote(t, active)}</span>
       <button
         type="button"
         onClick={onConfirm}
         className="self-start h-[36px] px-[14px] rounded-[8px] text-[13px] font-semibold bg-[#e51937] text-white"
       >
-        Confirm — {resizeMode === FIT ? "fit inside" : "fill the page"}
+        {resizeMode === FIT ? t("confirmFit") : t("confirmFill")}
       </button>
     </div>
   );
@@ -215,7 +219,7 @@ function ResizeOption({ label, sub, selected, onSelect, image, orderedTrimMm, pr
     <button
       type="button"
       onClick={onSelect}
-      className={`flex flex-col gap-[6px] p-[8px] rounded-[8px] bg-white border-2 text-left ${selected ? "border-[#e51937]" : "border-transparent"}`}
+      className={`flex flex-col gap-[6px] p-[8px] rounded-[8px] bg-white border-2 text-start ${selected ? "border-[#e51937]" : "border-transparent"}`}
     >
       <ArtworkPreview slot="front" image={image} orderedTrimMm={orderedTrimMm} productBleedMm={productBleedMm} productSafeMm={productSafeMm} groups={[]} withGuides />
       <span className="text-[#151c27] text-[12px] font-semibold">{label}</span>
@@ -224,22 +228,28 @@ function ResizeOption({ label, sub, selected, onSelect, image, orderedTrimMm, pr
   );
 }
 
-function SwitchPreview({ preview, onPreview }) {
+// The Fit/Fill note under the previews, translated (lib/sizeChoice.scaleNoteMessage).
+function translatedScaleNote(t, result) {
+  const { key, values } = scaleNoteMessage(result);
+  return t(key, { ...values, edges: values.edges ? t(values.edges) : "" });
+}
+
+function SwitchPreview({ t, preview, onPreview }) {
   if (!preview) {
     return (
       <button type="button" onClick={onPreview} className="self-start text-[#bb0027] text-[12px] font-bold underline">
-        See the new total
+        {t("seeNewTotal")}
       </button>
     );
   }
   if (preview.status === "pending") {
-    return <span className="text-[#575c64] text-[13px]">Getting the new total…</span>;
+    return <span className="text-[#575c64] text-[13px]">{t("gettingTotal")}</span>;
   }
   return (
     <div className="bg-[#f0f3ff] rounded-[10px] p-[10px] flex flex-col gap-[4px] text-[13px]">
       {preview.quote && (
         <span className="text-[#151c27] font-semibold">
-          New total: AED {preview.quote.total_aed}
+          {t("newTotal", { amount: preview.quote.total_aed })}
         </span>
       )}
       {preview.notices?.map((n, i) => (

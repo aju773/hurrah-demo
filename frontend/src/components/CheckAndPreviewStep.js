@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
-import { EDGE_CODES, canGoNext, combineFindings, orderHeadline, passedChecks, slotHeadline } from "@/lib/findings";
+import { EDGE_CODES, canGoNext, combineFindings, findingMessage, headlineText, orderHeadline, passedChecks, slotHeadline } from "@/lib/findings";
 import { fetchPreview } from "@/lib/preview";
 import ArtworkPreview from "./ArtworkPreview";
 import PreviewLoupe from "./PreviewLoupe";
@@ -25,15 +25,6 @@ const CHECK_LABEL_KEYS = {
   size: "checkSize",
 };
 
-function headlineText(t, headline) {
-  if (headline.severity === "error") return t("headlineError");
-  if (headline.severity === "warning") {
-    const count = Number(headline.text.match(/\d+/)?.[0] ?? 0);
-    return t("headlineWarning", { count });
-  }
-  return t("headlineOk");
-}
-
 const HEADLINE_CLASS = {
   ok: "bg-[#e5f4ec] text-[#1f7a4d]",
   warning: "bg-[#fff4d6] text-[#a86b00]",
@@ -47,6 +38,8 @@ const HEADLINE_CLASS = {
  */
 export default function CheckAndPreviewStep({ frontId, backId, sameAsFront, sizeCode, sizeChoice, onBack, onNext }) {
   const t = useTranslations("CheckAndPreviewStep");
+  const tPreflight = useTranslations("Preflight");
+  const tFindings = useTranslations("Findings");
   const [preview, setPreview] = useState(null);
   const [error, setError] = useState(false);
   const [withGuides, setWithGuides] = useState(true);
@@ -91,7 +84,7 @@ export default function CheckAndPreviewStep({ frontId, backId, sameAsFront, size
   return (
     <div className="flex flex-col gap-[16px] w-full">
       <div className={`rounded-[8px] px-[16px] py-[10px] text-[16px] font-semibold ${HEADLINE_CLASS[overallHeadline.severity]}`}>
-        {headlineText(t, overallHeadline)}
+        {headlineText(tPreflight, overallHeadline)}
       </div>
 
       <div className="grid grid-cols-12 gap-[20px] w-full items-start">
@@ -104,6 +97,8 @@ export default function CheckAndPreviewStep({ frontId, backId, sameAsFront, size
                 key={group.key}
                 group={group}
                 slotLabel={t(group.slot === "front" ? "front" : "back")}
+                message={findingMessage(tFindings, group)}
+                countText={findingCountText(tFindings, group)}
                 locatable={isLocatable(group)}
                 onOpen={() => openEnlarged(group.slot, group.key)}
               />
@@ -124,7 +119,8 @@ export default function CheckAndPreviewStep({ frontId, backId, sameAsFront, size
             <PreviewCell
               slot="front"
               label={t("front")}
-              headline={headlineText(t, slotHeadline(groups, "front"))}
+              headline={headlineText(tPreflight, slotHeadline(groups, "front"))}
+              ariaLabel={t("previewLabel", { side: t("front") })}
               image={preview.front}
               orderedTrimMm={preview.ordered_trim_mm}
               productBleedMm={preview.product_bleed_mm}
@@ -146,7 +142,8 @@ export default function CheckAndPreviewStep({ frontId, backId, sameAsFront, size
               <PreviewCell
                 slot="back"
                 label={t("back")}
-                headline={headlineText(t, slotHeadline(groups, "back"))}
+                headline={headlineText(tPreflight, slotHeadline(groups, "back"))}
+                ariaLabel={t("previewLabel", { side: t("back") })}
                 image={preview.back}
                 orderedTrimMm={preview.ordered_trim_mm}
                 productBleedMm={preview.product_bleed_mm}
@@ -200,10 +197,18 @@ export default function CheckAndPreviewStep({ frontId, backId, sameAsFront, size
   );
 }
 
-function FindingRow({ group, slotLabel, locatable, onOpen }) {
+// "(×3, lowest 180 ppi)" — the repeat count and worst measured value of a
+// grouped Finding, in the viewer's language; empty for a single Finding.
+function findingCountText(tFindings, group) {
+  if (group.count <= 1) return "";
+  const parts = [tFindings("repeatCount", { count: group.count })];
+  if (group.worstValue != null) parts.push(tFindings("lowestPpi", { value: group.worstValue }));
+  return ` (${parts.join(", ")})`;
+}
+
+function FindingRow({ group, slotLabel, message, countText, locatable, onOpen }) {
   const icon = { error: "⛔", warning: "⚠️", note: "ℹ️" }[group.severity];
   const badgeClass = { error: "bg-[#d7263d]", warning: "bg-[#c98200]", note: "bg-[#2563eb]" }[group.severity];
-  const countSuffix = group.count > 1 ? ` (×${group.count}${group.worstValue != null ? `, lowest ${group.worstValue} ppi` : ""})` : "";
   const Wrapper = locatable ? "button" : "div";
   return (
     <Wrapper
@@ -219,15 +224,15 @@ function FindingRow({ group, slotLabel, locatable, onOpen }) {
           {icon} {slotLabel}
         </span>
         <span className="text-[#575c64] text-[12px]">
-          {group.message}
-          {countSuffix}
+          {message}
+          {countText ? <bdi dir="ltr">{countText}</bdi> : null}
         </span>
       </div>
     </Wrapper>
   );
 }
 
-function PreviewCell({ slot, label, headline, image, orderedTrimMm, productBleedMm, productSafeMm, groups, withGuides, onOpen, onSelectFinding }) {
+function PreviewCell({ slot, label, headline, ariaLabel, image, orderedTrimMm, productBleedMm, productSafeMm, groups, withGuides, onOpen, onSelectFinding }) {
   return (
     <div className="bg-[#f0f3ff] rounded-[12px] p-[10px] flex flex-col gap-[6px]">
       <PreviewLoupe onClick={onOpen}>
@@ -240,6 +245,7 @@ function PreviewCell({ slot, label, headline, image, orderedTrimMm, productBleed
           groups={groups}
           withGuides={withGuides}
           onSelectFinding={onSelectFinding}
+          ariaLabel={ariaLabel}
         />
       </PreviewLoupe>
       <span className="text-[#575c64] text-[11px] text-center">

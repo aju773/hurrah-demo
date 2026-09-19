@@ -39,6 +39,9 @@ export default function FlyersConfigurator({ initialCatalogue, initialConfigurat
     resolveDialog,
     refresh,
     goToStep,
+    editFromApprove,
+    clearFocus,
+    returnToApprove,
     setTick,
     clearTicks,
     resetIdempotencyKey,
@@ -66,6 +69,16 @@ export default function FlyersConfigurator({ initialCatalogue, initialConfigurat
     if (priorFrontId.current && !state.slots.front) setArtworkResetKey((k) => k + 1);
     priorFrontId.current = state.slots.front?.id ?? null;
   }, [state.slots.front]);
+
+  // Step 3's "Edit options" / "Change file" land here with a focus target:
+  // put the cursor on the option area or the Front/Back slot, then forget it.
+  useEffect(() => {
+    if (rehydrating || state.step !== 0 || !state.focus) return;
+    const el = document.getElementById(state.focus === "options" ? "options-panel" : `artwork-slot-${state.focus}`);
+    el?.scrollIntoView?.({ block: "center" });
+    el?.focus({ preventScroll: true });
+    clearFocus();
+  }, [rehydrating, state.step, state.focus, clearFocus]);
 
   const quote = state.quote;
   const commerceEnabled = state.commerceEnabled;
@@ -101,6 +114,18 @@ export default function FlyersConfigurator({ initialCatalogue, initialConfigurat
   function handleClockExpire() {
     refresh();
     clearTicks();
+    resetIdempotencyKey();
+  }
+
+  // After "Edit options" / "Change file" the customer goes straight back to
+  // Step 3; the Order is different now, so it gets a fresh idempotency key too
+  // (returnToApprove already clears the ticks).
+  function handleContinue() {
+    if (!state.returnToApprove) {
+      goToStep(1);
+      return;
+    }
+    returnToApprove();
     resetIdempotencyKey();
   }
 
@@ -146,6 +171,7 @@ export default function FlyersConfigurator({ initialCatalogue, initialConfigurat
           locale={locale}
           idempotencyKey={state.idempotencyKey}
           onBack={() => goToStep(1)}
+          onEdit={editFromApprove}
           onSubmitted={handleOrderSubmitted}
         />
       </div>
@@ -237,7 +263,7 @@ export default function FlyersConfigurator({ initialCatalogue, initialConfigurat
 
       <div className="grid grid-cols-12 gap-[20px] w-full items-start">
         {/* Options panel */}
-        <div className="col-span-12 lg:col-span-7 flex flex-col gap-[16px]">
+        <div id="options-panel" tabIndex={-1} className="col-span-12 lg:col-span-7 flex flex-col gap-[16px]">
           {catalogue.options.map((option) => (
             <div key={option.code} className="bg-[#f0f3ff] rounded-[12px] p-[12px] flex flex-col gap-[8px]">
               <span className="text-[#5d3f3e] text-[10px] font-bold tracking-[0.5px] uppercase">{option.name}</span>
@@ -400,10 +426,10 @@ export default function FlyersConfigurator({ initialCatalogue, initialConfigurat
           type="button"
           disabled={!draft.canContinue}
           title={!state.slots.front ? t("continueNeedsArtwork") : dialog ? t("continueHasOpenDialog") : ""}
-          onClick={() => goToStep(1)}
+          onClick={handleContinue}
           className="h-[44px] px-[24px] rounded-[8px] text-[14px] font-semibold bg-[#e51937] text-white disabled:opacity-40 disabled:cursor-not-allowed"
         >
-          {t("continue")}
+          {state.returnToApprove ? t("returnToApproval") : t("continue")}
         </button>
       </div>
 

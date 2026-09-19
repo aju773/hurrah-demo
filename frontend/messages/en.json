@@ -82,7 +82,8 @@
     "noArtworkBodyPriced": "Send us a brief and we’ll design it for you — free, we quote after your brief.",
     "configurationSummary": "Your configuration",
     "cardReady": "Ready {date}, <ltr>{window}</ltr>",
-    "unavailableCard": "Not available"
+    "unavailableCard": "Not available",
+    "returnToApproval": "Return to approval"
   },
   "CheckAndPreviewStep": {
     "loading": "Loading your preview…",
@@ -150,7 +151,11 @@
     "error_invalid_configuration": "Your choices aren't valid. Please review them and try again.",
     "contactDetails": "Your contact details",
     "invalidContact": "Please check your name and mobile number.",
-    "expiredNotice": "The cut-off has passed, so your ready date has been updated. Please review your order and approve it again."
+    "expiredNotice": "The cut-off has passed, so your ready date has been updated. Please review your order and approve it again.",
+    "editOptions": "Edit options",
+    "changeFileFront": "Change file: Front",
+    "changeFileBack": "Change file: Back",
+    "changeFile": "Change file"
   },
   "OrderConfirmation": {
     "notFound": "We couldn't find that order.",

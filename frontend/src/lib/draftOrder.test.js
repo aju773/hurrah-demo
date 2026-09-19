@@ -451,3 +451,59 @@ describe("idempotency key (spec story 88)", () => {
     expect(s.turnarounds).toEqual(turnarounds);
   });
 });
+
+describe("Edit options / Change file from Step 3 (ticket 06)", () => {
+  function onApprove() {
+    let s = uploadFront(initDraft(DEFAULTS), F5_A5_SINGLE);
+    s = reduce(s, { type: "GO_TO_STEP", step: 2 });
+    return reduce(s, { type: "SET_TICK", name: "approval", value: true });
+  }
+
+  it("EDIT_FROM_APPROVE opens Step 1 with a focus target and changes nothing else", () => {
+    const before = onApprove();
+    const s = reduce(before, { type: "EDIT_FROM_APPROVE", focus: "options" });
+    expect(s.step).toBe(0);
+    expect(s.returnToApprove).toBe(true);
+    expect(s.focus).toBe("options");
+    expect({ ...s, step: 0, returnToApprove: false, focus: null }).toEqual({ ...before, step: 0, returnToApprove: false, focus: null });
+  });
+
+  it("CLEAR_FOCUS drops the focus target once handled", () => {
+    let s = reduce(onApprove(), { type: "EDIT_FROM_APPROVE", focus: "front" });
+    s = reduce(s, { type: "CLEAR_FOCUS" });
+    expect(s.focus).toBeNull();
+    expect(s.returnToApprove).toBe(true);
+  });
+
+  it("RETURN_TO_APPROVE goes back to Step 3 with the ticks cleared", () => {
+    let s = reduce(onApprove(), { type: "EDIT_FROM_APPROVE", focus: "options" });
+    s = reduce(s, { type: "SET_TICK", name: "approval", value: true });
+    s = reduce(s, { type: "RETURN_TO_APPROVE" });
+    expect(s.step).toBe(2);
+    expect(s.returnToApprove).toBe(false);
+    expect(s.ticks).toEqual({ approval: false, warnings: false });
+  });
+
+  it("an Error in the changed file still blocks Continue until fixed", () => {
+    let s = reduce(onApprove(), { type: "EDIT_FROM_APPROVE", focus: "front" });
+    s = settle(reduce(s, { type: "UPLOAD_FRONT", artwork: { ...F5_A5_SINGLE, id: 99, hasError: true } }));
+    expect(s.returnToApprove).toBe(true);
+    expect(canContinue(s)).toBe(false);
+    s = settle(reduce(s, { type: "UPLOAD_FRONT", artwork: { ...F5_A5_SINGLE, id: 100 } }));
+    expect(canContinue(s)).toBe(true);
+  });
+
+  it("returnToApprove survives a refresh; the focus target does not", () => {
+    const s = reduce(onApprove(), { type: "EDIT_FROM_APPROVE", focus: "back" });
+    const rehydrated = restoreDraft(JSON.parse(JSON.stringify(serializeDraft(s))), DEFAULTS);
+    expect(rehydrated.step).toBe(0);
+    expect(rehydrated.returnToApprove).toBe(true);
+    expect(rehydrated.focus).toBeNull();
+  });
+
+  it("a plain GO_TO_STEP forgets the return trip", () => {
+    let s = reduce(onApprove(), { type: "EDIT_FROM_APPROVE", focus: "options" });
+    s = reduce(s, { type: "GO_TO_STEP", step: 1 });
+    expect(s.returnToApprove).toBe(false);
+  });
+});

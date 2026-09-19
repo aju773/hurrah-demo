@@ -42,6 +42,7 @@ export default function ApproveAndConfirmStep({
   locale,
   idempotencyKey,
   onBack,
+  onEdit,
   onSubmitted,
 }) {
   const t = useTranslations("ApproveAndConfirmStep");
@@ -172,16 +173,37 @@ export default function ApproveAndConfirmStep({
     <div className="flex flex-col gap-[16px] w-full">
       <div className="grid grid-cols-12 gap-[20px] w-full items-start">
         <div className="col-span-12 lg:col-span-5 flex flex-col gap-[10px]">
-          <ProofThumbnail label={t("front")} image={preview.front} orderedTrimMm={preview.ordered_trim_mm} />
+          <ProofThumbnail
+            label={t("front")}
+            image={preview.front}
+            orderedTrimMm={preview.ordered_trim_mm}
+            changeText={t("changeFile")}
+            changeLabel={t("changeFileFront")}
+            onChange={() => onEdit?.("front")}
+          />
           {!preview.back?.same_as_front && preview.back && (
-            <ProofThumbnail label={t("back")} image={preview.back} orderedTrimMm={preview.ordered_trim_mm} />
+            <ProofThumbnail
+              label={t("back")}
+              image={preview.back}
+              orderedTrimMm={preview.ordered_trim_mm}
+              changeText={t("changeFile")}
+              changeLabel={t("changeFileBack")}
+              onChange={() => onEdit?.("back")}
+            />
           )}
         </div>
 
         <div className="col-span-12 lg:col-span-7 flex flex-col gap-[16px]">
           <div className="bg-white rounded-[16px] shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)] overflow-clip">
-            <div className="bg-[#2a313d] px-[16px] py-[12px]">
+            <div className="bg-[#2a313d] px-[16px] py-[12px] flex items-center justify-between gap-[12px]">
               <span className="text-[#ebf1ff] text-[16px] font-semibold">{t("summary")}</span>
+              <button
+                type="button"
+                onClick={() => onEdit?.("options")}
+                className="text-[#ebf1ff] text-[12px] font-semibold underline"
+              >
+                {t("editOptions")}
+              </button>
             </div>
             <div className="flex flex-col gap-[6px] p-[16px]">
               {configLines.map((line) => (
@@ -276,7 +298,7 @@ export default function ApproveAndConfirmStep({
 // component"): the same ArtworkPreview SVG step 2 uses, drawing the 400px
 // thumbnail instead of the full-size render, no guides, no Finding pins —
 // only the Fit/Fill transform (white border / crop) stays visible.
-function ProofThumbnail({ label, image, orderedTrimMm }) {
+function ProofThumbnail({ label, image, orderedTrimMm, changeText, changeLabel, onChange }) {
   const thumbImage = { ...image, image_url: image.thumbnail_url ?? image.image_url };
   return (
     <div className="bg-[#f0f3ff] rounded-[12px] p-[10px] flex flex-col gap-[6px]">
@@ -290,6 +312,9 @@ function ProofThumbnail({ label, image, orderedTrimMm }) {
         withGuides={false}
       />
       <span className="text-[#575c64] text-[11px] text-center">{label}</span>
+      <button type="button" aria-label={changeLabel} onClick={onChange} className="self-center text-[#bb0027] text-[12px] font-bold underline">
+        {changeText}
+      </button>
     </div>
   );
 }

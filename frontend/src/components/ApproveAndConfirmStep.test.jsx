@@ -129,3 +129,34 @@ describe("ApproveAndConfirmStep with the Commerce switch on", () => {
     expect(container.textContent).toMatch(/AED 10\.50/);
   });
 });
+
+describe("Edit options and Change file shortcuts (ticket 06)", () => {
+  for (const locale of ["en", "ar"]) {
+    const m = (locale === "ar" ? ar : en).ApproveAndConfirmStep;
+
+    it(`Edit options and a single Change file for a same-as-front Order (${locale})`, async () => {
+      const onEdit = vi.fn();
+      renderStep({ locale, extra: { onEdit } });
+      await screen.findByTestId("proof");
+      fireEvent.click(screen.getByRole("button", { name: m.editOptions }));
+      expect(onEdit).toHaveBeenLastCalledWith("options");
+      expect(screen.queryByRole("button", { name: m.changeFileBack })).toBeNull();
+      fireEvent.click(screen.getByRole("button", { name: m.changeFileFront }));
+      expect(onEdit).toHaveBeenLastCalledWith("front");
+    });
+  }
+
+  it("offers Change file for Back when Back is its own file", async () => {
+    const { fetchPreview } = await import("@/lib/preview");
+    fetchPreview.mockResolvedValueOnce({
+      front: { findings: [], thumbnail_url: "/f.png" },
+      back: { same_as_front: false, findings: [], thumbnail_url: "/b.png" },
+      ordered_trim_mm: [148, 210],
+    });
+    const onEdit = vi.fn();
+    renderStep({ extra: { onEdit, backId: 2, sameAsFront: false } });
+    await screen.findAllByTestId("proof");
+    fireEvent.click(screen.getByRole("button", { name: en.ApproveAndConfirmStep.changeFileBack }));
+    expect(onEdit).toHaveBeenLastCalledWith("back");
+  });
+});

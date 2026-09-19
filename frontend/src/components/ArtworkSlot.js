@@ -14,7 +14,7 @@ const TRIM_SOURCES = ["trimbox", "crop", "media", "media_minus_bleed"];
  * `error` is the upload's {code, message}; the code picks the translated text.
  * File names, sizes in mm and the size code stay left-to-right in Arabic.
  */
-export default function ArtworkSlot({ label, status, fileName, artwork, error, disabled, onFile, onRemove }) {
+export default function ArtworkSlot({ id, label, status, fileName, artwork, error, disabled, onFile, onRemove }) {
   const t = useTranslations("ArtworkSlot");
   const tErrors = useTranslations("ArtworkErrors");
   const tPreflight = useTranslations("Preflight");
@@ -40,7 +40,13 @@ export default function ArtworkSlot({ label, status, fileName, artwork, error, d
   const errorText = slotErrorMessage(tErrors, error ?? (artwork?.error_code ? { code: artwork.error_code, message: artwork.error_message } : null));
 
   return (
-    <div className="bg-white flex flex-col overflow-clip rounded-[16px] shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)] w-full">
+    <div
+      id={id}
+      tabIndex={id ? -1 : undefined}
+      role="group"
+      aria-label={label}
+      className="bg-white flex flex-col overflow-clip rounded-[16px] shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)] w-full"
+    >
       <div className="bg-[#2a313d] flex items-center justify-between px-[16px] py-[12px] w-full">
         <span className="text-[#ebf1ff] text-[16px] font-semibold tracking-[-0.16px]">{label}</span>
         {isDone && !hasSlotError && (

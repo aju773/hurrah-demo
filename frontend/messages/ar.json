@@ -82,7 +82,8 @@
     "noArtworkBodyPriced": "أرسل لنا ملخصًا وسنصممه لك مجانًا — نقدّم لك عرض السعر بعد استلام الملخص.",
     "configurationSummary": "تكوين طلبك",
     "cardReady": "جاهز {date}، <ltr>{window}</ltr>",
-    "unavailableCard": "غير متاح"
+    "unavailableCard": "غير متاح",
+    "returnToApproval": "العودة إلى الموافقة"
   },
   "CheckAndPreviewStep": {
     "loading": "جارٍ تحميل المعاينة…",
@@ -150,7 +151,11 @@
     "error_invalid_configuration": "اختياراتك غير صالحة. يرجى مراجعتها والمحاولة مرة أخرى.",
     "contactDetails": "بيانات التواصل",
     "invalidContact": "يرجى التحقق من الاسم ورقم الجوال.",
-    "expiredNotice": "انتهى وقت الإرسال، لذا تم تحديث موعد الجاهزية. يرجى مراجعة طلبك والموافقة عليه مرة أخرى."
+    "expiredNotice": "انتهى وقت الإرسال، لذا تم تحديث موعد الجاهزية. يرجى مراجعة طلبك والموافقة عليه مرة أخرى.",
+    "editOptions": "تعديل الخيارات",
+    "changeFileFront": "تغيير الملف: الوجه الأمامي",
+    "changeFileBack": "تغيير الملف: الوجه الخلفي",
+    "changeFile": "تغيير الملف"
   },
   "OrderConfirmation": {
     "notFound": "تعذر العثور على هذا الطلب.",

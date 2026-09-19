@@ -212,6 +212,10 @@ export default function useDraftOrder({ defaults, locale, initialConfiguration }
     resolveDialog: (key, how, extra) => dispatch({ type: "RESOLVE_DIALOG", key, how, ...extra }),
     refresh: () => dispatch({ type: "REQUEST_REQUOTE" }),
     goToStep: (step) => dispatch({ type: "GO_TO_STEP", step }),
+    // Step 3's "Edit options" / "Change file": `focus` is "options" | "front" | "back".
+    editFromApprove: (focus) => dispatch({ type: "EDIT_FROM_APPROVE", focus }),
+    clearFocus: () => dispatch({ type: "CLEAR_FOCUS" }),
+    returnToApprove: () => dispatch({ type: "RETURN_TO_APPROVE" }),
     setTick: (name, value) => dispatch({ type: "SET_TICK", name, value }),
     clearTicks: () => dispatch({ type: "CLEAR_TICKS" }),
     // The proof just went stale (409) or the Cut-off countdown hit zero: the

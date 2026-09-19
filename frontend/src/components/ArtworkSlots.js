@@ -180,6 +180,7 @@ export default function ArtworkSlots({
     <div className="flex flex-col gap-[16px] w-full">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-[16px] w-full">
         <ArtworkSlot
+          id="artwork-slot-front"
           label={t("front")}
           status={front.status}
           fileName={front.fileName}
@@ -189,6 +190,7 @@ export default function ArtworkSlots({
           onRemove={handleRemoveFront}
         />
         <ArtworkSlot
+          id="artwork-slot-back"
           label={t("back")}
           status={back.status}
           fileName={back.fileName}

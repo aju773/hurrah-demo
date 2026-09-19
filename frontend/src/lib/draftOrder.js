@@ -49,6 +49,11 @@ export function initDraft(defaults) {
     // Generated once (useDraftOrder) and persisted, so a retried/double Submit
     // reuses the same key (spec story 88).
     idempotencyKey: null,
+    // "Edit options" / "Change file" on Step 3 (spec story 88): while true,
+    // Step 1's Continue returns straight to Step 3. `focus` is where Step 1
+    // should put the cursor ("options" | "front" | "back"); transient, never persisted.
+    returnToApprove: false,
+    focus: null,
   };
 }
 
@@ -346,7 +351,18 @@ export function reduce(state, action) {
     }
 
     case "GO_TO_STEP":
-      return { ...state, step: action.step };
+      return { ...state, step: action.step, returnToApprove: false };
+
+    case "EDIT_FROM_APPROVE":
+      // Only navigation: the draft (Configuration, Artwork, choices) is left as is.
+      return { ...state, step: 0, returnToApprove: true, focus: action.focus };
+
+    case "CLEAR_FOCUS":
+      return { ...state, focus: null };
+
+    case "RETURN_TO_APPROVE":
+      // The customer fixed something: whatever they approved before no longer counts.
+      return clearTicks({ ...state, step: 2, returnToApprove: false, focus: null });
 
     case "SET_TICK":
       return { ...state, ticks: { ...state.ticks, [action.name]: action.value } };
@@ -378,7 +394,7 @@ export function reduce(state, action) {
 
 // ---- persistence ------------------------------------------------------
 
-const PERSISTED_KEYS = ["config", "source", "touched", "slots", "resolvedChoices", "sizeChoice", "step", "ticks", "idempotencyKey"];
+const PERSISTED_KEYS = ["config", "source", "touched", "slots", "resolvedChoices", "sizeChoice", "step", "ticks", "idempotencyKey", "returnToApprove"];
 
 /** A JSON-safe snapshot for sessionStorage / the URL. Dialogs and previews are
  * derived, not persisted. */

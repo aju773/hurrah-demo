@@ -224,6 +224,7 @@ class OrderSubmitView(APIView):
                         order=order,
                         product=product,
                         configuration_snapshot=_configuration_snapshot(catalogue, resolved),
+                        turnaround=resolved.get("turnaround", ""),
                         base_fils=quote["base_fils"],
                         subtotal_fils=quote["subtotal_fils"],
                         vat_fils=quote["vat_fils"],

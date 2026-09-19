@@ -1,25 +1,19 @@
 import { Link } from "@/i18n/navigation";
 import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
-import { API_BASE_URL } from "@/lib/api";
 
-const PRODUCT_SLUG = "rounded-corner-spot-uv-matt-lamination-400gsm";
+// Static showcase page (design mock). It reads nothing from the API: the real,
+// catalogue-driven ordering flow is the Flyers page.
+const NAME = "Rounded Corner Spot UV Matt Lamination 400gsm";
+const SKU = "HRH-BC-400UV-RND";
+const SPEC_LINE = "4 Color • 2 Sides • Matt Lamination • Spot UV • Before Cutting: 9.5×6 cm";
+const BASE_PRICE = "110.00";
 
-async function getProduct() {
-  const res = await fetch(`${API_BASE_URL}/api/products/${PRODUCT_SLUG}/`, {
-    cache: "no-store",
-  });
-  if (!res.ok) return null;
-  return res.json();
-}
-
-export default async function ProductPage() {
-  const product = await getProduct();
-
-  const name = product?.name ?? "Rounded Corner Spot UV Matt Lamination 400gsm";
-  const sku = product?.sku ?? "HRH-BC-400UV-RND";
-  const specLine = product?.spec_line ?? "4 Color • 2 Sides • Matt Lamination • Spot UV • Before Cutting: 9.5×6 cm";
-  const basePrice = product?.base_price_aed ?? "110.00";
+export default function ProductPage() {
+  const name = NAME;
+  const sku = SKU;
+  const specLine = SPEC_LINE;
+  const basePrice = BASE_PRICE;
 
   return (
     <div className="relative mx-auto bg-[#f9f9ff]" style={{ width: "1512px" }}>
@@ -381,7 +375,7 @@ export default async function ProductPage() {
                       <div className="text-[#151c27] text-[12px] font-bold">Thu, 3:00 PM</div>
                     </div>
                     <Link
-                      href="/order/upload"
+                      href="/flyers"
                       className="bg-[#e51937] flex gap-[8px] h-[48px] items-center justify-center px-[40px] rounded-[12px] shadow-[0px_4px_6px_-1px_rgba(0,0,0,0.1),0px_2px_4px_-2px_rgba(0,0,0,0.1)]"
                     >
                       <img src="/assets/efd15.svg" className="w-[18.975px] h-[18.333px]" alt="" />

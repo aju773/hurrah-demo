@@ -1,0 +1,29 @@
+{% extends "admin/change_form.html" %}
+
+{% block object-tools %}
+  {{ block.super }}
+  {% if original %}
+    <div class="module" style="margin-bottom:16px;padding:12px 16px">
+      <p style="margin:0 0 8px">
+        Status: <strong>{{ original.get_status_display }}</strong> &middot;
+        Payment: <strong>{{ original.get_payment_status_display }}</strong>
+      </p>
+      {% if can_move and transitions %}
+        <form method="post" action="{% url 'admin:orders_order_transition' original.pk %}" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          {% csrf_token %}
+          <label for="transition-note">Note / reason</label>
+          <input type="text" id="transition-note" name="note" maxlength="500" size="40">
+          {% for t in transitions %}
+            <button type="submit" name="transition" value="{{ t.key }}">{{ t.label }}{% if t.note_required %} (needs a {{ t.note_label }}){% endif %}</button>
+          {% endfor %}
+        </form>
+      {% endif %}
+      {% if can_move and can_mark_paid %}
+        <form method="post" action="{% url 'admin:orders_order_mark_paid' original.pk %}" style="margin-top:8px">
+          {% csrf_token %}
+          <button type="submit">Mark paid</button>
+        </form>
+      {% endif %}
+    </div>
+  {% endif %}
+{% endblock %}

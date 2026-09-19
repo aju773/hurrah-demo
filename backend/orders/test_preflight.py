@@ -5,6 +5,7 @@ slot on upload (bleed, ppi, fonts, colour, file readability) and its Severity.
 import io
 import shutil
 import tempfile
+from unittest.mock import patch
 
 import pikepdf
 from django.test import TestCase, override_settings
@@ -107,6 +108,55 @@ class PreflightEndpointTests(TestCase):
         res = self.upload(encrypted)
         self.assertEqual(res.status_code, 201, res.content)
         self.assertEqual(res.json()["front"]["matched_size_code"], "a5")
+
+
+    def test_bleed_short_warns_when_bleed_is_between_1mm_and_the_product_bleed(self):
+        # A5 with a uniform 2mm bleed inferred from the page size; Product bleed is 3mm.
+        res = self.upload(build_pdf({"media": (152, 214)}))
+        self.assertEqual(res.status_code, 201, res.content)
+        front = res.json()["front"]
+        self.assertEqual(front["matched_size_code"], "a5")
+        self.assertEqual(front["bleed_mm"], 2.0)
+        short = [f for f in front["preflight_report"]["findings"] if f["code"] == "bleed_short"]
+        self.assertEqual(len(short), 1)
+        self.assertEqual(short[0]["severity"], "warning")
+        self.assertEqual(short[0]["value"], 2.0)
+        self.assertEqual(front["preflight_report"]["headline_severity"], "warning")
+        self.assertTrue(front["is_valid"])
+
+    def test_repaired_file_warns_file_repaired(self):
+        res = self.upload(_damaged_but_repairable(build_pdf({"media": (148, 210)})))
+        self.assertEqual(res.status_code, 201, res.content)
+        front = res.json()["front"]
+        repaired = [f for f in front["preflight_report"]["findings"] if f["code"] == "file_repaired"]
+        self.assertEqual(len(repaired), 1)
+        self.assertEqual(repaired[0]["severity"], "warning")
+        self.assertEqual(front["preflight_report"]["headline_severity"], "warning")
+        self.assertTrue(front["is_valid"])
+
+    def test_intact_file_is_not_marked_repaired(self):
+        res = self.upload(build_pdf({"media": (148, 210)}))
+        codes = [f["code"] for f in res.json()["front"]["preflight_report"]["findings"]]
+        self.assertNotIn("file_repaired", codes)
+
+    def test_file_over_the_size_limit_is_refused_with_file_too_large(self):
+        with patch.object(preflight, "MAX_UPLOAD_MB", 0):
+            res = self.upload(build_pdf({"media": (148, 210)}))
+        self.assertEqual(res.status_code, 400)
+        error = res.json()["errors"][0]
+        self.assertEqual(error["code"], "file_too_large")
+        self.assertEqual(error["message"], preflight.MESSAGES_EN[("file_too_large", preflight.ERROR)])
+        self.assertEqual(Artwork.objects.count(), 0)
+
+
+def _damaged_but_repairable(buf):
+    """The same PDF with a wrong startxref offset: pikepdf reconstructs the cross-
+    reference table and records a warning, but every page survives."""
+    data = buf.read()
+    index = data.rindex(b"startxref")
+    tail = data[index:].split(b"\n")
+    tail[1] = b"9"
+    return io.BytesIO(data[:index] + b"\n".join(tail))
 
 
 class CheckFileTests(TestCase):

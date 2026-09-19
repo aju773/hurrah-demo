@@ -6,9 +6,6 @@ from django.db import models
 class Product(models.Model):
     name = models.CharField(max_length=200)
     slug = models.SlugField(unique=True)
-    sku = models.CharField(max_length=50, blank=True)
-    spec_line = models.CharField(max_length=300, blank=True)
-    base_price_aed = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True)
     image_url = models.CharField(max_length=500, blank=True)
     active = models.BooleanField(default=True)
 
@@ -344,6 +341,10 @@ class OrderLine(models.Model):
     # Null when same_as_front is True.
     back_artwork = models.OneToOneField(Artwork, related_name="+", on_delete=models.PROTECT, null=True, blank=True)
     same_as_front = models.BooleanField(default=False)
+
+    # The Turnaround value code in `configuration_snapshot`, denormalised so staff
+    # can filter the Order list by it.
+    turnaround = models.CharField(max_length=50, blank=True, db_index=True)
 
     # orders/size_choice.compute_size_choice()'s shape, or {} when the
     # customer kept the file at its own matched Size (no resize).

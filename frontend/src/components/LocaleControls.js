@@ -26,7 +26,7 @@ function Toggle() {
     <div role="group" aria-label={t("label")} className="inline-flex rounded-[8px] bg-[#f0f3ff] p-[2px] text-[12px] font-bold">
       {OPTIONS.map((option) =>
         option.code === locale ? (
-          <span key={option.code} aria-current="true" className="rounded-[6px] bg-[#151c27] px-[10px] py-[4px] text-white">
+          <span key={option.code} aria-current="true" className="tap inline-flex items-center justify-center rounded-[6px] bg-[#151c27] px-[10px] py-[4px] text-white">
             {option.label}
           </span>
         ) : (
@@ -36,7 +36,7 @@ function Toggle() {
             locale={option.code}
             lang={option.code}
             aria-label={t(option.nameKey)}
-            className="rounded-[6px] px-[10px] py-[4px] text-[#151c27]"
+            className="tap inline-flex items-center justify-center rounded-[6px] px-[10px] py-[4px] text-[#151c27]"
           >
             {option.label}
           </Link>

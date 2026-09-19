@@ -107,7 +107,7 @@ export default function CheckAndPreviewStep({ frontId, backId, sameAsFront, size
       </div>
 
       <div className="grid grid-cols-12 gap-[20px] w-full items-start">
-        <div className="col-span-12 lg:col-span-5 flex flex-col gap-[8px]">
+        <div className="col-span-12 lg:col-span-5 min-w-0 flex flex-col gap-[8px]">
           <FirstVisitHint step="findings" />
           {groups.length === 0 ? (
             <p className="text-[#575c64] text-[13px]">{t("noFindings")}</p>
@@ -130,7 +130,7 @@ export default function CheckAndPreviewStep({ frontId, backId, sameAsFront, size
           </p>
         </div>
 
-        <div className="col-span-12 lg:col-span-7 flex flex-col gap-[10px]">
+        <div className="col-span-12 lg:col-span-7 min-w-0 flex flex-col gap-[10px]">
           <div className="flex items-center gap-[8px]">
             <ToggleButton active={!withGuides} onClick={() => setWithGuides(false)} label={t("asPrinted")} />
             <ToggleButton active={withGuides} onClick={() => setWithGuides(true)} label={t("withGuides")} />
@@ -192,7 +192,7 @@ export default function CheckAndPreviewStep({ frontId, backId, sameAsFront, size
           <span aria-hidden="true">⛔</span> {t("nextDisabledError")}
         </p>
       )}
-      <div className="flex items-center justify-end gap-[12px]">
+      <div className="flex flex-wrap items-center justify-end gap-[12px]">
         <button type="button" onClick={onBack} className="h-[44px] px-[24px] rounded-[8px] text-[14px] font-semibold bg-white text-[#151c27] shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)]">
           {t("backButton")}
         </button>
@@ -284,7 +284,7 @@ function PreviewCell({ slot, label, headline, ariaLabel, enlargeLabel, image, or
         {label} · {headline}
       </span>
       {choosePagesLabel && (
-        <button type="button" onClick={onChoosePages} className="self-center text-[#bb0027] text-[11px] font-bold underline">
+        <button type="button" onClick={onChoosePages} className="tap inline-flex items-center justify-center self-center text-[#bb0027] text-[11px] font-bold underline">
           {choosePagesLabel}
         </button>
       )}

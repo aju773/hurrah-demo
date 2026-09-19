@@ -41,7 +41,7 @@ export default async function OrderConfirmationPage({ params }) {
     return (
       <div className="relative mx-auto bg-[#f9f9ff]" style={{ maxWidth: "1512px" }}>
         <SiteHeader commerceEnabled={commerceEnabled} />
-        <main id="main" className="flex flex-col items-center justify-center gap-[16px] px-[32px] py-[64px]">
+        <main id="main" className="flex flex-col items-center justify-center gap-[16px] px-[16px] sm:px-[32px] py-[64px]">
           <h1 className="text-[#151c27] text-[20px] font-bold">{t("notFound")}</h1>
           <Link href="/flyers" className="bg-[#e51937] px-[24px] py-[12px] rounded-[12px] text-white text-[14px] font-semibold">
             {t("orderMore")}
@@ -57,12 +57,12 @@ export default async function OrderConfirmationPage({ params }) {
   return (
     <div className="relative mx-auto bg-[#f9f9ff]" style={{ maxWidth: "1512px" }} dir={locale === "ar" ? "rtl" : "ltr"}>
       <SiteHeader commerceEnabled={commerceEnabled} />
-      <main id="main" className="flex flex-col gap-[20px] px-[32px] py-[26px] w-full max-w-[720px] mx-auto">
+      <main id="main" className="flex flex-col gap-[20px] px-[16px] sm:px-[32px] py-[26px] w-full max-w-[720px] mx-auto">
         <div className="flex justify-end">
           <LocaleControls />
         </div>
 
-        <div className="flex items-center justify-between gap-[12px]">
+        <div className="flex flex-wrap items-center justify-between gap-[12px]">
           <h1 className="text-[#151c27] text-[22px] font-bold">{t("received", { number: isolateLtr(order.number) })}</h1>
           <div className="flex items-center gap-[8px]">
             <CopyButton text={order.number} label={t("copy")} copiedLabel={t("copied")} />
@@ -127,12 +127,12 @@ export default async function OrderConfirmationPage({ params }) {
           )}
         </div>
 
-        <div className="flex items-center gap-[12px] bg-[#f0f3ff] rounded-[12px] p-[12px]">
+        <div className="flex flex-wrap items-center gap-x-[12px] gap-y-[4px] bg-[#f0f3ff] rounded-[12px] p-[12px]">
           <span className="text-[#5d3f3e] text-[12px] font-semibold">{t("needChanges")}</span>
           {whatsappNumber && (
             <a
               href={whatsappUrl(whatsappNumber, t("whatsappPrefill", { number: order.number }))}
-              className="text-[#bb0027] text-[12px] font-bold underline"
+              className="tap inline-flex items-center text-[#bb0027] text-[12px] font-bold underline"
             >
               {t("whatsapp")}
             </a>

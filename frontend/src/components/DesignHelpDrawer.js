@@ -151,7 +151,7 @@ export default function DesignHelpDrawer({ open, onClose, product, configuration
           <h2 id={titleId} className="text-white text-[16px] font-semibold">{t("title")}</h2>
           <div className="flex items-center gap-[12px]">
             <LocaleControls />
-            <button type="button" onClick={close} className="text-white text-[20px] leading-none" aria-label={t("close")}>
+            <button type="button" onClick={close} className="tap text-white text-[20px] leading-none" aria-label={t("close")}>
               ×
             </button>
           </div>
@@ -201,7 +201,7 @@ export default function DesignHelpDrawer({ open, onClose, product, configuration
                   type="text"
                   value={form.name}
                   onChange={(e) => updateField("name", e.target.value)}
-                  className="h-[40px] px-[12px] rounded-[8px] border border-[#e2e8f8] text-[13px] w-full"
+                  className="tap h-[40px] px-[12px] rounded-[8px] border border-[#e2e8f8] text-[13px] w-full"
                   required
                 />
               </Field>
@@ -212,7 +212,7 @@ export default function DesignHelpDrawer({ open, onClose, product, configuration
                   dir="ltr"
                   value={form.phone}
                   onChange={(e) => updateField("phone", e.target.value)}
-                  className="h-[40px] px-[12px] rounded-[8px] border border-[#e2e8f8] text-[13px] w-full"
+                  className="tap h-[40px] px-[12px] rounded-[8px] border border-[#e2e8f8] text-[13px] w-full"
                   required
                 />
               </Field>
@@ -223,7 +223,7 @@ export default function DesignHelpDrawer({ open, onClose, product, configuration
                   dir="ltr"
                   value={form.email}
                   onChange={(e) => updateField("email", e.target.value)}
-                  className="h-[40px] px-[12px] rounded-[8px] border border-[#e2e8f8] text-[13px] w-full"
+                  className="tap h-[40px] px-[12px] rounded-[8px] border border-[#e2e8f8] text-[13px] w-full"
                 />
               </Field>
 
@@ -232,7 +232,7 @@ export default function DesignHelpDrawer({ open, onClose, product, configuration
                   type="text"
                   value={form.business_name}
                   onChange={(e) => updateField("business_name", e.target.value)}
-                  className="h-[40px] px-[12px] rounded-[8px] border border-[#e2e8f8] text-[13px] w-full"
+                  className="tap h-[40px] px-[12px] rounded-[8px] border border-[#e2e8f8] text-[13px] w-full"
                 />
               </Field>
 
@@ -254,7 +254,7 @@ export default function DesignHelpDrawer({ open, onClose, product, configuration
                       type="button"
                       aria-pressed={form.flyer_language === option.code}
                       onClick={() => updateField("flyer_language", option.code)}
-                      className={`h-[36px] px-[14px] rounded-[8px] text-[12px] font-semibold ${
+                      className={`tap h-[36px] px-[14px] rounded-[8px] text-[12px] font-semibold ${
                         form.flyer_language === option.code ? "bg-[#e51937] text-white" : "bg-[#f0f3ff] text-[#151c27]"
                       }`}
                     >

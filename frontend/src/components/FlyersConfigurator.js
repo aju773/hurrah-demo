@@ -297,7 +297,7 @@ export default function FlyersConfigurator({ initialCatalogue, initialConfigurat
 
       <div className="grid grid-cols-12 gap-[20px] w-full items-start">
         {/* Options panel */}
-        <div id="options-panel" tabIndex={-1} className="col-span-12 lg:col-span-7 flex flex-col gap-[16px]">
+        <div id="options-panel" tabIndex={-1} className="col-span-12 lg:col-span-7 min-w-0 flex flex-col gap-[16px]">
           <FirstVisitHint step="options" />
           {catalogue.options.map((option) => (
             <div key={option.code} className="bg-[#f0f3ff] rounded-[12px] p-[12px] flex flex-col gap-[8px]">
@@ -327,7 +327,7 @@ export default function FlyersConfigurator({ initialCatalogue, initialConfigurat
                       title={reason?.reason ?? ""}
                       aria-description={reason?.reason}
                       onClick={() => pick(option.code, value.code)}
-                      className={`h-[36px] px-[14px] rounded-[8px] text-[12px] font-semibold transition-colors ${
+                      className={`tap h-[36px] px-[14px] rounded-[8px] text-[12px] font-semibold transition-colors ${
                         reason
                           ? "bg-[#e2e8f8] text-[#9aa1ad] cursor-not-allowed"
                           : selected
@@ -347,7 +347,7 @@ export default function FlyersConfigurator({ initialCatalogue, initialConfigurat
         </div>
 
         {/* Summary panel */}
-        <div className="col-span-12 lg:col-span-5">
+        <div className="col-span-12 lg:col-span-5 min-w-0">
           {commerceEnabled ? (
           <div className="bg-white rounded-[16px] shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)] overflow-clip">
             <div className="bg-[#2a313d] px-[16px] py-[12px]">

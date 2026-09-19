@@ -306,12 +306,12 @@ export default function ArtworkSlots({
         />
       </div>
 
-      <label className="flex items-center gap-[8px] text-[13px] text-[#151c27]">
+      <label className="tap flex items-center gap-[8px] text-[13px] text-[#151c27]">
         <input
           type="checkbox"
           checked={sameAsBack}
           onChange={(e) => handleSameAsBackToggle(e.target.checked)}
-          className="size-[16px]"
+          className="size-[20px]"
         />
         {t("sameAsBack")}
       </label>
@@ -319,7 +319,7 @@ export default function ArtworkSlots({
       <button
         type="button"
         onClick={() => setDesignHelpOpen(true)}
-        className="self-start text-[#bb0027] text-[12px] font-bold underline"
+        className="tap inline-flex items-center self-start text-[#bb0027] text-[12px] font-bold underline"
       >
         {t("designHelp")}
       </button>

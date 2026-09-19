@@ -73,18 +73,18 @@ export default function SyncDialog({
         type="button"
         disabled={preview?.status !== "ready"}
         onClick={() => onResolve(dialog.key, "switch")}
-        className="h-[40px] px-[16px] rounded-[8px] text-[13px] font-semibold bg-[#e51937] text-white disabled:opacity-50"
+        className="tap h-[40px] px-[16px] rounded-[8px] text-[13px] font-semibold bg-[#e51937] text-white disabled:opacity-50"
       >
         {preview?.status === "ready" ? t("confirmSwitch", { file: sizeLabel(dialog.file) }) : t("changeOrder", { file: sizeLabel(dialog.file) })}
       </button>,
-      <button key="replace" type="button" onClick={() => onResolve(dialog.key, "replace")} className="h-[40px] px-[16px] rounded-[8px] text-[13px] font-semibold border border-[#e2e8f8]">
+      <button key="replace" type="button" onClick={() => onResolve(dialog.key, "replace")} className="tap h-[40px] px-[16px] rounded-[8px] text-[13px] font-semibold border border-[#e2e8f8]">
         {t("uploadDifferent")}
       </button>
     );
   } else if (dialog.kind === "unknown-size") {
     title = t("unknownSizeTitle", { width: dialog.mm?.width, height: dialog.mm?.height });
     actions.push(
-      <button key="replace" type="button" onClick={() => onResolve(dialog.key, "replace")} className="h-[40px] px-[16px] rounded-[8px] text-[13px] font-semibold border border-[#e2e8f8]">
+      <button key="replace" type="button" onClick={() => onResolve(dialog.key, "replace")} className="tap h-[40px] px-[16px] rounded-[8px] text-[13px] font-semibold border border-[#e2e8f8]">
         {t("uploadDifferent")}
       </button>
     );
@@ -97,14 +97,14 @@ export default function SyncDialog({
         type="button"
         disabled={preview?.status !== "ready"}
         onClick={() => onResolve(dialog.key, "switch")}
-        className="h-[40px] px-[16px] rounded-[8px] text-[13px] font-semibold bg-[#e51937] text-white disabled:opacity-50"
+        className="tap h-[40px] px-[16px] rounded-[8px] text-[13px] font-semibold bg-[#e51937] text-white disabled:opacity-50"
       >
         {t("switchToSingle")}
       </button>,
-      <button key="same" type="button" onClick={() => onResolve(dialog.key, "same")} className="h-[40px] px-[16px] rounded-[8px] text-[13px] font-semibold border border-[#e2e8f8]">
+      <button key="same" type="button" onClick={() => onResolve(dialog.key, "same")} className="tap h-[40px] px-[16px] rounded-[8px] text-[13px] font-semibold border border-[#e2e8f8]">
         {t("useSame")}
       </button>,
-      <button key="hint" type="button" onClick={() => onResolve(dialog.key, "upload-back")} className="h-[40px] px-[16px] rounded-[8px] text-[13px] font-semibold border border-[#e2e8f8]">
+      <button key="hint" type="button" onClick={() => onResolve(dialog.key, "upload-back")} className="tap h-[40px] px-[16px] rounded-[8px] text-[13px] font-semibold border border-[#e2e8f8]">
         {t("uploadBack")}
       </button>
     );
@@ -117,11 +117,11 @@ export default function SyncDialog({
         type="button"
         disabled={preview?.status !== "ready"}
         onClick={() => onResolve(dialog.key, "switch")}
-        className="h-[40px] px-[16px] rounded-[8px] text-[13px] font-semibold bg-[#e51937] text-white disabled:opacity-50"
+        className="tap h-[40px] px-[16px] rounded-[8px] text-[13px] font-semibold bg-[#e51937] text-white disabled:opacity-50"
       >
         {t("switchToDouble")}
       </button>,
-      <button key="keep" type="button" onClick={() => onResolve(dialog.key, "keep")} className="h-[40px] px-[16px] rounded-[8px] text-[13px] font-semibold border border-[#e2e8f8]">
+      <button key="keep" type="button" onClick={() => onResolve(dialog.key, "keep")} className="tap h-[40px] px-[16px] rounded-[8px] text-[13px] font-semibold border border-[#e2e8f8]">
         {t("printFrontOnly")}
       </button>
     );
@@ -137,7 +137,7 @@ export default function SyncDialog({
         type="button"
         onClick={() => setResizeOpen((open) => !open)}
         aria-expanded={resizeOpen}
-        className={`h-[40px] px-[16px] rounded-[8px] text-[13px] font-semibold border ${
+        className={`tap h-[40px] px-[16px] rounded-[8px] text-[13px] font-semibold border ${
           resizeOpen ? "border-[#e51937] text-[#e51937]" : "border-[#e2e8f8] text-[#151c27]"
         }`}
       >
@@ -147,14 +147,14 @@ export default function SyncDialog({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-[16px]">
+    <div className="fixed inset-0 z-50 flex items-stretch sm:items-center justify-center bg-black/40 sm:p-[16px]">
       <div
         ref={dialogRef}
         tabIndex={-1}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className={`bg-white rounded-[16px] shadow-lg w-full p-[20px] flex flex-col gap-[12px] outline-none max-h-full overflow-y-auto ${resizeOpen ? "max-w-[680px]" : "max-w-[420px]"}`}
+        className={`bg-white sm:rounded-[16px] shadow-lg w-full h-full sm:h-auto p-[16px] sm:p-[20px] flex flex-col gap-[12px] outline-none max-h-full overflow-y-auto ${resizeOpen ? "max-w-[680px]" : "max-w-[420px]"}`}
       >
         <h2 id={titleId} className="text-[#151c27] text-[16px] font-bold">{title}</h2>
         {body}
@@ -225,7 +225,7 @@ function ResizeChoice({
       <button
         type="button"
         onClick={onConfirm}
-        className="self-start h-[36px] px-[14px] rounded-[8px] text-[13px] font-semibold bg-[#e51937] text-white"
+        className="tap self-start h-[36px] px-[14px] rounded-[8px] text-[13px] font-semibold bg-[#e51937] text-white"
       >
         {resizeMode === FIT ? t("confirmFit") : t("confirmFill")}
       </button>
@@ -274,7 +274,7 @@ function SwitchPreview({ t, preview, onPreview, commerceEnabled }) {
   if (!commerceEnabled) return <PreviewNotices preview={preview} />;
   if (!preview) {
     return (
-      <button type="button" onClick={onPreview} className="self-start text-[#bb0027] text-[12px] font-bold underline">
+      <button type="button" onClick={onPreview} className="tap inline-flex items-center self-start text-[#bb0027] text-[12px] font-bold underline">
         {t("seeNewTotal")}
       </button>
     );

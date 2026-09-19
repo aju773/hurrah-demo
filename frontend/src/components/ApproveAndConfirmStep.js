@@ -173,7 +173,7 @@ export default function ApproveAndConfirmStep({
   return (
     <div className="flex flex-col gap-[16px] w-full">
       <div className="grid grid-cols-12 gap-[20px] w-full items-start">
-        <div className="col-span-12 lg:col-span-5 flex flex-col gap-[10px]">
+        <div className="col-span-12 lg:col-span-5 min-w-0 flex flex-col gap-[10px]">
           <ProofThumbnail
             label={t("front")}
             image={preview.front}
@@ -194,14 +194,14 @@ export default function ApproveAndConfirmStep({
           )}
         </div>
 
-        <div className="col-span-12 lg:col-span-7 flex flex-col gap-[16px]">
+        <div className="col-span-12 lg:col-span-7 min-w-0 flex flex-col gap-[16px]">
           <div className="bg-white rounded-[16px] shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)] overflow-clip">
             <div className="bg-[#2a313d] px-[16px] py-[12px] flex items-center justify-between gap-[12px]">
               <span className="text-[#ebf1ff] text-[16px] font-semibold">{t("summary")}</span>
               <button
                 type="button"
                 onClick={() => onEdit?.("options")}
-                className="text-[#ebf1ff] text-[12px] font-semibold underline"
+                className="tap inline-flex items-center justify-center text-[#ebf1ff] text-[12px] font-semibold underline"
               >
                 {t("editOptions")}
               </button>
@@ -273,7 +273,7 @@ export default function ApproveAndConfirmStep({
           {hasError && <p className="text-[#bb0027] text-[13px] font-semibold">{t("hasErrors")}</p>}
           {submitError && <p className="text-[#bb0027] text-[13px] font-semibold">{submitError}</p>}
 
-          <div className="flex items-center justify-end gap-[12px]">
+          <div className="flex flex-wrap items-center justify-end gap-[12px]">
             <button
               type="button"
               onClick={onBack}
@@ -314,7 +314,7 @@ function ProofThumbnail({ label, image, orderedTrimMm, changeText, changeLabel, 
         withGuides={false}
       />
       <span className="text-[#575c64] text-[11px] text-center">{label}</span>
-      <button type="button" aria-label={changeLabel} onClick={onChange} className="self-center text-[#bb0027] text-[12px] font-bold underline">
+      <button type="button" aria-label={changeLabel} onClick={onChange} className="tap inline-flex items-center justify-center self-center text-[#bb0027] text-[12px] font-bold underline">
         {changeText}
       </button>
     </div>
@@ -352,7 +352,7 @@ function Field({ label, value, onChange, required, ltr }) {
         dir={ltr ? "ltr" : undefined}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="h-[38px] px-[10px] rounded-[8px] border border-[#e2e8f8] text-[13px] text-[#151c27]"
+        className="tap h-[38px] px-[10px] rounded-[8px] border border-[#e2e8f8] text-[13px] text-[#151c27]"
       />
     </label>
   );
@@ -360,8 +360,8 @@ function Field({ label, value, onChange, required, ltr }) {
 
 function Tick({ checked, onChange, label }) {
   return (
-    <label className="flex items-start gap-[8px] cursor-pointer">
-      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} className="mt-[3px]" />
+    <label className="tap flex items-start gap-[8px] cursor-pointer">
+      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} className="mt-[1px] size-[20px] shrink-0" />
       <span className="text-[#151c27] text-[13px]">{label}</span>
     </label>
   );

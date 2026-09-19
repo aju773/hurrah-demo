@@ -82,7 +82,7 @@ export default function ArtworkSlot({
       tabIndex={id ? -1 : undefined}
       role="group"
       aria-label={label}
-      className="bg-white flex flex-col overflow-clip rounded-[16px] shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)] w-full"
+      className="bg-white flex flex-col overflow-clip rounded-[16px] shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)] w-full min-w-0"
     >
       <div className="bg-[#2a313d] flex items-center justify-between px-[16px] py-[12px] w-full">
         <span className="text-[#ebf1ff] text-[16px] font-semibold tracking-[-0.16px]">{label}</span>
@@ -118,7 +118,7 @@ export default function ArtworkSlot({
               type="button"
               disabled={disabled}
               onClick={() => inputRef.current?.click()}
-              className="text-[#575c64] text-[12px] text-center mb-[8px]"
+              className="tap text-[#575c64] text-[12px] text-center mb-[8px]"
             >
               {t.rich("browsePrompt", {
                 link: (chunks) => <span className="text-[#bb0027] font-bold underline">{chunks}</span>,
@@ -130,7 +130,7 @@ export default function ArtworkSlot({
             <input
               ref={inputRef}
               type="file"
-              accept="application/pdf"
+              accept="application/pdf,.pdf"
               aria-label={label}
               className="hidden"
               disabled={disabled}
@@ -159,7 +159,7 @@ export default function ArtworkSlot({
             >
               <div className="h-full bg-[#bb0027] transition-[width] duration-150 motion-reduce:transition-none" style={{ width: `${percent}%` }} />
             </div>
-            <button type="button" onClick={onCancel} className="text-[#575c64] text-[12px] font-semibold underline">
+            <button type="button" onClick={onCancel} className="tap inline-flex items-center justify-center text-[#575c64] text-[12px] font-semibold underline">
               {t("cancel")}
             </button>
           </div>
@@ -169,7 +169,7 @@ export default function ArtworkSlot({
           <div className="flex flex-col items-center justify-center rounded-[12px] px-[16px] py-[32px] w-full bg-[rgba(240,243,255,0.6)]">
             <div aria-hidden="true" className="size-[24px] border-2 border-[#e2e8f8] border-t-[#bb0027] rounded-full animate-spin motion-reduce:animate-none mb-[8px]" />
             <p className="text-[#575c64] text-[13px] mb-[8px]">{t("checking")}</p>
-            <button type="button" onClick={onCancel} className="text-[#575c64] text-[12px] font-semibold underline">
+            <button type="button" onClick={onCancel} className="tap inline-flex items-center justify-center text-[#575c64] text-[12px] font-semibold underline">
               {t("cancel")}
             </button>
           </div>
@@ -177,22 +177,22 @@ export default function ArtworkSlot({
 
         {isDone && (
           <div className="flex flex-col gap-[8px]">
-            <div className="flex items-center justify-between bg-[#f0f3ff] px-[10px] py-[8px] rounded-[10px] w-full">
+            <div className="flex flex-wrap items-center justify-between gap-x-[12px] gap-y-[4px] bg-[#f0f3ff] px-[10px] py-[8px] rounded-[10px] w-full">
               <bdi dir="ltr" className="text-[#151c27] text-[12px] truncate" style={{ maxWidth: "260px" }}>
                 {fileName}
               </bdi>
               <div className="flex items-center gap-[12px] shrink-0">
                 {status === "error" && canRetry && (
-                  <button type="button" onClick={onRetry} className="text-[#bb0027] text-[11px] font-bold underline">
+                  <button type="button" onClick={onRetry} className="tap inline-flex items-center justify-center text-[#bb0027] text-[11px] font-bold underline">
                     {t("retry")}
                   </button>
                 )}
                 {status === "ok" && onChoosePages && (
-                  <button type="button" onClick={onChoosePages} className="text-[#bb0027] text-[11px] font-bold underline">
+                  <button type="button" onClick={onChoosePages} className="tap inline-flex items-center justify-center text-[#bb0027] text-[11px] font-bold underline">
                     {t("choosePages")}
                   </button>
                 )}
-                <button type="button" onClick={onRemove} className="text-[#575c64] text-[11px] font-semibold underline">
+                <button type="button" onClick={onRemove} className="tap inline-flex items-center justify-center text-[#575c64] text-[11px] font-semibold underline">
                   {hasSlotError ? t("uploadAnother") : t("remove")}
                 </button>
               </div>

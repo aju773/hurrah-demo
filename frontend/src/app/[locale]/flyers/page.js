@@ -35,7 +35,7 @@ export default async function FlyersPage() {
   return (
     <div className="relative mx-auto bg-[#f9f9ff]" style={{ maxWidth: "1512px" }}>
       <SiteHeader commerceEnabled={commerceEnabled} />
-      <main id="main" tabIndex={-1} className="outline-none flex flex-col gap-[20px] px-[32px] py-[26px] w-full">
+      <main id="main" tabIndex={-1} className="outline-none flex flex-col gap-[20px] px-[16px] sm:px-[32px] py-[26px] w-full">
         <div className="flex flex-wrap items-center justify-between gap-[12px]">
           <h1 className="text-[#151c27] text-[28px] font-extrabold tracking-[-0.7px]">{t("title")}</h1>
           <LocaleControls />

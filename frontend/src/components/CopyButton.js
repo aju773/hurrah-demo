@@ -21,7 +21,7 @@ export default function CopyButton({ text, label, copiedLabel, copyPageLink = fa
       <button
         type="button"
         onClick={handleCopy}
-        className="h-[32px] px-[12px] rounded-[8px] text-[12px] font-semibold bg-[#f0f3ff] text-[#151c27]"
+        className="tap h-[32px] px-[12px] rounded-[8px] text-[12px] font-semibold bg-[#f0f3ff] text-[#151c27]"
       >
         {copied ? copiedLabel : label}
       </button>

@@ -69,7 +69,7 @@ export default function PagePicker({ source, orderedSize, mode = "both", fixed =
         aria-modal="true"
         aria-labelledby="page-picker-title"
         tabIndex={-1}
-        className="bg-white sm:rounded-[16px] shadow-lg w-full max-w-[860px] p-[16px] sm:p-[20px] flex flex-col gap-[12px] max-h-full outline-none"
+        className="bg-white sm:rounded-[16px] shadow-lg w-full max-w-[860px] h-full sm:h-auto p-[16px] sm:p-[20px] flex flex-col gap-[12px] max-h-full outline-none"
       >
         <div className="flex flex-col gap-[2px]">
           <h2 id="page-picker-title" className="text-[#151c27] text-[16px] font-bold">{t("title")}</h2>
@@ -114,7 +114,7 @@ export default function PagePicker({ source, orderedSize, mode = "both", fixed =
                       aria-label={t("useAsFront", { page: page.number })}
                       disabled={busy}
                       onClick={() => setChoice((c) => ({ ...c, ...chooseFront(c, page.number) }))}
-                      className={`flex-1 h-[36px] rounded-[8px] text-[12px] font-semibold border ${isFront ? "bg-[#e51937] text-white border-[#e51937]" : "border-[#e2e8f8] text-[#151c27]"}`}
+                      className={`tap flex-1 h-[36px] rounded-[8px] text-[12px] font-semibold border ${isFront ? "bg-[#e51937] text-white border-[#e51937]" : "border-[#e2e8f8] text-[#151c27]"}`}
                     >
                       {t("front")}
                     </button>
@@ -126,7 +126,7 @@ export default function PagePicker({ source, orderedSize, mode = "both", fixed =
                       aria-label={t("useAsBack", { page: page.number })}
                       disabled={busy}
                       onClick={() => setChoice((c) => ({ ...c, ...(mode === "back" ? { back: c.back === page.number ? null : page.number } : chooseBack(c, page.number)) }))}
-                      className={`flex-1 h-[36px] rounded-[8px] text-[12px] font-semibold border ${isBack ? "bg-[#e51937] text-white border-[#e51937]" : "border-[#e2e8f8] text-[#151c27]"}`}
+                      className={`tap flex-1 h-[36px] rounded-[8px] text-[12px] font-semibold border ${isBack ? "bg-[#e51937] text-white border-[#e51937]" : "border-[#e2e8f8] text-[#151c27]"}`}
                     >
                       {t("back")}
                     </button>
@@ -139,7 +139,7 @@ export default function PagePicker({ source, orderedSize, mode = "both", fixed =
 
         <div className="flex flex-col gap-[6px]" aria-live="polite">
           {mode === "both" && (
-            <label className="flex items-center gap-[8px] text-[13px] text-[#151c27]">
+            <label className="tap flex items-center gap-[8px] text-[13px] text-[#151c27]">
               <input
                 type="checkbox"
                 checked={choice.same}
@@ -167,14 +167,14 @@ export default function PagePicker({ source, orderedSize, mode = "both", fixed =
         </div>
 
         <div className="flex flex-wrap gap-[8px] justify-end">
-          <button type="button" onClick={onCancel} disabled={busy} className="h-[40px] px-[16px] rounded-[8px] text-[13px] font-semibold border border-[#e2e8f8] disabled:opacity-50">
+          <button type="button" onClick={onCancel} disabled={busy} className="tap h-[40px] px-[16px] rounded-[8px] text-[13px] font-semibold border border-[#e2e8f8] disabled:opacity-50">
             {t("cancel")}
           </button>
           <button
             type="button"
             disabled={!result.canConfirm || busy}
             onClick={() => onConfirm({ front: mode === "back" ? null : choice.front, back: mode === "front" || choice.same ? null : choice.back, same: choice.same })}
-            className="h-[40px] px-[16px] rounded-[8px] text-[13px] font-semibold bg-[#e51937] text-white disabled:opacity-50"
+            className="tap h-[40px] px-[16px] rounded-[8px] text-[13px] font-semibold bg-[#e51937] text-white disabled:opacity-50"
           >
             {busy ? t("checking") : t("confirm")}
           </button>
@@ -201,13 +201,13 @@ function EnlargedPage({ page, label, closeLabel, returnFocus, onClose }) {
   useDialogA11y(dialogRef, { onClose, initialFocus: closeRef, returnFocus });
   if (!page) return null;
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-[16px]" onClick={onClose}>
-      <div ref={dialogRef} tabIndex={-1} role="dialog" aria-modal="true" aria-label={label} className="outline-none relative max-h-full max-w-full flex flex-col gap-[8px] items-center" onClick={(e) => e.stopPropagation()}>
-        <button ref={closeRef} type="button" onClick={onClose} className="self-end h-[36px] px-[14px] rounded-[8px] bg-white text-[#151c27] text-[13px] font-semibold">
+    <div className="fixed inset-0 z-[60] flex items-stretch sm:items-center justify-center bg-black/70 sm:p-[16px]" onClick={onClose}>
+      <div ref={dialogRef} tabIndex={-1} role="dialog" aria-modal="true" aria-label={label} className="outline-none relative max-h-full max-w-full w-full sm:w-auto h-full sm:h-auto flex flex-col gap-[8px] items-center p-[12px] sm:p-0 bg-black/70 sm:bg-transparent" onClick={(e) => e.stopPropagation()}>
+        <button ref={closeRef} type="button" onClick={onClose} className="tap self-end h-[36px] px-[14px] rounded-[8px] bg-white text-[#151c27] text-[13px] font-semibold">
           {closeLabel}
         </button>
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={enlargedThumbnailUrl(page.thumbnail_url)} alt={label} className="max-h-[80vh] max-w-full object-contain bg-white rounded-[6px]" />
+        <img src={enlargedThumbnailUrl(page.thumbnail_url)} alt={label} className="min-h-0 flex-1 sm:flex-none max-h-full sm:max-h-[80vh] max-w-full object-contain bg-white rounded-[6px]" />
       </div>
     </div>
   );

@@ -9,7 +9,7 @@ export function ToggleButton({ active, onClick, label }) {
       type="button"
       onClick={onClick}
       aria-pressed={active}
-      className={`h-[32px] px-[12px] rounded-[8px] text-[12px] font-semibold ${active ? "bg-[#151c27] text-white" : "bg-white text-[#151c27] shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)]"}`}
+      className={`tap h-[32px] px-[12px] rounded-[8px] text-[12px] font-semibold ${active ? "bg-[#151c27] text-white" : "bg-white text-[#151c27] shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)]"}`}
     >
       {label}
     </button>

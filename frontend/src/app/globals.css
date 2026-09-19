@@ -68,3 +68,11 @@ html[dir="rtl"] body {
     scroll-behavior: auto !important;
   }
 }
+
+/* Phone floor: anything you tap is at least 44px square. Desktop sizes are untouched. */
+@media (max-width: 639px) {
+  .tap {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}

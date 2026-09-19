@@ -60,7 +60,7 @@ export default function EnlargedPreview({ t, initialSlot, initialSelectedKey, pr
             <ToggleButton active={slot === "front"} onClick={() => setSlot("front")} label={t("front")} />
             {hasBack && <ToggleButton active={slot === "back"} onClick={() => setSlot("back")} label={t("back")} />}
           </div>
-          <button type="button" onClick={onClose} aria-label={t("close")} className="text-[20px] leading-none px-[8px] text-[#575c64]">
+          <button type="button" onClick={onClose} aria-label={t("close")} className="tap text-[20px] leading-none px-[8px] text-[#575c64]">
             ✕
           </button>
         </div>

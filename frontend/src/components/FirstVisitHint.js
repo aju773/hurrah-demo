@@ -52,14 +52,14 @@ export default function FirstVisitHint({ step, className = "" }) {
         <button
           type="button"
           onClick={() => dismissHint(step)}
-          className="h-[32px] px-[12px] rounded-[8px] bg-[#6f5400] text-white text-[12px] font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#bb0027]"
+          className="tap h-[32px] px-[12px] rounded-[8px] bg-[#6f5400] text-white text-[12px] font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#bb0027]"
         >
           {t("gotIt")}
         </button>
         <button
           type="button"
           onClick={dismissAllHints}
-          className="text-[12px] font-semibold underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#bb0027]"
+          className="tap inline-flex items-center justify-center text-[12px] font-semibold underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#bb0027]"
         >
           {t("dismissAll")}
         </button>
@@ -81,7 +81,7 @@ export function ShowHintsLink({ className = "" }) {
     <button
       type="button"
       onClick={resetHints}
-      className={`text-[#575c64] text-[12px] underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#bb0027] ${className}`}
+      className={`tap inline-flex items-center justify-center text-[#575c64] text-[12px] underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#bb0027] ${className}`}
     >
       {t("show")}
     </button>

@@ -85,7 +85,7 @@ export default function ReopenPagePicker({ target, slots, orderedSize, onAssigne
     return (
       <Overlay onClose={onCancel}>
         <p role="alert" className="text-[#bb0027] text-[13px]">{t(loadError)}</p>
-        <button type="button" onClick={onCancel} className="self-end h-[40px] px-[16px] rounded-[8px] text-[13px] font-semibold border border-[#e2e8f8]">
+        <button type="button" onClick={onCancel} className="tap self-end h-[40px] px-[16px] rounded-[8px] text-[13px] font-semibold border border-[#e2e8f8]">
           {t("cancel")}
         </button>
       </Overlay>
@@ -118,8 +118,8 @@ function Overlay({ children, onClose }) {
   const dialogRef = useRef(null);
   useDialogA11y(dialogRef, { onClose });
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-[16px]">
-      <div role="dialog" aria-modal="true" aria-label={t("title")} tabIndex={-1} ref={dialogRef} className="bg-white rounded-[16px] shadow-lg p-[20px] flex flex-col gap-[12px] outline-none">
+    <div className="fixed inset-0 z-50 flex items-stretch sm:items-center justify-center bg-black/40 sm:p-[16px]">
+      <div role="dialog" aria-modal="true" aria-label={t("title")} tabIndex={-1} ref={dialogRef} className="bg-white sm:rounded-[16px] shadow-lg w-full sm:w-auto h-full sm:h-auto p-[16px] sm:p-[20px] flex flex-col gap-[12px] outline-none">
         {children}
       </div>
     </div>

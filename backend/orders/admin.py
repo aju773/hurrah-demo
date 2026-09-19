@@ -1,7 +1,7 @@
 from django.contrib import admin, messages
 from django.db import transaction
 from django.core.exceptions import PermissionDenied
-from django.http import HttpResponseRedirect
+from django.http import Http404, HttpResponseRedirect
 from django.shortcuts import get_object_or_404
 from django.urls import path, reverse
 from django.utils.decorators import method_decorator
@@ -9,6 +9,7 @@ from django.views.decorators.http import require_POST
 from django.utils.html import format_html, format_html_join
 
 from .catalogue import load_catalogue
+from .catalogue_views import commerce_enabled
 from .catalogue_checks import defaults_problems, describe_combo, missing_base_prices
 from .lifecycle import TransitionError, available_transitions, mark_paid, transition_order
 from .models import (
@@ -237,6 +238,10 @@ class OrderLineInline(admin.StackedInline):
     ]
     readonly_fields = fields
 
+    def get_fields(self, request, obj=None):
+        fields = super().get_fields(request, obj)
+        return fields if commerce_enabled() else [f for f in fields if f != "quote_summary"]
+
     def has_add_permission(self, request, obj=None):
         return False
 
@@ -348,15 +353,30 @@ class OrderAdmin(admin.ModelAdmin):
 
     change_form_template = "admin/orders/order/change_form.html"
     list_display = [
-        "number", "name", "mobile", "status", "turnaround_label", "promised_date", "total", "has_warnings",
-        "payment_status",
+        "number", "name", "mobile", "status", "turnaround_label", "promised_date", "has_warnings",
     ]
     list_display_links = ["number"]
-    list_filter = ["status", "line__turnaround", "payment_status", "browsing_language"]
+    list_filter = ["status", "line__turnaround", "browsing_language"]
     search_fields = ["number", "name", "mobile", "token"]
     ordering = ["line__promised_date", "created_at"]
     readonly_fields = [f.name for f in Order._meta.fields if f.name != "id"]
     inlines = [OrderLineInline, OrderStatusChangeInline]
+
+    # Shown only with the Commerce switch on: money, payment and delivery address.
+    COMMERCE_LIST_COLUMNS = ["total", "payment_status"]
+    COMMERCE_FIELDS = ["area", "address_line", "payment_method", "payment_status"]
+
+    def get_list_display(self, request):
+        columns = list(super().get_list_display(request))
+        return columns + self.COMMERCE_LIST_COLUMNS if commerce_enabled() else columns
+
+    def get_list_filter(self, request):
+        filters = list(super().get_list_filter(request))
+        return filters + ["payment_status"] if commerce_enabled() else filters
+
+    def get_fields(self, request, obj=None):
+        fields = super().get_fields(request, obj)
+        return fields if commerce_enabled() else [f for f in fields if f not in self.COMMERCE_FIELDS]
 
     def get_queryset(self, request):
         return super().get_queryset(request).select_related("line")
@@ -415,7 +435,8 @@ class OrderAdmin(admin.ModelAdmin):
         if order is not None:
             extra_context["can_move"] = request.user.has_perm("orders.change_order")
             extra_context["transitions"] = available_transitions(order.status)
-            extra_context["can_mark_paid"] = order.payment_status != "paid"
+            extra_context["commerce"] = commerce_enabled()
+            extra_context["can_mark_paid"] = commerce_enabled() and order.payment_status != "paid"
         return super().change_view(request, object_id, form_url, extra_context)
 
     def _staff_action(self, request, object_id, action):
@@ -437,6 +458,8 @@ class OrderAdmin(admin.ModelAdmin):
 
     @method_decorator(require_POST)
     def mark_paid_view(self, request, object_id):
+        if not commerce_enabled():
+            raise Http404
         def pay(order):
             mark_paid(order, request.user.get_username())
             messages.success(request, f"{order.number} marked paid.")

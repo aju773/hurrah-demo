@@ -6,7 +6,7 @@ from io import StringIO
 
 from django.contrib.auth import get_user_model
 from django.core.management import call_command
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.urls import reverse
 
 from .clock import DUBAI_TZ
@@ -253,6 +253,7 @@ class OrderAdminTransitionTests(AdminBase):
         order.refresh_from_db()
         self.assertEqual(order.status, ORDER_STATUS_STAFF_CHECK)
 
+    @override_settings(COMMERCE_ENABLED=True)
     def test_mark_paid_button_sets_payment_only(self):
         order = make_order(ORDER_STATUS_IN_PRODUCTION)
         html = self.client.get(self.change_url(order)).content.decode()
@@ -282,6 +283,7 @@ class OrderAdminListTests(AdminBase):
     def list_response(self, params=None):
         return self.client.get(reverse("admin:orders_order_changelist"), params or {})
 
+    @override_settings(COMMERCE_ENABLED=True)
     def test_columns_show_turnaround_promised_total_and_warnings_flag(self):
         response = self.list_response()
         self.assertContains(response, "Express")
@@ -306,6 +308,7 @@ class OrderAdminListTests(AdminBase):
 
 
 class OrderAdminDetailTests(AdminBase):
+    @override_settings(COMMERCE_ENABLED=True)
     def test_detail_is_a_read_only_snapshot_with_previews_files_and_findings(self):
         order = make_order(ORDER_STATUS_STAFF_CHECK)
         response = self.client.get(self.change_url(order))
@@ -323,6 +326,82 @@ class OrderAdminDetailTests(AdminBase):
         self.client.post(self.change_url(order), {"name": "Changed", "status": ORDER_STATUS_DELIVERED})
         order.refresh_from_db()
         self.assertEqual((order.name, order.status), ("Layla", ORDER_STATUS_STAFF_CHECK))
+
+
+MONEY_WORDS = ("Payment", "Total", "Quote", "VAT", "Mark paid", "AED", "246.75", "Address", "Area",
+               "Downtown", "Sheikh Zayed")
+
+
+class OrderAdminMoneyFreeTests(AdminBase):
+    """Commerce switch off (the default): staff see the Order as the customer
+    experienced it, with no money, payment or delivery-address field or action."""
+
+    def setUp(self):
+        super().setUp()
+        self.order = make_order(ORDER_STATUS_STAFF_CHECK, number="HUR-10001", warnings=("bleed_missing",))
+        make_order(ORDER_STATUS_IN_PRODUCTION, number="HUR-10002", warnings=(), name="Clean one")
+
+    def list_html(self):
+        return self.client.get(reverse("admin:orders_order_changelist")).content.decode()
+
+    def test_list_has_no_money_or_payment_column_or_filter(self):
+        response = self.client.get(reverse("admin:orders_order_changelist"))
+        html = response.content.decode()
+        for word in ("Total", "Payment", "246.75", "AED"):
+            self.assertNotIn(word, html)
+        for word in ("HUR-10001", "Layla", "+971501234567", "Staff check", "Standard", "24 Sep 2026", "Warnings"):
+            self.assertIn(word, html)
+
+    def test_list_still_flags_orders_with_warnings(self):
+        response = self.client.get(reverse("admin:orders_order_changelist"))
+        rows = {row.number: row for row in response.context["cl"].result_list}
+        admin_obj = response.context["cl"].model_admin
+        self.assertTrue(admin_obj.has_warnings(rows["HUR-10001"]))
+        self.assertFalse(admin_obj.has_warnings(rows["HUR-10002"]))
+
+    def test_detail_has_no_money_payment_or_address(self):
+        html = self.client.get(self.change_url(self.order)).content.decode()
+        for word in MONEY_WORDS:
+            self.assertNotIn(word, html)
+        self.assertNotIn(self.paid_url(self.order), html)
+
+    def test_detail_keeps_snapshot_contact_files_and_history(self):
+        response = self.client.get(self.change_url(self.order))
+        self.assertContains(response, "Layla")
+        self.assertContains(response, "+971501234567")
+        self.assertContains(response, "A5")  # Configuration
+        self.assertContains(response, "renders/front-thumb.png")  # Front preview
+        self.assertContains(response, "bleed_missing")  # Preflight report
+        self.assertContains(response, "Accepted warnings")
+        self.assertContains(response, "uploads/front.pdf")  # original file
+
+    def test_mark_paid_endpoint_refuses_with_the_switch_off(self):
+        response = self.client.post(self.paid_url(self.order))
+        self.assertEqual(response.status_code, 404)
+        self.order.refresh_from_db()
+        self.assertEqual(self.order.payment_status, "unpaid")
+
+    def test_every_allowed_move_still_works_and_customer_sees_it(self):
+        for key, note, expected in [("hold", "Logo soft", ORDER_STATUS_ON_HOLD), ("resume", "", ORDER_STATUS_IN_PRODUCTION),
+                                    ("out_for_delivery", "", ORDER_STATUS_OUT_FOR_DELIVERY),
+                                    ("delivered", "", ORDER_STATUS_DELIVERED)]:
+            self.client.post(self.transition_url(self.order), {"transition": key, "note": note})
+            self.order.refresh_from_db()
+            self.assertEqual(self.order.status, expected)
+            self.assertEqual(self.client.get(f"/api/orders/{self.order.token}/").json()["status"], expected)
+        self.assertEqual(self.order.status_changes.count(), 5)  # created + four moves
+
+
+@override_settings(COMMERCE_ENABLED=True)
+class OrderAdminMoneyOnTests(AdminBase):
+    def test_earlier_money_fields_and_mark_paid_are_back(self):
+        order = make_order(ORDER_STATUS_STAFF_CHECK)
+        list_html = self.client.get(reverse("admin:orders_order_changelist")).content.decode()
+        for word in ("Total", "Payment status", "246.75"):
+            self.assertIn(word, list_html)
+        detail = self.client.get(self.change_url(order)).content.decode()
+        for word in ("Payment", "Quote", "VAT 5%", "Downtown", "Sheikh Zayed", self.paid_url(order)):
+            self.assertIn(word, detail)
 
 
 class ResetDemoCommandTests(TestCase):

@@ -5,8 +5,8 @@
   {% if original %}
     <div class="module" style="margin-bottom:16px;padding:12px 16px">
       <p style="margin:0 0 8px">
-        Status: <strong>{{ original.get_status_display }}</strong> &middot;
-        Payment: <strong>{{ original.get_payment_status_display }}</strong>
+        Status: <strong>{{ original.get_status_display }}</strong>{% if commerce %} &middot;
+        Payment: <strong>{{ original.get_payment_status_display }}</strong>{% endif %}
       </p>
       {% if can_move and transitions %}
         <form method="post" action="{% url 'admin:orders_order_transition' original.pk %}" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">

@@ -3,7 +3,7 @@ Order status messages with Arabic dates, and message codes the frontend translat
 
 from datetime import date, time
 
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from rest_framework.test import APIClient
 
 from .models import Option, OptionValue, Product, Restriction
@@ -56,6 +56,7 @@ class FlyersArabicSeedTests(TestCase):
         self.assertNotIn("Same-day", notice["reason"])
 
 
+@override_settings(COMMERCE_ENABLED=True)
 class ArabicStatusMessageTests(TestCase):
     def line_order(self, status, promised=date(2026, 9, 22), window_start=None, window_end=time(17, 0)):
         order = make_order(status, promised=promised)
@@ -83,6 +84,17 @@ class ArabicStatusMessageTests(TestCase):
             self.assertNotRegex(text, r"[A-Za-z]")
             seen.add(text)
         self.assertEqual(len(seen), 12)
+
+
+class ReadyStatusMessageTests(TestCase):
+    """With the Commerce switch off the Order is "Ready", never delivered."""
+
+    def test_ready_wording_in_both_languages(self):
+        order = make_order("in_production", promised=date(2026, 9, 22))
+        order.line.promised_window_start = time(15, 0)
+        order.line.promised_window_end = time(17, 0)
+        self.assertEqual(status_message(order, "en"), "In production. Ready Tue 22 Sep, 15:00–17:00.")
+        self.assertEqual(status_message(order, "ar"), "قيد الإنتاج. جاهز الثلاثاء 22 سبتمبر، 15:00–17:00.")
 
 
 class FrontendMessageCoverageTests(TestCase):

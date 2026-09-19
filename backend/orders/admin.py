@@ -208,6 +208,8 @@ class OrderStatusChangeInline(admin.TabularInline):
 
 
 def _aed(fils):
+    if fils is None:
+        return "—"
     return f"{fils / 100:,.2f} AED"
 
 

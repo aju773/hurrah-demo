@@ -39,7 +39,7 @@ VALID_DELIVERY = {
 }
 
 
-# Order submit still carries a Quote total until the money-free Step 3 lands.
+# The money path: these run with the Commerce switch on (test_order_money_free.py covers it off).
 @override_settings(MEDIA_ROOT=tempfile.mkdtemp(), COMMERCE_ENABLED=True)
 class OrderSubmitApiTests(TestCase):
     @classmethod
@@ -138,6 +138,19 @@ class OrderSubmitApiTests(TestCase):
         self.assertEqual(data["status"], "in_production")
         self.assertEqual(data["line"]["total_aed"], "838.95")
         self.assertEqual(data["number"], "HUR-10001")
+
+    def test_with_the_switch_on_address_payment_and_quote_are_still_filled(self):
+        self.set_now(dubai(2026, 9, 16, 9, 0))
+        upload_data = self.upload(build_f2())
+        front, back = upload_data["front"], upload_data["back"]
+        config = self.get_config(paper="350gsm-matt", sides="double", quantity="500", turnaround="same-day")
+        res = self.client.post(SUBMIT_URL, self.submit_payload(config, front, back, "on-key"), format="json")
+        self.assertEqual(res.status_code, 201, res.content)
+        order = Order.objects.get()
+        self.assertEqual((order.payment_method, order.payment_status), ("cod", "unpaid"))
+        self.assertEqual((order.area, order.address_line), ("Downtown Dubai", "12 Sheikh Zayed Rd"))
+        self.assertEqual(order.line.total_fils, 83895)
+        self.assertIn("Delivery", self.client.get(f"/api/orders/{order.token}/").json()["status_message"])
 
     # ---- Arabic browsing language ---------------------------------------
 

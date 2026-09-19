@@ -1,5 +1,7 @@
 from decimal import Decimal
 
+from django.conf import settings
+
 from rest_framework import serializers
 
 from .models import Artwork, DesignRequest, DesignRequestFile, Order, OrderLine, Product
@@ -67,7 +69,18 @@ class DesignRequestFileSerializer(serializers.ModelSerializer):
 
 
 def _fils_to_aed(fils):
+    if fils is None:
+        return None
     return str((Decimal(fils) / 100).quantize(Decimal("0.01")))
+
+
+# With the Commerce switch off these never leave the server.
+LINE_MONEY_FIELDS = ["base_aed", "uplifts", "subtotal_aed", "vat_aed", "total_aed"]
+ORDER_COMMERCE_FIELDS = ["area", "address_line", "payment_method", "payment_status"]
+
+
+def _commerce_enabled():
+    return bool(settings.COMMERCE_ENABLED)
 
 
 class OrderLineSerializer(serializers.ModelSerializer):
@@ -101,6 +114,13 @@ class OrderLineSerializer(serializers.ModelSerializer):
             "promised_window_end",
         ]
         read_only_fields = fields
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        if not _commerce_enabled():
+            for field in LINE_MONEY_FIELDS:
+                data.pop(field, None)
+        return data
 
     def _url(self, image_field):
         request = self.context.get("request")
@@ -159,6 +179,13 @@ class OrderSerializer(serializers.ModelSerializer):
             "line",
         ]
         read_only_fields = fields
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        if not _commerce_enabled():
+            for field in ORDER_COMMERCE_FIELDS:
+                data.pop(field, None)
+        return data
 
 
 class DesignRequestSerializer(serializers.ModelSerializer):

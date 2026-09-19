@@ -17,7 +17,14 @@ from rest_framework.views import APIView
 
 from . import preflight
 from .catalogue import load_catalogue, option_by_code, value_by_code
-from .catalogue_views import _serialize_blocked, _serialize_clock, _serialize_notices, _serialize_quote
+from .catalogue_views import (
+    _serialize_blocked,
+    _serialize_clock,
+    _serialize_notices,
+    _serialize_quote,
+    _serialize_turnarounds,
+    commerce_enabled,
+)
 from .clock import promised_delivery
 from .demo_clock import current_time
 from .models import (
@@ -36,8 +43,10 @@ from .rules import blocked_map, resolve_selection
 from .pricing import compute_quote
 from .serializers import OrderSerializer
 
+# With the Commerce switch off only contact details are collected; the
+# delivery address comes back with the switch.
+REQUIRED_CONTACT_FIELDS = ["name", "mobile"]
 REQUIRED_DELIVERY_FIELDS = ["name", "mobile", "area", "address_line"]
-OPTIONAL_DELIVERY_FIELDS = ["email", "company", "note"]
 
 
 def _text(entry, field, locale):
@@ -97,6 +106,7 @@ class OrderSubmitView(APIView):
         if existing is not None:
             return Response(OrderSerializer(existing, context={"request": request}).data, status=status.HTTP_200_OK)
 
+        commerce = commerce_enabled()
         locale = data.get("locale", "en")
         configuration = data.get("configuration")
         if not isinstance(configuration, dict):
@@ -110,6 +120,8 @@ class OrderSubmitView(APIView):
 
         now = current_time()
         resolved, notices = resolve_selection(catalogue, configuration, now=now)
+        # A combination with no Base price row is "Not available" whatever the
+        # switch says; with it off the Quote is used for that check and dropped.
         quote = compute_quote(catalogue, resolved)
         if quote is None:
             return Response({"detail": "Not available.", "code": "not_available"}, status=status.HTTP_400_BAD_REQUEST)
@@ -159,45 +171,48 @@ class OrderSubmitView(APIView):
         if warning_codes and not data.get("warnings_tick"):
             return Response({"detail": "The warnings tick is required.", "code": "missing_tick"}, status=status.HTTP_400_BAD_REQUEST)
 
-        # ---- Delivery details
-        delivery = data.get("delivery") or {}
+        # ---- Contact (switch off) or delivery (switch on) details
+        details = (data.get("delivery") if commerce else data.get("contact") or data.get("delivery")) or {}
+        required = REQUIRED_DELIVERY_FIELDS if commerce else REQUIRED_CONTACT_FIELDS
         errors = {}
-        for field in REQUIRED_DELIVERY_FIELDS:
-            if not str(delivery.get(field) or "").strip():
+        for field in required:
+            if not str(details.get(field) or "").strip():
                 errors[field] = "Required."
-        mobile = str(delivery.get("mobile") or "").strip()
+        mobile = str(details.get("mobile") or "").strip()
         if mobile and not mobile.replace(" ", "").startswith("+971"):
             errors["mobile"] = "Must be a UAE mobile number (+971…)."
         if errors:
-            return Response({"detail": "Please check the delivery details.", "code": "invalid_delivery", "errors": errors}, status=status.HTTP_400_BAD_REQUEST)
+            code = "invalid_delivery" if commerce else "invalid_contact"
+            return Response({"detail": "Please check your details.", "code": code, "errors": errors}, status=status.HTTP_400_BAD_REQUEST)
 
         # ---- Freshness: everything the customer approved must still hold.
-        expected_total_fils = data.get("expected_total_fils")
+        # No total is sent or checked with the switch off.
         expected_turnaround = data.get("expected_turnaround")
         expected_promised_date = data.get("expected_promised_date")
         accepted_warning_codes = sorted(set(data.get("accepted_warning_codes") or []))
 
         stale = (
             resolved != configuration
-            or quote["total_fils"] != expected_total_fils
+            or (commerce and quote["total_fils"] != data.get("expected_total_fils"))
             or resolved.get("turnaround") != expected_turnaround
             or delivery_estimate["date"].isoformat() != expected_promised_date
             or warning_codes != accepted_warning_codes
         )
         if stale:
-            return Response(
-                {
-                    "detail": "Your order details changed — please review and approve again.",
-                    "code": "stale",
-                    "selection": resolved,
-                    "notices": _serialize_notices(notices, locale),
-                    "blocked": _serialize_blocked(blocked_map(catalogue, resolved, now=now), locale),
-                    "quote": _serialize_quote(quote, locale),
-                    "clock": _serialize_clock(catalogue, resolved, now),
-                    "warning_codes": warning_codes,
-                },
-                status=status.HTTP_409_CONFLICT,
-            )
+            fresh = {
+                "detail": "Your order details changed — please review and approve again.",
+                "code": "stale",
+                "selection": resolved,
+                "notices": _serialize_notices(notices, locale),
+                "blocked": _serialize_blocked(blocked_map(catalogue, resolved, now=now), locale),
+                "clock": _serialize_clock(catalogue, resolved, now),
+                "warning_codes": warning_codes,
+            }
+            if commerce:
+                fresh["quote"] = _serialize_quote(quote, locale)
+            else:
+                fresh["turnarounds"] = _serialize_turnarounds(catalogue, now)
+            return Response(fresh, status=status.HTTP_409_CONFLICT)
 
         browsing_language = data.get("browsing_language") if data.get("browsing_language") in ("en", "ar") else "en"
         order_status = ORDER_STATUS_STAFF_CHECK if warning_codes else ORDER_STATUS_IN_PRODUCTION
@@ -209,13 +224,15 @@ class OrderSubmitView(APIView):
                     number = allocate_order_number()
                     order = Order.objects.create(
                         number=number,
-                        name=delivery["name"].strip(),
+                        name=details["name"].strip(),
                         mobile=mobile,
-                        area=delivery["area"].strip(),
-                        address_line=delivery["address_line"].strip(),
-                        email=(delivery.get("email") or "").strip(),
-                        company=(delivery.get("company") or "").strip(),
-                        note=(delivery.get("note") or "").strip(),
+                        area=(details.get("area") or "").strip() if commerce else "",
+                        address_line=(details.get("address_line") or "").strip() if commerce else "",
+                        email=(details.get("email") or "").strip(),
+                        company=(details.get("company") or "").strip(),
+                        note=(details.get("note") or "").strip(),
+                        payment_method="cod" if commerce else "",
+                        payment_status="unpaid" if commerce else "",
                         status=order_status,
                         browsing_language=browsing_language,
                         idempotency_key=idempotency_key,
@@ -225,11 +242,11 @@ class OrderSubmitView(APIView):
                         product=product,
                         configuration_snapshot=_configuration_snapshot(catalogue, resolved),
                         turnaround=resolved.get("turnaround", ""),
-                        base_fils=quote["base_fils"],
-                        subtotal_fils=quote["subtotal_fils"],
-                        vat_fils=quote["vat_fils"],
-                        total_fils=quote["total_fils"],
-                        uplifts_snapshot=_uplifts_snapshot(quote),
+                        base_fils=quote["base_fils"] if commerce else None,
+                        subtotal_fils=quote["subtotal_fils"] if commerce else None,
+                        vat_fils=quote["vat_fils"] if commerce else None,
+                        total_fils=quote["total_fils"] if commerce else None,
+                        uplifts_snapshot=_uplifts_snapshot(quote) if commerce else [],
                         front_artwork=front,
                         back_artwork=back,
                         same_as_front=same_as_front,
@@ -286,6 +303,25 @@ STATUS_MESSAGE_AR = {
 }
 
 
+# With the Commerce switch off nothing is delivered: the Order is "Ready".
+STATUS_MESSAGE_READY_EN = {
+    ORDER_STATUS_STAFF_CHECK: "Our team is checking your file. Still on track to be ready {date}.",
+    ORDER_STATUS_IN_PRODUCTION: "In production. Ready {date}, {window}.",
+    "on_hold": "On hold — our team will be in touch.",
+    "cancelled": "Cancelled.",
+    "out_for_delivery": "Ready {date}, {window}.",
+    "delivered": "Ready.",
+}
+STATUS_MESSAGE_READY_AR = {
+    ORDER_STATUS_STAFF_CHECK: "فريقنا يتحقق من ملفك. لا يزال الطلب سيكون جاهزًا {date}.",
+    ORDER_STATUS_IN_PRODUCTION: "قيد الإنتاج. جاهز {date}، {window}.",
+    "on_hold": "قيد الانتظار — سيتواصل معك فريقنا.",
+    "cancelled": "ملغى.",
+    "out_for_delivery": "جاهز {date}، {window}.",
+    "delivered": "جاهز.",
+}
+
+
 AR_WEEKDAYS = ["الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت", "الأحد"]  # Monday first
 AR_MONTHS = [
     "يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو",
@@ -314,7 +350,10 @@ def status_message(order_obj, locale):
     # raises rather than returning None if that ever stops holding — guard
     # it the same defensive way the date/window lines below already do.
     line = getattr(order_obj, "line", None)
-    messages = STATUS_MESSAGE_AR if locale == "ar" else STATUS_MESSAGE_EN
+    if commerce_enabled():
+        messages = STATUS_MESSAGE_AR if locale == "ar" else STATUS_MESSAGE_EN
+    else:
+        messages = STATUS_MESSAGE_READY_AR if locale == "ar" else STATUS_MESSAGE_READY_EN
     template = messages.get(order_obj.status, "")
     date_str = _date_text(line.promised_date, locale) if line else ""
     window = _window_text(line.promised_window_start, line.promised_window_end, locale) if line else ""

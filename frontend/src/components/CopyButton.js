@@ -2,12 +2,13 @@
 
 import { useState } from "react";
 
-export default function CopyButton({ text, label, copiedLabel }) {
+// `text` is copied as is; with `copyPageLink` the current page's address is copied instead.
+export default function CopyButton({ text, label, copiedLabel, copyPageLink = false }) {
   const [copied, setCopied] = useState(false);
 
   async function handleCopy() {
     try {
-      await navigator.clipboard.writeText(text);
+      await navigator.clipboard.writeText(copyPageLink ? window.location.href : text);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {

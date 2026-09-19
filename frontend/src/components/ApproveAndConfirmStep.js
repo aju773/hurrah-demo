@@ -3,14 +3,13 @@
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { API_BASE_URL, FLYERS_SLUG } from "@/lib/api";
-import DeliveryLine from "./DeliveryLine";
+import Countdown from "./Countdown";
 import { combineFindings, warningShortName } from "@/lib/findings";
 import { fetchPreview } from "@/lib/preview";
 import ArtworkPreview from "./ArtworkPreview";
 
-const EXPIRED_RETRY_MS = 5000;
-
-const EMPTY_DELIVERY = { name: "", mobile: "+971", area: "", address_line: "", email: "", company: "", note: "" };
+// +971 is prefilled: every customer is on a UAE mobile.
+const EMPTY_DETAILS = { name: "", mobile: "+971", area: "", address_line: "", email: "", company: "", note: "" };
 
 function warningCodesOf(groups) {
   return [...new Set(groups.filter((g) => g.severity === "warning").map((g) => g.code))].sort();
@@ -18,9 +17,10 @@ function warningCodesOf(groups) {
 
 /**
  * Step 3, "Approve & confirm" (ticket 10): a read-only summary of the
- * Configuration, Quote and Proof thumbnail, the guest delivery form, pay on
- * delivery, the Cut-off countdown, the approval ticks and a server-checked
- * Submit. Configuration/Artwork changes and the countdown reaching zero clear
+ * Configuration and Proof thumbnail, the guest contact form, the Cut-off
+ * countdown, the approval ticks and a server-checked Submit. With the Commerce
+ * switch on it also shows the Quote, the delivery address form and pay on
+ * delivery. Configuration/Artwork changes and the countdown reaching zero clear
  * the ticks (spec stories 81-82) — the caller (FlyersConfigurator) owns that
  * shared draft state; this component just renders it and calls back.
  */
@@ -47,7 +47,8 @@ export default function ApproveAndConfirmStep({
   const t = useTranslations("ApproveAndConfirmStep");
   const [preview, setPreview] = useState(null);
   const [previewError, setPreviewError] = useState(false);
-  const [delivery, setDelivery] = useState(EMPTY_DELIVERY);
+  const [details, setDetails] = useState(EMPTY_DETAILS);
+  const [notice, setNotice] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState(null);
 
@@ -88,23 +89,30 @@ export default function ApproveAndConfirmStep({
     label: option.values.find((v) => v.code === selection[option.code])?.label,
   }));
 
-  const deliveryValid =
-    delivery.name.trim() &&
-    delivery.mobile.replace(/\s+/g, "").startsWith("+971") &&
-    delivery.mobile.replace(/\D/g, "").length >= 9 &&
-    delivery.area.trim() &&
-    delivery.address_line.trim();
+  const detailsValid =
+    details.name.trim() &&
+    details.mobile.replace(/\s+/g, "").startsWith("+971") &&
+    details.mobile.replace(/\D/g, "").length >= 9 &&
+    (!commerceEnabled || (details.area.trim() && details.address_line.trim()));
 
   const canSubmit =
-    !hasError && !submitting && deliveryValid && ticks.approval && (warningGroups.length === 0 || ticks.warnings) && Boolean(idempotencyKey);
+    !hasError && !submitting && detailsValid && ticks.approval && (warningGroups.length === 0 || ticks.warnings) && Boolean(idempotencyKey);
 
-  function updateDelivery(field, value) {
-    setDelivery((d) => ({ ...d, [field]: value }));
+  function updateDetails(field, value) {
+    setDetails((d) => ({ ...d, [field]: value }));
+  }
+
+  // The Cut-off passing changes the promised date (and may drop a Same-day
+  // pick): the caller refreshes and clears the ticks, and we say why.
+  function handleExpire() {
+    setNotice(t("expiredNotice"));
+    onClockExpire();
   }
 
   async function handleSubmit() {
     setSubmitting(true);
     setSubmitError(null);
+    setNotice(null);
     try {
       const body = {
         configuration: selection,
@@ -119,11 +127,13 @@ export default function ApproveAndConfirmStep({
         accepted_warning_codes: warningCodes,
         approval_tick: ticks.approval,
         warnings_tick: ticks.warnings,
-        // deliveryValid checked the mobile with whitespace stripped (spaces
+        // detailsValid checked the mobile with whitespace stripped (spaces
         // are a normal way to type it, e.g. "+971 50 123 4567"); send that
         // same cleaned form, not the raw field value, so the server's
         // "+971…" check sees exactly what was validated.
-        delivery: { ...delivery, mobile: delivery.mobile.replace(/\s+/g, "") },
+        ...(commerceEnabled
+          ? { delivery: { ...details, mobile: details.mobile.replace(/\s+/g, "") } }
+          : { contact: { name: details.name, mobile: details.mobile.replace(/\s+/g, ""), email: details.email, company: details.company, note: details.note } }),
         browsing_language: browsingLanguage,
         idempotency_key: idempotencyKey,
       };
@@ -139,9 +149,10 @@ export default function ApproveAndConfirmStep({
       }
       if (res.status === 409) {
         onClockExpire(); // refresh + clear ticks: the proof on screen is stale
-        setSubmitError(t("staleNotice"));
-      } else if (data.code === "invalid_delivery") {
-        setSubmitError(t("invalidDelivery"));
+        setSubmitError(null);
+        setNotice(t("staleNotice"));
+      } else if (data.code === "invalid_delivery" || data.code === "invalid_contact") {
+        setSubmitError(t(commerceEnabled ? "invalidDelivery" : "invalidContact"));
       } else if (data.code === "artwork_has_errors") {
         setSubmitError(t("hasErrors"));
       } else if (data.code && t.has(`error_${data.code}`)) {
@@ -201,9 +212,24 @@ export default function ApproveAndConfirmStep({
               fresh clock (a resubmit-triggered refresh, or this countdown's
               own expiry below) remounts it with a clean countdown instead of
               syncing a ticking value in from a changing prop. */}
-          <Countdown key={clock.now} clock={clock} locale={locale} onExpire={onClockExpire} commerceEnabled={commerceEnabled} />
+          <p>
+            <Countdown
+              key={clock.now}
+              clock={clock}
+              locale={locale}
+              onExpire={handleExpire}
+              commerceEnabled={commerceEnabled}
+              className="text-[#575c64] text-[13px]"
+            />
+          </p>
 
-          <DeliveryForm t={t} delivery={delivery} onChange={updateDelivery} />
+          {notice && (
+            <p role="status" className="bg-[#fff4e5] text-[#8a4b00] rounded-[8px] px-[12px] py-[8px] text-[13px] font-semibold">
+              {notice}
+            </p>
+          )}
+
+          <DetailsForm t={t} details={details} onChange={updateDetails} commerceEnabled={commerceEnabled} />
 
           <div className="flex flex-col gap-[8px] bg-white rounded-[12px] shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)] p-[12px]">
             <Tick
@@ -268,38 +294,21 @@ function ProofThumbnail({ label, image, orderedTrimMm }) {
   );
 }
 
-function Countdown({ clock, locale, onExpire, commerceEnabled }) {
-  const [secondsLeft, setSecondsLeft] = useState(clock.seconds_to_cutoff);
-  const [retryCount, setRetryCount] = useState(0);
-
-  useEffect(() => {
-    if (secondsLeft > 0) {
-      const timer = setTimeout(() => setSecondsLeft((s) => Math.max(0, s - 1)), 1000);
-      return () => clearTimeout(timer);
-    }
-    onExpire();
-    const retry = setTimeout(() => setRetryCount((c) => c + 1), EXPIRED_RETRY_MS);
-    return () => clearTimeout(retry);
-  }, [secondsLeft, retryCount, onExpire]);
-
-  return (
-    <p className="text-[#575c64] text-[13px]">
-      <DeliveryLine clock={clock} secondsLeft={secondsLeft} locale={locale} commerceEnabled={commerceEnabled} />
-    </p>
-  );
-}
-
-function DeliveryForm({ t, delivery, onChange }) {
+function DetailsForm({ t, details, onChange, commerceEnabled }) {
   return (
     <div className="bg-white rounded-[12px] shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)] p-[16px] flex flex-col gap-[10px]">
-      <span className="text-[#151c27] text-[14px] font-semibold">{t("deliveryDetails")}</span>
-      <Field label={t("fieldName")} value={delivery.name} onChange={(v) => onChange("name", v)} required />
-      <Field label={t("fieldMobile")} value={delivery.mobile} onChange={(v) => onChange("mobile", v)} required ltr />
-      <Field label={t("fieldArea")} value={delivery.area} onChange={(v) => onChange("area", v)} required />
-      <Field label={t("fieldAddress")} value={delivery.address_line} onChange={(v) => onChange("address_line", v)} required />
-      <Field label={t("fieldEmail")} value={delivery.email} onChange={(v) => onChange("email", v)} ltr />
-      <Field label={t("fieldCompany")} value={delivery.company} onChange={(v) => onChange("company", v)} />
-      <Field label={t("fieldNote")} value={delivery.note} onChange={(v) => onChange("note", v)} />
+      <span className="text-[#151c27] text-[14px] font-semibold">{t(commerceEnabled ? "deliveryDetails" : "contactDetails")}</span>
+      <Field label={t("fieldName")} value={details.name} onChange={(v) => onChange("name", v)} required />
+      <Field label={t("fieldMobile")} value={details.mobile} onChange={(v) => onChange("mobile", v)} required ltr />
+      {commerceEnabled && (
+        <>
+          <Field label={t("fieldArea")} value={details.area} onChange={(v) => onChange("area", v)} required />
+          <Field label={t("fieldAddress")} value={details.address_line} onChange={(v) => onChange("address_line", v)} required />
+        </>
+      )}
+      <Field label={t("fieldEmail")} value={details.email} onChange={(v) => onChange("email", v)} ltr />
+      <Field label={t("fieldCompany")} value={details.company} onChange={(v) => onChange("company", v)} />
+      <Field label={t("fieldNote")} value={details.note} onChange={(v) => onChange("note", v)} />
     </div>
   );
 }

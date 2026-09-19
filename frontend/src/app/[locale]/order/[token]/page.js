@@ -4,6 +4,7 @@ import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
 import CopyButton from "@/components/CopyButton";
 import LocaleControls from "@/components/LocaleControls";
+import OrderStatusBanner from "@/components/OrderStatusBanner";
 import { isolateLtr } from "@/lib/bidi";
 import { API_BASE_URL } from "@/lib/api";
 import { fetchCommerceEnabled } from "@/lib/commerce";
@@ -63,12 +64,13 @@ export default async function OrderConfirmationPage({ params }) {
 
         <div className="flex items-center justify-between gap-[12px]">
           <h1 className="text-[#151c27] text-[22px] font-bold">{t("received", { number: isolateLtr(order.number) })}</h1>
-          <CopyButton text={order.number} label={t("copy")} copiedLabel={t("copied")} />
+          <div className="flex items-center gap-[8px]">
+            <CopyButton text={order.number} label={t("copy")} copiedLabel={t("copied")} />
+            <CopyButton copyPageLink label={t("copyLink")} copiedLabel={t("copied")} />
+          </div>
         </div>
 
-        <div className="bg-[#e5f4ec] text-[#1f7a4d] rounded-[8px] px-[16px] py-[10px] text-[15px] font-semibold">
-          {order.status_message}
-        </div>
+        <OrderStatusBanner token={token} locale={locale} initialMessage={order.status_message} />
 
         {line && (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-[12px]">
@@ -93,30 +95,36 @@ export default async function OrderConfirmationPage({ params }) {
                   <span className="text-[#151c27] text-[12px] font-semibold">{c.label}</span>
                 </div>
               ))}
-              <div className="h-px bg-[#f0f3ff] my-[4px]" />
-              <div className="flex items-center justify-between">
-                <span className="text-[#5d3f3e] text-[12px]">{t("delivery")}</span>
-                <span className="text-[#151c27] text-[12px] font-semibold">{t("free")}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-[#5d3f3e] text-[12px]">{t("payment")}</span>
-                <span className="text-[#151c27] text-[12px] font-semibold">{t("payOnDelivery")}</span>
-              </div>
-              <div className="flex items-center justify-between pt-[8px]">
-                <span className="text-[#151c27] text-[16px] font-bold">{t("total")}</span>
-                <span className="text-[#bb0027] text-[24px] font-extrabold">{t("aed", { amount: line.total_aed })}</span>
-              </div>
+              {commerceEnabled && (
+                <>
+                  <div className="h-px bg-[#f0f3ff] my-[4px]" />
+                  <div className="flex items-center justify-between">
+                    <span className="text-[#5d3f3e] text-[12px]">{t("delivery")}</span>
+                    <span className="text-[#151c27] text-[12px] font-semibold">{t("free")}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[#5d3f3e] text-[12px]">{t("payment")}</span>
+                    <span className="text-[#151c27] text-[12px] font-semibold">{t("payOnDelivery")}</span>
+                  </div>
+                  <div className="flex items-center justify-between pt-[8px]">
+                    <span className="text-[#151c27] text-[16px] font-bold">{t("total")}</span>
+                    <span className="text-[#bb0027] text-[24px] font-extrabold">{t("aed", { amount: line.total_aed })}</span>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         )}
 
         <div className="bg-white rounded-[12px] shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)] p-[16px] flex flex-col gap-[4px]">
-          <span className="text-[#151c27] text-[14px] font-semibold">{t("deliverTo")}</span>
+          <span className="text-[#151c27] text-[14px] font-semibold">{t(commerceEnabled ? "deliverTo" : "contact")}</span>
           <span className="text-[#575c64] text-[13px]">{order.name}</span>
           <span className="text-[#575c64] text-[13px]">
             <bdi dir="ltr">{order.mobile}</bdi>
           </span>
-          <span className="text-[#575c64] text-[13px]">{order.area} — {order.address_line}</span>
+          {commerceEnabled && (
+            <span className="text-[#575c64] text-[13px]">{order.area} — {order.address_line}</span>
+          )}
         </div>
 
         <div className="flex items-center gap-[12px] bg-[#f0f3ff] rounded-[12px] p-[12px]">

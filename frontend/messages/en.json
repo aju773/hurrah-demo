@@ -147,7 +147,10 @@
     "error_artwork_locked": "This artwork is already on an order.",
     "error_invalid_artwork": "This artwork can't be used for this order. Go back and check it.",
     "error_not_available": "This combination isn't available.",
-    "error_invalid_configuration": "Your choices aren't valid. Please review them and try again."
+    "error_invalid_configuration": "Your choices aren't valid. Please review them and try again.",
+    "contactDetails": "Your contact details",
+    "invalidContact": "Please check your name and mobile number.",
+    "expiredNotice": "The cut-off has passed, so your ready date has been updated. Please review your order and approve it again."
   },
   "OrderConfirmation": {
     "notFound": "We couldn't find that order.",
@@ -167,7 +170,9 @@
     "needChanges": "Need changes to your order?",
     "whatsapp": "WhatsApp us",
     "whatsappPrefill": "Hi Hurrah, I have a question about order {number}.",
-    "orderMore": "Order more flyers"
+    "orderMore": "Order more flyers",
+    "copyLink": "Copy link",
+    "contact": "Contact"
   },
   "LanguageToggle": {
     "label": "Language",

@@ -251,6 +251,7 @@ def generate_order_token():
     return secrets.token_urlsafe(24)
 
 
+# Blank while the Commerce switch is off: no payment is taken or recorded.
 PAYMENT_METHOD_CHOICES = [("cod", "Cash/card on delivery")]
 
 PAYMENT_STATUS_CHOICES = [
@@ -284,17 +285,18 @@ class Order(models.Model):
     number = models.CharField(max_length=20, unique=True, editable=False)
     token = models.CharField(max_length=64, unique=True, default=generate_order_token, editable=False)
 
-    # Guest delivery details (spec story 84): no account.
+    # Guest contact details (spec story 84): no account. Area and address are
+    # only collected with the Commerce switch on.
     name = models.CharField(max_length=200)
     mobile = models.CharField(max_length=20)
-    area = models.CharField(max_length=100)
-    address_line = models.CharField(max_length=300)
+    area = models.CharField(max_length=100, blank=True)
+    address_line = models.CharField(max_length=300, blank=True)
     email = models.EmailField(blank=True)
     company = models.CharField(max_length=200, blank=True)
     note = models.CharField(max_length=500, blank=True)
 
-    payment_method = models.CharField(max_length=10, choices=PAYMENT_METHOD_CHOICES, default="cod")
-    payment_status = models.CharField(max_length=10, choices=PAYMENT_STATUS_CHOICES, default="unpaid")
+    payment_method = models.CharField(max_length=10, choices=PAYMENT_METHOD_CHOICES, default="cod", blank=True)
+    payment_status = models.CharField(max_length=10, choices=PAYMENT_STATUS_CHOICES, default="unpaid", blank=True)
 
     status = models.CharField(max_length=20, choices=ORDER_STATUS_CHOICES)
     browsing_language = models.CharField(max_length=10, choices=BROWSING_LANGUAGE_CHOICES, default="en")
@@ -323,10 +325,11 @@ class OrderLine(models.Model):
     # [{"option": code, "name": ..., "value": code, "label": ...}, ...]
     configuration_snapshot = models.JSONField(default=list)
 
-    base_fils = models.PositiveIntegerField()
-    subtotal_fils = models.PositiveIntegerField()
-    vat_fils = models.PositiveIntegerField()
-    total_fils = models.PositiveIntegerField()
+    # Null while the Commerce switch is off: the Quote is not part of the Order.
+    base_fils = models.PositiveIntegerField(null=True, blank=True)
+    subtotal_fils = models.PositiveIntegerField(null=True, blank=True)
+    vat_fils = models.PositiveIntegerField(null=True, blank=True)
+    total_fils = models.PositiveIntegerField(null=True, blank=True)
     # [{"label", "percent", "fils"}, ...]
     uplifts_snapshot = models.JSONField(default=list)
 

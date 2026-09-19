@@ -43,6 +43,21 @@ def render_artwork_images(file_bytes, page_index):
     return {"page_png": page_buf.getvalue(), "thumbnail_png": thumb_buf.getvalue()}
 
 
+# The page image is a convenience: past this the Artwork is kept without one.
+RENDER_BUDGET_S = 10.0
+
+
+def render_artwork_images_bounded(file_bytes, page_index):
+    """render_artwork_images in the worker pool; None when it fails or runs out of time."""
+    from .pdf_utils import run_bounded
+
+    try:
+        finished, images = run_bounded(render_artwork_images, file_bytes, page_index, timeout=RENDER_BUDGET_S)
+    except Exception:
+        return None
+    return images if finished else None
+
+
 def render_page_thumbnail(file_bytes, page_number, longest_edge_px=None):
     """PNG bytes of one page at 400px longest edge (or `longest_edge_px`), rendered straight at that size
     (no 150 dpi detour) so a Page picker with dozens of pages opens quickly."""

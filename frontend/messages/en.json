@@ -53,8 +53,9 @@
     "fallbackProductName": "Flyer Print Order"
   },
   "FlyersPage": {
-    "loadError": "Something went wrong loading the Flyers page. Please refresh.",
-    "title": "Flyers"
+    "loadError": "Something went wrong loading the Flyers page. Please try again.",
+    "title": "Flyers",
+    "retry": "Retry"
   },
   "FlyersConfigurator": {
     "loading": "Loading options…",
@@ -84,7 +85,9 @@
     "configurationSummary": "Your configuration",
     "cardReady": "Ready {date}, <ltr>{window}</ltr>",
     "unavailableCard": "Not available",
-    "returnToApproval": "Return to approval"
+    "returnToApproval": "Return to approval",
+    "syncError": "We couldn't update your options and prices. Your choices are kept, so you can try again.",
+    "retry": "Retry"
   },
   "CheckAndPreviewStep": {
     "loading": "Loading your preview…",
@@ -120,7 +123,8 @@
     "enlargePreview": "Enlarge {side} preview",
     "severityError": "Error",
     "severityWarning": "Warning",
-    "severityNote": "Note"
+    "severityNote": "Note",
+    "retry": "Retry"
   },
   "ApproveAndConfirmStep": {
     "loading": "Loading your proof…",
@@ -163,7 +167,9 @@
     "editOptions": "Edit options",
     "changeFileFront": "Change file: Front",
     "changeFileBack": "Change file: Back",
-    "changeFile": "Change file"
+    "changeFile": "Change file",
+    "retry": "Retry",
+    "networkError": "We couldn't send your order. Your details are kept, so you can try again."
   },
   "OrderConfirmation": {
     "notFound": "We couldn't find that order.",
@@ -185,7 +191,9 @@
     "whatsappPrefill": "Hi Hurrah, I have a question about order {number}.",
     "orderMore": "Order more flyers",
     "copyLink": "Copy link",
-    "contact": "Contact"
+    "contact": "Contact",
+    "loadError": "We couldn't load your order page just now. Your order is safe; please try again.",
+    "retry": "Retry"
   },
   "LanguageToggle": {
     "label": "Language",
@@ -240,13 +248,14 @@
     "listLabel": "Artwork templates",
     "dimensions": "{width} × {height} mm",
     "download": "Download PDF",
-    "unavailable": "Templates aren't available right now. Please try again later.",
+    "unavailable": "Templates aren't available right now. Please try again.",
     "guideTitle": "How to prepare your file",
     "guideBleed": "Bleed: extend your background and images {bleed} mm past the cut edge on every side.",
     "guideSafe": "Safe area: keep text and logos at least {safe} mm inside the cut edge.",
     "guideColour": "Colour: use CMYK. Screen (RGB) colours are converted for print and may look duller.",
     "guideFonts": "Fonts: embed all fonts, or convert text to outlines, when you export the PDF.",
-    "guideResolution": "Resolution: keep images at {ppiWarn} ppi or more at printed size. Below {ppiError} ppi we ask you to fix the file."
+    "guideResolution": "Resolution: keep images at {ppiWarn} ppi or more at printed size. Below {ppiError} ppi we ask you to fix the file.",
+    "retry": "Retry"
   },
   "ArtworkSlot": {
     "detected": "Detected",
@@ -388,7 +397,10 @@
     "closeEnlarged": "Close",
     "loading": "Loading your pages…",
     "loadError": "We couldn't open your pages. Please try again.",
-    "sourceExpired": "This file is no longer stored. Upload it again to choose pages."
+    "sourceExpired": "This file is no longer stored. Upload it again to choose pages.",
+    "retry": "Retry",
+    "thumbnailFailed": "Page {page} didn't load.",
+    "retryThumbnail": "Retry loading page {page}"
   },
   "Hints": {
     "options": "Start here: choose your size, paper, sides, quantity and turnaround, then drop your PDF in the Front slot.",

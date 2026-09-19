@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { API_BASE_URL } from "@/lib/api";
+import { fetchWithTimeout } from "@/lib/network";
 import { NETWORK_FAILED, SERVER_BUSY } from "@/lib/artworkErrors";
 import { assignPages, discardUpload, newUploadKey, startUpload } from "@/lib/uploadArtwork";
 import { artworkAsPage } from "@/lib/pagePicker";
@@ -15,7 +16,7 @@ import PagePicker from "./PagePicker";
 // The file is never judged by its name here; the server checks what it is.
 // `key` identifies one upload across Retry, so the server never stores it twice.
 const RETRYABLE = new Set([NETWORK_FAILED, SERVER_BUSY]);
-const EMPTY_SLOT = { status: "empty", fileName: "", file: null, artwork: null, error: null, progress: 0, key: null, cancelled: false };
+const EMPTY_SLOT = { status: "empty", fileName: "", file: null, reload: false, artwork: null, error: null, progress: 0, key: null, cancelled: false };
 
 /**
  * Step 1's Front/Back artwork slots. A 2-page PDF dropped into Front fills
@@ -236,17 +237,36 @@ export default function ArtworkSlots({
   // removals in this component are the source of truth.
   useEffect(() => {
     let cancelled = false;
+    const asSlot = (data) => ({ ...EMPTY_SLOT, status: "ok", fileName: data.original_filename, artwork: data });
+    // {data} when found, {} when gone (404), {failed: true} when it couldn't be asked
+    // (offline, server error, too slow): that slot shows Retry instead of looking empty.
     async function load(id) {
-      if (!id) return null;
-      const res = await fetch(`${API_BASE_URL}/api/artworks/${id}/`, { cache: "no-store" }).catch(() => null);
-      return res?.ok ? res.json() : null;
+      if (!id) return {};
+      try {
+        const res = await fetchWithTimeout(`${API_BASE_URL}/api/artworks/${id}/`, { cache: "no-store" });
+        if (res.ok) return { data: await res.json() };
+        return res.status === 404 ? {} : { failed: true };
+      } catch {
+        return { failed: true };
+      }
+    }
+    async function reload(which, id) {
+      const result = await load(id);
+      if (cancelled) return null;
+      if (result.failed) {
+        retryRef.current[which] = () => {
+          setSlotFor[which]({ ...EMPTY_SLOT, status: "checking" });
+          reload(which, id);
+        };
+        setSlotFor[which]({ ...EMPTY_SLOT, status: "error", reload: true, error: { code: NETWORK_FAILED, message: null } });
+      } else if (result.data) {
+        setSlotFor[which](asSlot(result.data));
+      }
+      return result.data ?? null;
     }
     (async () => {
-      const [frontData, backData] = await Promise.all([load(initialFrontId), load(initialBackId)]);
+      const [frontData, backData] = await Promise.all([reload("front", initialFrontId), reload("back", initialBackId)]);
       if (cancelled) return;
-      const asSlot = (data) => ({ ...EMPTY_SLOT, status: "ok", fileName: data.original_filename, artwork: data });
-      if (frontData) setFront(asSlot(frontData));
-      if (backData) setBack(asSlot(backData));
       // A 2-page PDF's page 2 in Back: removing Front has to clear it too.
       frontFilledBothRef.current = Boolean(
         frontData && backData && ((frontData.source_page_count === 2 && backData.page_index === 2) || (frontData.source_id != null && frontData.source_id === backData.source_id))
@@ -280,7 +300,7 @@ export default function ArtworkSlots({
           error={front.error}
           progress={front.progress}
           cancelled={front.cancelled}
-          canRetry={Boolean(front.file) && RETRYABLE.has(front.error?.code)}
+          canRetry={Boolean(front.file || front.reload) && RETRYABLE.has(front.error?.code)}
           onFile={handleFrontFile}
           onRemove={handleRemoveFront}
           onCancel={() => handleCancel("front")}
@@ -296,7 +316,7 @@ export default function ArtworkSlots({
           error={back.error}
           progress={back.progress}
           cancelled={back.cancelled}
-          canRetry={Boolean(back.file) && RETRYABLE.has(back.error?.code)}
+          canRetry={Boolean(back.file || back.reload) && RETRYABLE.has(back.error?.code)}
           disabled={sameAsBack}
           onFile={handleBackFile}
           onRemove={handleRemoveBack}

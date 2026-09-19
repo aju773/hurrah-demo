@@ -206,8 +206,8 @@ class PagePickerApiTests(TestCase):
 
     def test_only_assigned_pages_are_analysed_or_stored(self):
         source = self.open_picker()
-        with patch("orders.views.preflight.run_preflight", wraps=preflight.run_preflight) as run, patch(
-            "orders.views.render_artwork_images", wraps=rendering.render_artwork_images
+        with patch("orders.views.preflight.run_preflight_bounded", wraps=preflight.run_preflight_bounded) as run, patch(
+            "orders.views.render_artwork_images_bounded", wraps=rendering.render_artwork_images_bounded
         ) as render:
             self.assign(source, {"front": 3, "back": 4})
         self.assertEqual(run.call_count, 2)

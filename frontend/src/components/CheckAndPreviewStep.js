@@ -9,6 +9,7 @@ import PreviewLoupe from "./PreviewLoupe";
 import EnlargedPreview from "./EnlargedPreview";
 import { Legend, ToggleButton } from "./PreviewControls";
 import FirstVisitHint from "./FirstVisitHint";
+import LoadFailure from "./LoadFailure";
 
 // A group is "located" (ticket 08) when it has a place to jump to on the
 // preview — a bbox, or an edge ring for a bleed code — matching exactly what
@@ -47,11 +48,17 @@ export default function CheckAndPreviewStep({ frontId, backId, sameAsFront, size
   const tFindings = useTranslations("Findings");
   const [preview, setPreview] = useState(null);
   const [error, setError] = useState(false);
+  const [attempt, setAttempt] = useState(0); // bumped by Retry
   const [withGuides, setWithGuides] = useState(true);
   const [enlarged, setEnlarged] = useState(null); // { slot, selectedKey } | null
 
   function openEnlarged(slot, selectedKey = null) {
     setEnlarged({ slot, selectedKey });
+  }
+
+  function retry() {
+    setError(false);
+    setAttempt((n) => n + 1);
   }
 
   useEffect(() => {
@@ -68,16 +75,12 @@ export default function CheckAndPreviewStep({ frontId, backId, sameAsFront, size
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [frontId, backId, sameAsFront, sizeCode, sizeChoice?.mode, sizeChoice?.choice, sizeChoice?.applies_to?.join(",")]);
+  }, [frontId, backId, sameAsFront, sizeCode, sizeChoice?.mode, sizeChoice?.choice, sizeChoice?.applies_to?.join(","), attempt]);
 
   // One live region for the whole step, mounted before the preview arrives, so the
   // result ("Must fix before ordering", "Ready to print"…) is announced when it lands.
   if (error) {
-    return (
-      <div role="alert" className="p-[24px] text-[#bb0027] text-[14px]">
-        {t("loadError")}
-      </div>
-    );
+    return <LoadFailure className="p-[24px]" message={t("loadError")} retryLabel={t("retry")} onRetry={retry} />;
   }
   if (!preview) {
     return (

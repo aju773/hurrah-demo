@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { API_BASE_URL, FLYERS_SLUG } from "@/lib/api";
+import { fetchWithTimeout } from "@/lib/network";
 import {
   canContinue as computeCanContinue,
   initDraft,
@@ -59,17 +60,28 @@ function newIdempotencyKey() {
   return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
+// Null when the Configuration can't be had (offline, server error, too slow);
+// the page then offers Retry and keeps the customer's choices.
 async function fetchConfiguration(locale, selection) {
   const params = new URLSearchParams({ ...selection, locale });
-  const res = await fetch(`${API_BASE_URL}/api/products/${FLYERS_SLUG}/configuration/?${params}`, { cache: "no-store" });
-  if (!res.ok) return null;
-  return res.json();
+  try {
+    const res = await fetchWithTimeout(`${API_BASE_URL}/api/products/${FLYERS_SLUG}/configuration/?${params}`, { cache: "no-store" });
+    return res.ok ? await res.json() : null;
+  } catch {
+    return null;
+  }
 }
 
+// {data} when found; {gone: true} when the server no longer has it (404); otherwise
+// neither (offline, server error): the saved slot is kept rather than dropped.
 async function fetchArtwork(id) {
-  const res = await fetch(`${API_BASE_URL}/api/artworks/${id}/`, { cache: "no-store" });
-  if (!res.ok) return null;
-  return res.json();
+  try {
+    const res = await fetchWithTimeout(`${API_BASE_URL}/api/artworks/${id}/`, { cache: "no-store" });
+    if (res.ok) return { data: await res.json() };
+    return { gone: res.status === 404 };
+  } catch {
+    return {};
+  }
 }
 
 function toSlotArtwork(data) {
@@ -114,6 +126,8 @@ export default function useDraftOrder({ defaults, locale, initialConfiguration }
     });
   });
   const [rehydrating, setRehydrating] = useState(true);
+  const [syncFailed, setSyncFailed] = useState(false); // the last Configuration request didn't come back
+  const [retryTick, setRetryTick] = useState(0); // bumped by retrySync to run the pending request again
   const dispatch = useCallback((action) => setState((s) => reduce(s, action)), []);
 
   // Rehydrate once on mount: sessionStorage/URL hold Option picks, slot
@@ -132,7 +146,8 @@ export default function useDraftOrder({ defaults, locale, initialConfiguration }
         const slot = slots[key];
         if (!slot?.id) continue;
         const fresh = await fetchArtwork(slot.id);
-        slots[key] = fresh ? { ...slot, ...toSlotArtwork(fresh) } : null;
+        if (fresh.data) slots[key] = { ...slot, ...toSlotArtwork(fresh.data) };
+        else if (fresh.gone) slots[key] = null;
       }
       if (cancelled) return;
       // The persisted snapshot never carries quote/blocked/price-grid (they're
@@ -168,11 +183,15 @@ export default function useDraftOrder({ defaults, locale, initialConfiguration }
 
     (async () => {
       const data = await fetchConfiguration(locale, effect.selection);
-      if (!data) return; // a later effect (or unmount) will retry
       // A newer pick/upload may have started a different request while this
       // one was in flight; an out-of-order, now-stale response must not
       // clobber state a newer request already (or will soon) supersede.
       if (inFlight.current !== token) return;
+      if (!data) {
+        setSyncFailed(true); // the customer can Retry; a later pick also tries again
+        return;
+      }
+      setSyncFailed(false);
       if (effect.type === "requote") {
         dispatch({
           type: "REQUOTED",
@@ -195,11 +214,17 @@ export default function useDraftOrder({ defaults, locale, initialConfiguration }
       // the *current* one be launched again on the next render.
       if (inFlight.current === token) inFlight.current = null;
     });
-  }, [state, rehydrating, locale, dispatch]);
+  }, [state, rehydrating, locale, dispatch, retryTick]);
 
   return {
     state,
     rehydrating,
+    syncFailed,
+    retrySync: () => {
+      inFlight.current = null;
+      setSyncFailed(false);
+      setRetryTick((n) => n + 1);
+    },
     dialogs: computeOpenDialogs(state),
     canContinue: computeCanContinue(state),
     pick: (option, value) => dispatch({ type: "PICK", option, value }),

@@ -82,6 +82,16 @@ class ArtworkUploadEndpointTests(TestCase):
         self.assertEqual(data["back"]["matched_size_code"], "a5")
         self.assertEqual(Artwork.objects.count(), 2)
 
+    @override_settings(FILE_UPLOAD_MAX_MEMORY_SIZE=1)
+    def test_a_two_page_file_big_enough_to_spool_to_disk_still_fills_both_sides(self):
+        # Django keeps uploads over FILE_UPLOAD_MAX_MEMORY_SIZE (20 MB in production)
+        # in a temp file; storing the first side must not consume it for the second.
+        res = self.upload(build_pdf({"media": (148, 210)}, {"media": (154, 216)}))
+        self.assertEqual(res.status_code, 201, res.content)
+        self.assertEqual(res.json()["front"]["matched_size_code"], "a5")
+        self.assertEqual(res.json()["back"]["matched_size_code"], "a5")
+        self.assertEqual(Artwork.objects.count(), 2)
+
     def test_two_pages_in_back_opens_the_picker_instead_of_erroring(self):
         res = self.upload(build_pdf({"media": (148, 210)}, {"media": (148, 210)}), slot="back")
         self.assertEqual(res.status_code, 201, res.content)

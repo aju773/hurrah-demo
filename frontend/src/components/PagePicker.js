@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import useDialogA11y from "@/lib/useDialogA11y";
+import { NETWORK_FAILED, SERVER_BUSY } from "@/lib/artworkErrors";
 import { chooseBack, chooseFront, enlargedThumbnailUrl, evaluateChoice, pageSizeLabel } from "@/lib/pagePicker";
 
 /**
@@ -27,6 +28,7 @@ export default function PagePicker({ source, orderedSize, mode = "both", fixed =
   const tErrors = useTranslations("ArtworkErrors");
   const [choice, setChoice] = useState({ front: initialChoice?.front ?? null, back: initialChoice?.back ?? null, same: Boolean(initialChoice?.same) });
   const [enlarged, setEnlarged] = useState(null); // page number | null
+  const [thumbs, setThumbs] = useState({}); // page number -> { failed, nonce }: a thumbnail that didn't load, and how often it was retried
   const dialogRef = useRef(null);
   const openerRef = useRef(null); // the thumbnail that opened the enlarged view, to give focus back to
   const showFront = mode !== "back";
@@ -42,6 +44,13 @@ export default function PagePicker({ source, orderedSize, mode = "both", fixed =
     return label.code ?? t("customSize", { width: label.mm.width, height: label.mm.height });
   };
   const orientationText = (page) => t(page.orientation);
+
+  // A retry asks for the picture again under a new URL, or the browser would replay its failure.
+  const thumbnailSrc = (page) => {
+    const nonce = thumbs[page.number]?.nonce ?? 0;
+    return nonce ? `${page.thumbnail_url}${page.thumbnail_url.includes("?") ? "&" : "?"}retry=${nonce}` : page.thumbnail_url;
+  };
+  const retryable = error != null && (error.code === NETWORK_FAILED || error.code === SERVER_BUSY);
 
   const errorText = error ? (error.code && tErrors.has(error.code) ? tErrors(error.code) : error.message) : null;
 
@@ -100,8 +109,27 @@ export default function PagePicker({ source, orderedSize, mode = "both", fixed =
                   dir="ltr"
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={page.thumbnail_url} alt={t("thumbnailAlt", { page: page.number })} loading="lazy" className="max-w-full max-h-full object-contain" />
+                  <img
+                    src={thumbnailSrc(page)}
+                    alt={t("thumbnailAlt", { page: page.number })}
+                    loading="lazy"
+                    onError={() => setThumbs((m) => ({ ...m, [page.number]: { nonce: m[page.number]?.nonce ?? 0, failed: true } }))}
+                    className={`max-w-full max-h-full object-contain ${thumbs[page.number]?.failed ? "hidden" : ""}`}
+                  />
                 </button>
+                {thumbs[page.number]?.failed && (
+                  <div role="alert" className="flex flex-col gap-[4px] text-[12px] text-[#b0001d]">
+                    <span>{t("thumbnailFailed", { page: page.number })}</span>
+                    <button
+                      type="button"
+                      aria-label={t("retryThumbnail", { page: page.number })}
+                      onClick={() => setThumbs((m) => ({ ...m, [page.number]: { nonce: (m[page.number]?.nonce ?? 0) + 1, failed: false } }))}
+                      className="tap self-start h-[32px] px-[10px] rounded-[8px] border border-[#b0001d] text-[#b0001d] font-semibold"
+                    >
+                      {t("retry")}
+                    </button>
+                  </div>
+                )}
                 <div className="text-[12px] text-[#151c27]">
                   <span className="font-bold">{t("page", { page: page.number })}</span>
                   <span className="text-[#5d3f3e]"> · {orientationText(page)} · <bdi>{sizeText(page)}</bdi></span>
@@ -176,7 +204,7 @@ export default function PagePicker({ source, orderedSize, mode = "both", fixed =
             onClick={() => onConfirm({ front: mode === "back" ? null : choice.front, back: mode === "front" || choice.same ? null : choice.back, same: choice.same })}
             className="tap h-[40px] px-[16px] rounded-[8px] text-[13px] font-semibold bg-[#e51937] text-white disabled:opacity-50"
           >
-            {busy ? t("checking") : t("confirm")}
+            {busy ? t("checking") : retryable ? t("retry") : t("confirm")}
           </button>
         </div>
       </div>

@@ -5,21 +5,35 @@ import SiteFooter from "@/components/SiteFooter";
 import CopyButton from "@/components/CopyButton";
 import LocaleControls from "@/components/LocaleControls";
 import OrderStatusBanner from "@/components/OrderStatusBanner";
+import PageLoadFailure from "@/components/PageLoadFailure";
 import { isolateLtr } from "@/lib/bidi";
 import { API_BASE_URL } from "@/lib/api";
+import { fetchWithTimeout } from "@/lib/network";
 import { fetchCommerceEnabled } from "@/lib/commerce";
 
+// The Order, null when there is none with this link (404), or UNAVAILABLE when the
+// server can't be reached or is failing: the page then says so with a Retry.
+const UNAVAILABLE = Symbol("unavailable");
+
 async function getOrder(token, locale) {
-  const res = await fetch(`${API_BASE_URL}/api/orders/${token}/?locale=${locale}`, { cache: "no-store" });
-  if (!res.ok) return null;
-  return res.json();
+  try {
+    const res = await fetchWithTimeout(`${API_BASE_URL}/api/orders/${token}/?locale=${locale}`, { cache: "no-store" });
+    if (res.ok) return await res.json();
+    return res.status >= 500 ? UNAVAILABLE : null;
+  } catch {
+    return UNAVAILABLE;
+  }
 }
 
 async function getWhatsappNumber() {
-  const res = await fetch(`${API_BASE_URL}/api/design-requests/settings/`, { cache: "no-store" });
-  if (!res.ok) return "";
-  const data = await res.json();
-  return data.whatsapp_number ?? "";
+  try {
+    const res = await fetchWithTimeout(`${API_BASE_URL}/api/design-requests/settings/`, { cache: "no-store" });
+    if (!res.ok) return "";
+    const data = await res.json();
+    return data.whatsapp_number ?? "";
+  } catch {
+    return "";
+  }
 }
 
 function whatsappUrl(number, text) {
@@ -36,6 +50,18 @@ export default async function OrderConfirmationPage({ params }) {
     getWhatsappNumber(),
     fetchCommerceEnabled(),
   ]);
+
+  if (order === UNAVAILABLE) {
+    return (
+      <div className="relative mx-auto bg-[#f9f9ff]" style={{ maxWidth: "1512px" }}>
+        <SiteHeader commerceEnabled={commerceEnabled} />
+        <main id="main" className="flex flex-col items-center justify-center gap-[16px] px-[16px] sm:px-[32px] py-[64px]">
+          <PageLoadFailure message={t("loadError")} retryLabel={t("retry")} />
+        </main>
+        <SiteFooter commerceEnabled={commerceEnabled} />
+      </div>
+    );
+  }
 
   if (!order) {
     return (

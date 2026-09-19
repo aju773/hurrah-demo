@@ -109,3 +109,39 @@ describe("PagePicker: enlarged view", () => {
     expect(onCancel).toHaveBeenCalled();
   });
 });
+
+describe("PagePicker when things fail", () => {
+  it("shows Retry for a thumbnail that didn't load, and asks for it again under a new URL", () => {
+    renderPicker();
+    const thumb = () => screen.getAllByRole("img", { hidden: true }).find((img) => img.getAttribute("alt") === "Page 2");
+    fireEvent.error(thumb());
+    expect(screen.getByText("Page 2 didn't load.")).toBeTruthy();
+    expect(screen.getAllByRole("alert")).toHaveLength(1); // only the failed page
+    fireEvent.click(screen.getByRole("button", { name: "Retry loading page 2" }));
+    expect(screen.queryByText("Page 2 didn't load.")).toBeNull();
+    expect(thumb().getAttribute("src")).toBe("http://api/sources/7/pages/2/thumbnail/?retry=1");
+  });
+
+  it("one thumbnail failing leaves the others and the choice alone", () => {
+    renderPicker({ initialChoice: { front: 2, back: null, same: false } });
+    fireEvent.error(screen.getAllByRole("img", { hidden: true }).find((img) => img.getAttribute("alt") === "Page 3"));
+    expect(screen.getByRole("button", { name: "Use page 2 as Front" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: "Use these pages" })).toBeEnabled();
+  });
+
+  it("calls the confirm button Retry after a dropped connection or a busy server, and Use these pages otherwise", () => {
+    const { rerender } = render(
+      <NextIntlClientProvider locale="en" messages={en}>
+        <PagePicker source={SOURCE} orderedSize="a5" initialChoice={{ front: 2, back: null, same: false }} error={{ code: "network_failed", message: null }} onConfirm={vi.fn()} onCancel={vi.fn()} />
+      </NextIntlClientProvider>
+    );
+    expect(screen.getByRole("button", { name: "Retry" })).toBeEnabled();
+    expect(screen.getByRole("alert")).toHaveTextContent("We couldn't reach the server");
+    rerender(
+      <NextIntlClientProvider locale="en" messages={en}>
+        <PagePicker source={SOURCE} orderedSize="a5" initialChoice={{ front: 2, back: null, same: false }} error={{ code: "back_size_differs", message: null }} onConfirm={vi.fn()} onCancel={vi.fn()} />
+      </NextIntlClientProvider>
+    );
+    expect(screen.getByRole("button", { name: "Use these pages" })).toBeEnabled();
+  });
+});

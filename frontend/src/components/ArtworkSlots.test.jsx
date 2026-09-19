@@ -213,7 +213,8 @@ describe("ArtworkSlots page picker", () => {
     await openPicker();
     fireEvent.click(screen.getByRole("button", { name: "Use page 3 as Front" }));
     await act(async () => fireEvent.click(screen.getByRole("button", { name: "Use these pages" })));
-    await act(async () => fireEvent.click(screen.getByRole("button", { name: "Use these pages" })));
+    // After a busy or dropped answer the button says Retry; it sends the same choice again.
+    await act(async () => fireEvent.click(screen.getByRole("button", { name: "Retry" })));
     const [first, second] = assignCalls(fetchMock).map(([, init]) => JSON.parse(init.body).upload_key);
     expect(first).toBeTruthy();
     expect(second).toBe(first);
@@ -328,5 +329,23 @@ describe("ArtworkSlots Choose pages", () => {
     pickFront(view.container);
     await act(async () => xhr().respond(201, { page_count: 1, front: ARTWORK, back: null, errors: [] }));
     expect(screen.queryByRole("button", { name: "Choose pages" })).toBeNull();
+  });
+});
+
+describe("ArtworkSlots reloading a draft's Artwork", () => {
+  it("shows Retry on a card that couldn't be reloaded (not a blank slot) and fills it once it can", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockRejectedValueOnce(new TypeError("Failed to fetch"))
+      .mockResolvedValue({ ok: true, status: 200, json: () => Promise.resolve({ ...ARTWORK, original_filename: "flyer.pdf" }) });
+    vi.stubGlobal("fetch", fetchMock);
+    await act(async () => {
+      renderSlots({ initialFrontId: 11 });
+    });
+    expect(screen.getByText(en.ArtworkErrors.network_failed)).toBeInTheDocument();
+    await act(async () => fireEvent.click(screen.getByRole("button", { name: "Retry" })));
+    expect(screen.queryByText(en.ArtworkErrors.network_failed)).toBeNull();
+    expect(screen.getByText("flyer.pdf")).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 });

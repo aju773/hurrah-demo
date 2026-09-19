@@ -3,31 +3,31 @@ import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
 import FlyersConfigurator from "@/components/FlyersConfigurator";
 import LocaleControls from "@/components/LocaleControls";
+import PageLoadFailure from "@/components/PageLoadFailure";
 import { API_BASE_URL, FLYERS_SLUG } from "@/lib/api";
+import { fetchWithTimeout } from "@/lib/network";
 
-async function getCatalogue(locale) {
-  const res = await fetch(`${API_BASE_URL}/api/products/${FLYERS_SLUG}/catalogue/?locale=${locale}`, {
-    cache: "no-store",
-  });
-  if (!res.ok) return null;
-  return res.json();
+// Null when the server can't be reached or answers with an error: the page then says
+// so with a Retry instead of failing to render.
+async function getJson(path) {
+  try {
+    const res = await fetchWithTimeout(`${API_BASE_URL}${path}`, { cache: "no-store" });
+    return res.ok ? await res.json() : null;
+  } catch {
+    return null;
+  }
 }
 
-async function getConfiguration(locale) {
-  const res = await fetch(`${API_BASE_URL}/api/products/${FLYERS_SLUG}/configuration/?locale=${locale}`, {
-    cache: "no-store",
-  });
-  if (!res.ok) return null;
-  return res.json();
-}
+const getCatalogue = (locale) => getJson(`/api/products/${FLYERS_SLUG}/catalogue/?locale=${locale}`);
+const getConfiguration = (locale) => getJson(`/api/products/${FLYERS_SLUG}/configuration/?locale=${locale}`);
 
 export default async function FlyersPage() {
   const locale = await getLocale();
   const t = await getTranslations("FlyersPage");
   const [catalogue, configuration] = await Promise.all([getCatalogue(locale), getConfiguration(locale)]);
-  // getCatalogue/getConfiguration return null only on a non-OK fetch response
-  // (see above); a distinct error message keeps that indistinguishable from
-  // FlyersConfigurator's own initial-loading state.
+  // getCatalogue/getConfiguration return null when the server can't be reached or
+  // answers with an error (see above); a distinct error message keeps that
+  // distinguishable from FlyersConfigurator's own initial-loading state.
   const hasError = !catalogue || !configuration;
   // The Commerce switch rides in the catalogue payload; without it, stay money-free.
   const commerceEnabled = catalogue?.commerce_enabled === true;
@@ -41,7 +41,7 @@ export default async function FlyersPage() {
           <LocaleControls />
         </div>
         {hasError ? (
-          <p className="text-[#bb0027] text-[14px]">{t("loadError")}</p>
+          <PageLoadFailure message={t("loadError")} retryLabel={t("retry")} />
         ) : (
           <FlyersConfigurator initialCatalogue={catalogue} initialConfiguration={configuration} />
         )}

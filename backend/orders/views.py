@@ -21,7 +21,7 @@ from .pdf_utils import (
     looks_like_pdf,
     sanitise_filename,
 )
-from .rendering import render_artwork_images
+from .rendering import render_artwork_images_bounded
 from .serializers import ArtworkSerializer, ProductSerializer
 
 VALID_SLOTS = {code for code, _ in SLOT_CHOICES}
@@ -73,7 +73,7 @@ def _preflight_thresholds(product):
 
 def _save_artwork(product, slot, uploaded_file, page_result, source_page_count, page_index, file_bytes, file_repaired, upload_key="", source=None):
     matched_size_id = page_result.get("matched_size_id")
-    report = preflight.run_preflight(
+    report = preflight.run_preflight_bounded(
         file_bytes,
         page_index,
         page_result,
@@ -102,10 +102,7 @@ def _save_artwork(product, slot, uploaded_file, page_result, source_page_count, 
         is_valid=report["headline_severity"] != preflight.ERROR,
         preflight_report=report,
     )
-    try:
-        images = render_artwork_images(file_bytes, page_index)
-    except Exception:
-        images = None
+    images = render_artwork_images_bounded(file_bytes, page_index)
     if images is not None:
         base_name = f"{slot}-{artwork.id}"
         artwork.page_image.save(f"{base_name}.png", ContentFile(images["page_png"]), save=False)
@@ -155,7 +152,6 @@ def _create_source(product, uploaded_file, analysis, upload_key):
         }
         for number, page in enumerate(analysis["pages"], start=1)
     ]
-    uploaded_file.seek(0)
     return SourceFile.objects.create(
         product=product,
         file=uploaded_file,
@@ -277,6 +273,11 @@ class ArtworkUploadView(APIView):
 
         uploaded_file.name = sanitise_filename(uploaded_file.name)
 
+        # Each model that stores the file gets its own copy of the bytes: a big upload
+        # (over FILE_UPLOAD_MAX_MEMORY_SIZE) sits in a temp file that the first save moves away.
+        def stored_copy():
+            return ContentFile(file_bytes, name=uploaded_file.name)
+
         size_values = _size_values_for(product)
         try:
             result = analyze_pdf(
@@ -297,22 +298,19 @@ class ArtworkUploadView(APIView):
         if page_count > 2 or (slot == SLOT_BACK and page_count == 2):
             # Phase one of the Page picker. A multi-page file into Back is the same
             # thing: the customer picks the one page Back takes.
-            source = _create_source(product, uploaded_file, result, upload_key)
+            source = _create_source(product, stored_copy(), result, upload_key)
             return Response(_upload_payload(request, {}, page_count, source=source), status=status.HTTP_201_CREATED)
 
-        uploaded_file.seek(0)
         file_repaired = file_check["repaired"]
         created = {}
         if slot == SLOT_FRONT and page_count == 2:
             # Still one-shot, but the file is kept as a source too, so "Choose pages"
             # can swap Front and Back later. It is bound to the Artwork, not offered.
-            source = _create_source(product, uploaded_file, result, upload_key)
-            uploaded_file.seek(0)
-            created[SLOT_FRONT] = _save_artwork(product, SLOT_FRONT, uploaded_file, pages[0], page_count, 1, file_bytes, file_repaired, upload_key, source=source)
-            uploaded_file.seek(0)
-            created[SLOT_BACK] = _save_artwork(product, SLOT_BACK, uploaded_file, pages[1], page_count, 2, file_bytes, file_repaired, upload_key, source=source)
+            source = _create_source(product, stored_copy(), result, upload_key)
+            created[SLOT_FRONT] = _save_artwork(product, SLOT_FRONT, stored_copy(), pages[0], page_count, 1, file_bytes, file_repaired, upload_key, source=source)
+            created[SLOT_BACK] = _save_artwork(product, SLOT_BACK, stored_copy(), pages[1], page_count, 2, file_bytes, file_repaired, upload_key, source=source)
         else:
-            artwork = _save_artwork(product, slot, uploaded_file, pages[0], page_count, 1, file_bytes, file_repaired, upload_key)
+            artwork = _save_artwork(product, slot, stored_copy(), pages[0], page_count, 1, file_bytes, file_repaired, upload_key)
             created[slot] = artwork
 
             if slot == SLOT_BACK and front_id:

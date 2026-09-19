@@ -6,6 +6,7 @@ import { useRouter } from "@/i18n/navigation";
 import Countdown from "./Countdown";
 import TurnaroundCards from "./TurnaroundCards";
 import ConfigurationSummary from "./ConfigurationSummary";
+import LoadFailure from "./LoadFailure";
 import useDraftOrder, { clearPersistedDraft } from "@/lib/useDraftOrder";
 import DesignHelpDrawer from "./DesignHelpDrawer";
 import ArtworkSlots from "./ArtworkSlots";
@@ -35,6 +36,8 @@ export default function FlyersConfigurator({ initialCatalogue, initialConfigurat
   const {
     state,
     rehydrating,
+    syncFailed,
+    retrySync,
     dialogs,
     pick: draftPick,
     uploadFront,
@@ -127,6 +130,8 @@ export default function FlyersConfigurator({ initialCatalogue, initialConfigurat
 
   const dialog = dialogs[0] ?? null;
 
+  const syncBanner = syncFailed && <LoadFailure message={t("syncError")} retryLabel={t("retry")} onRetry={retrySync} />;
+
   // "Choose pages" (Step 1 and Step 2): the same picker, on the file already stored.
   const canChoosePages = { front: Boolean(pickerTargetFor("front", state.slots)), back: Boolean(pickerTargetFor("back", state.slots)) };
   function openChoosePages(which) {
@@ -200,6 +205,7 @@ export default function FlyersConfigurator({ initialCatalogue, initialConfigurat
   if (state.step === 2) {
     return (
       <div className="flex flex-col gap-[20px] w-full" dir={locale === "ar" ? "rtl" : "ltr"}>
+        {syncBanner}
         <ApproveAndConfirmStep
           catalogue={catalogue}
           selection={selection}
@@ -250,6 +256,8 @@ export default function FlyersConfigurator({ initialCatalogue, initialConfigurat
           {t("chatWithUs")}
         </button>
       </div>
+
+      {syncBanner}
 
       {state.notices?.length > 0 && (
         <div role="status" className="bg-[#fff8e1] border border-[#ffc72c] rounded-[8px] p-[12px] text-[#6f5400] text-[13px]">

@@ -73,7 +73,20 @@ describe("ArtworkTemplatesPanel", () => {
   it("says so, and offers nothing broken, when the templates can't be loaded", async () => {
     stubFetch({ ok: false, json: () => Promise.resolve({}) });
     await show();
-    expect(screen.getByRole("status")).toHaveTextContent("Templates aren't available right now");
+    expect(screen.getByRole("alert")).toHaveTextContent("Templates aren't available right now");
     expect(screen.queryByRole("link")).toBeNull();
+  });
+
+  it("offers Retry when the templates can't be loaded, and shows them once they can", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockRejectedValueOnce(new TypeError("Failed to fetch"))
+      .mockResolvedValue({ ok: true, json: () => Promise.resolve(PAYLOAD) });
+    vi.stubGlobal("fetch", fetchMock);
+    await show();
+    expect(screen.getByRole("alert")).toHaveTextContent("Templates aren't available right now");
+    await act(async () => screen.getByRole("button", { name: "Retry" }).click());
+    expect(screen.getAllByRole("link").length).toBeGreaterThan(0);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 });

@@ -42,6 +42,28 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+describe("ReopenPagePicker when the stored file can't be listed", () => {
+  it("offers Retry after a dropped connection, and opens the picker once it works", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockRejectedValueOnce(new TypeError("Failed to fetch"))
+      .mockResolvedValue({ ok: true, status: 200, json: () => Promise.resolve(SOURCE) });
+    vi.stubGlobal("fetch", fetchMock);
+    await open();
+    expect(screen.getByRole("alert")).toHaveTextContent(en.PagePicker.loadError);
+    await act(async () => fireEvent.click(screen.getByRole("button", { name: "Retry" })));
+    expect(screen.getByRole("dialog", { name: "Choose your flyer pages" })).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("an expired file is not offered Retry: it has to be uploaded again", async () => {
+    vi.stubGlobal("fetch", vi.fn(() => Promise.resolve({ ok: false, status: 410, json: () => Promise.resolve({}) })));
+    await open();
+    expect(screen.getByRole("alert")).toHaveTextContent(en.PagePicker.sourceExpired);
+    expect(screen.queryByRole("button", { name: "Retry" })).toBeNull();
+  });
+});
+
 describe("ReopenPagePicker", () => {
   it("reads the stored source again (no upload) and opens on the pages in use", async () => {
     const fetchMock = routes();

@@ -1,3 +1,4 @@
+import "@testing-library/jest-dom/vitest";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
@@ -117,6 +118,72 @@ describe("ApproveAndConfirmStep with the Commerce switch off", () => {
     fireEvent.click(screen.getByRole("button", { name: en.ApproveAndConfirmStep.submit }));
     expect(await screen.findByText(en.ApproveAndConfirmStep.staleNotice)).toBeTruthy();
     expect(onClockExpire).toHaveBeenCalled();
+  });
+});
+
+describe("ApproveAndConfirmStep when the network or the server fails", () => {
+  async function filledStep(extra) {
+    const view = renderStep({ extra });
+    await screen.findByTestId("proof");
+    const [name, mobile] = view.container.querySelectorAll("input[type=text]");
+    fireEvent.change(name, { target: { value: "Layla" } });
+    fireEvent.change(mobile, { target: { value: "+971501234567" } });
+    return view;
+  }
+  const submit = () => screen.getByRole("button", { name: en.ApproveAndConfirmStep.submit });
+
+  it("offers Retry when the proof can't be loaded, and shows it once it can", async () => {
+    const { fetchPreview } = await import("@/lib/preview");
+    fetchPreview.mockResolvedValueOnce(null);
+    renderStep();
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent(en.ApproveAndConfirmStep.loadError);
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    expect(await screen.findByTestId("proof")).toBeTruthy();
+  });
+
+  it("keeps the details and offers Retry when Submit can't reach the server; Retry resends the same key", async () => {
+    const order = { token: "tok", number: "HUR-10001" };
+    const fetchMock = vi
+      .fn()
+      .mockRejectedValueOnce(new TypeError("Failed to fetch"))
+      .mockResolvedValueOnce({ status: 201, json: async () => order });
+    vi.stubGlobal("fetch", fetchMock);
+    const onSubmitted = vi.fn();
+    const { container } = await filledStep({ onSubmitted });
+    fireEvent.click(submit());
+    expect(await screen.findByRole("alert")).toHaveTextContent(en.ApproveAndConfirmStep.networkError);
+    expect(container.querySelectorAll("input[type=text]")[0].value).toBe("Layla");
+    expect(onSubmitted).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    await waitFor(() => expect(onSubmitted).toHaveBeenCalledWith(order));
+    const keys = fetchMock.mock.calls.map(([, init]) => JSON.parse(init.body).idempotency_key);
+    expect(keys).toEqual(["key-1", "key-1"]);
+  });
+
+  it("treats a server error like a dropped connection: friendly message, Retry, nothing lost", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => ({ status: 500, json: async () => { throw new SyntaxError("not json"); } })));
+    await filledStep();
+    fireEvent.click(submit());
+    expect(await screen.findByRole("alert")).toHaveTextContent(en.ApproveAndConfirmStep.networkError);
+    expect(screen.getByRole("button", { name: "Retry" })).toBeTruthy();
+  });
+
+  it("gives up on a server that never answers", async () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    try {
+      vi.stubGlobal("fetch", vi.fn((url, init) => new Promise((_, reject) => init.signal.addEventListener("abort", () => reject(new Error("aborted"))))));
+      const { container } = renderStep();
+      await vi.waitFor(() => expect(screen.queryByTestId("proof")).toBeTruthy());
+      const [name, mobile] = container.querySelectorAll("input[type=text]");
+      fireEvent.change(name, { target: { value: "Layla" } });
+      fireEvent.change(mobile, { target: { value: "+971501234567" } });
+      fireEvent.click(submit());
+      await vi.advanceTimersByTimeAsync(31000);
+      expect(screen.getByRole("alert")).toHaveTextContent(en.ApproveAndConfirmStep.networkError);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 

@@ -53,12 +53,13 @@
     "fallbackProductName": "Flyer Print Order"
   },
   "FlyersPage": {
-    "loadError": "حدث خطأ أثناء تحميل صفحة الفلايرز. يرجى تحديث الصفحة.",
-    "title": "فلايرز"
+    "loadError": "حدث خطأ أثناء تحميل صفحة الفلايرز. يرجى المحاولة مرة أخرى.",
+    "title": "فلايرز",
+    "retry": "إعادة المحاولة"
   },
   "FlyersConfigurator": {
     "loading": "جارٍ تحميل الخيارات…",
-    "catalogueError": "حدث خطأ أثناء تحميل الكتالوج. يرجى تحديث الصفحة.",
+    "catalogueError": "حدث خطأ أثناء تحميل الكتالوج. يرجى المحاولة مرة أخرى.",
     "noArtworkHeading": "ليس لديك تصميم بعد؟",
     "noArtworkBody": "أرسل لنا ملخصًا وسنصممه لك.",
     "needDesign": "بحاجة إلى تصميم؟",
@@ -84,7 +85,9 @@
     "configurationSummary": "تكوين طلبك",
     "cardReady": "جاهز {date}، <ltr>{window}</ltr>",
     "unavailableCard": "غير متاح",
-    "returnToApproval": "العودة إلى الموافقة"
+    "returnToApproval": "العودة إلى الموافقة",
+    "syncError": "تعذّر تحديث الخيارات والأسعار. اختياراتك محفوظة، يمكنك المحاولة مرة أخرى.",
+    "retry": "إعادة المحاولة"
   },
   "CheckAndPreviewStep": {
     "loading": "جارٍ تحميل المعاينة…",
@@ -120,7 +123,8 @@
     "enlargePreview": "تكبير معاينة {side}",
     "severityError": "خطأ",
     "severityWarning": "تحذير",
-    "severityNote": "ملاحظة"
+    "severityNote": "ملاحظة",
+    "retry": "إعادة المحاولة"
   },
   "ApproveAndConfirmStep": {
     "loading": "جارٍ تحميل نسخة الإثبات…",
@@ -163,7 +167,9 @@
     "editOptions": "تعديل الخيارات",
     "changeFileFront": "تغيير الملف: الوجه الأمامي",
     "changeFileBack": "تغيير الملف: الوجه الخلفي",
-    "changeFile": "تغيير الملف"
+    "changeFile": "تغيير الملف",
+    "retry": "إعادة المحاولة",
+    "networkError": "تعذّر إرسال طلبك. بياناتك محفوظة، يمكنك المحاولة مرة أخرى."
   },
   "OrderConfirmation": {
     "notFound": "تعذر العثور على هذا الطلب.",
@@ -185,7 +191,9 @@
     "whatsappPrefill": "مرحبًا هُرَّة، لدي سؤال بخصوص الطلب {number}.",
     "orderMore": "اطلب المزيد من الفلايرز",
     "copyLink": "نسخ الرابط",
-    "contact": "التواصل"
+    "contact": "التواصل",
+    "loadError": "تعذّر تحميل صفحة طلبك الآن. طلبك محفوظ، يُرجى المحاولة مرة أخرى.",
+    "retry": "إعادة المحاولة"
   },
   "LanguageToggle": {
     "label": "اللغة",
@@ -240,13 +248,14 @@
     "listLabel": "قوالب التصميم",
     "dimensions": "{width} × {height} مم",
     "download": "تنزيل PDF",
-    "unavailable": "القوالب غير متاحة الآن. يُرجى المحاولة لاحقًا.",
+    "unavailable": "القوالب غير متاحة الآن. يُرجى المحاولة مرة أخرى.",
     "guideTitle": "كيف تجهّز ملفك",
     "guideBleed": "الهامش: مدّ الخلفية والصور {bleed} مم بعد حافة القص من كل جانب.",
     "guideSafe": "المنطقة الآمنة: أبقِ النصوص والشعارات على بعد {safe} مم على الأقل داخل حافة القص.",
     "guideColour": "الألوان: استخدم CMYK. تُحوَّل ألوان الشاشة (RGB) للطباعة وقد تبدو أكثر خفوتًا.",
     "guideFonts": "الخطوط: ضمّن جميع الخطوط أو حوّل النص إلى مسارات عند تصدير ملف PDF.",
-    "guideResolution": "الدقة: اجعل الصور بدقة {ppiWarn} ppi أو أكثر بحجم الطباعة. وأقل من {ppiError} ppi سنطلب منك إصلاح الملف."
+    "guideResolution": "الدقة: اجعل الصور بدقة {ppiWarn} ppi أو أكثر بحجم الطباعة. وأقل من {ppiError} ppi سنطلب منك إصلاح الملف.",
+    "retry": "إعادة المحاولة"
   },
   "ArtworkSlot": {
     "detected": "تم الكشف",
@@ -388,7 +397,10 @@
     "closeEnlarged": "إغلاق",
     "loading": "جارٍ تحميل صفحاتك…",
     "loadError": "تعذّر فتح صفحاتك. حاول مرة أخرى.",
-    "sourceExpired": "لم يعد هذا الملف محفوظًا. ارفعه مرة أخرى لاختيار الصفحات."
+    "sourceExpired": "لم يعد هذا الملف محفوظًا. ارفعه مرة أخرى لاختيار الصفحات.",
+    "retry": "إعادة المحاولة",
+    "thumbnailFailed": "تعذّر تحميل الصفحة {page}.",
+    "retryThumbnail": "إعادة تحميل الصفحة {page}"
   },
   "Hints": {
     "options": "ابدأ من هنا: اختر المقاس والورق والوجهين والكمية ومدة التنفيذ، ثم أفلت ملف PDF في خانة الوجه الأمامي.",

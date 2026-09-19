@@ -3,9 +3,11 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { API_BASE_URL } from "@/lib/api";
+import { fetchWithTimeout } from "@/lib/network";
 import { assignPages, newUploadKey } from "@/lib/uploadArtwork";
 import { changedFromInitial } from "@/lib/reopenPicker";
 import PagePicker from "./PagePicker";
+import LoadFailure from "./LoadFailure";
 import useDialogA11y from "@/lib/useDialogA11y";
 
 /**
@@ -23,6 +25,7 @@ export default function ReopenPagePicker({ target, slots, orderedSize, onAssigne
   const tErrors = useTranslations("ArtworkErrors");
   const [source, setSource] = useState(null);
   const [loadError, setLoadError] = useState(null);
+  const [attempt, setAttempt] = useState(0); // bumped by Retry
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
   const attemptRef = useRef({ signature: null, keys: [] }); // one key per identical choice, so a resend is safe
@@ -31,7 +34,7 @@ export default function ReopenPagePicker({ target, slots, orderedSize, onAssigne
     let cancelled = false;
     (async () => {
       try {
-        const res = await fetch(`${API_BASE_URL}/api/sources/${target.sourceId}/`, { cache: "no-store" });
+        const res = await fetchWithTimeout(`${API_BASE_URL}/api/sources/${target.sourceId}/`, { cache: "no-store" });
         const data = res.ok ? await res.json() : null;
         if (cancelled) return;
         if (data) setSource(data);
@@ -43,7 +46,7 @@ export default function ReopenPagePicker({ target, slots, orderedSize, onAssigne
     return () => {
       cancelled = true;
     };
-  }, [target.sourceId]);
+  }, [target.sourceId, attempt]);
 
   function keyFor(signature, step) {
     if (attemptRef.current.signature !== signature) attemptRef.current = { signature, keys: [] };
@@ -84,7 +87,18 @@ export default function ReopenPagePicker({ target, slots, orderedSize, onAssigne
   if (loadError) {
     return (
       <Overlay onClose={onCancel}>
-        <p role="alert" className="text-[#bb0027] text-[13px]">{t(loadError)}</p>
+        {loadError === "loadError" ? (
+          <LoadFailure
+            message={t("loadError")}
+            retryLabel={t("retry")}
+            onRetry={() => {
+              setLoadError(null);
+              setAttempt((n) => n + 1);
+            }}
+          />
+        ) : (
+          <p role="alert" className="text-[#bb0027] text-[13px]">{t(loadError)}</p>
+        )}
         <button type="button" onClick={onCancel} className="tap self-end h-[40px] px-[16px] rounded-[8px] text-[13px] font-semibold border border-[#e2e8f8]">
           {t("cancel")}
         </button>

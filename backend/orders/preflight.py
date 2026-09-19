@@ -36,6 +36,9 @@ _SEVERITY_RANK = {OK: 0, NOTE: 1, WARNING: 2, ERROR: 3}
 
 MAX_UPLOAD_MB = 100
 CHECK_BUDGET_S = 15.0
+# run_preflight only looks at the clock between checks; one slow check (a huge page
+# render) can overrun, so the caller stops waiting this long after the budget.
+OVERRUN_GRACE_S = 5.0
 
 MESSAGES_EN = {
     ("bleed_missing", WARNING): "Your design goes to the edge but has no extra margin, so a thin white line may show after cutting.",
@@ -548,4 +551,28 @@ def run_preflight(file_bytes, page_index, geometry, thresholds, slot, budget_s=C
     if incomplete:
         findings.append(finding("check_incomplete", WARNING, slot=slot, page=page_index))
 
+    return build_report(findings, thresholds)
+
+
+def run_preflight_bounded(file_bytes, page_index, geometry, thresholds, slot, file_repaired=False):
+    """run_preflight in the worker pool, given up on when it overruns its budget:
+    the slot then gets the same "couldn't finish checking" Warning a cooperative
+    stop gives, so a very large file never blocks the customer."""
+    from .pdf_utils import run_bounded
+
+    finished, report = run_bounded(
+        run_preflight,
+        file_bytes,
+        page_index,
+        geometry,
+        thresholds,
+        slot,
+        CHECK_BUDGET_S,
+        file_repaired,
+        timeout=CHECK_BUDGET_S + OVERRUN_GRACE_S,
+    )
+    if finished:
+        return report
+    findings = [finding("file_repaired", WARNING, slot=slot, page=page_index)] if file_repaired else []
+    findings.append(finding("check_incomplete", WARNING, slot=slot, page=page_index))
     return build_report(findings, thresholds)

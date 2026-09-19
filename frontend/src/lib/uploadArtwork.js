@@ -1,5 +1,6 @@
 import { API_BASE_URL } from "@/lib/api";
 import { uploadErrorFrom } from "@/lib/artworkErrors";
+import { CHECK_TIMEOUT_MS, fetchWithTimeout } from "@/lib/network";
 
 /** One id per upload the customer starts. Retry sends the same one, so the
  * server can tell a resend from a new file and never stores it twice. */
@@ -15,7 +16,9 @@ export function newUploadKey() {
  *   {cancelled: true}   the customer cancelled
  * `onProgress(fraction)` runs while bytes go out, `onSent()` once they are all
  * out and the server is checking the file. Cancelling after that also asks the
- * server to drop anything it already stored for this key.
+ * server to drop anything it already stored for this key. A server that takes
+ * longer than CHECK_TIMEOUT_MS to answer once the file is sent counts as a
+ * network failure (Retry sends the same key, so nothing is stored twice).
  */
 export function startUpload({ file, slot, productId, frontId, key, onProgress, onSent }) {
   const form = new FormData();
@@ -28,6 +31,9 @@ export function startUpload({ file, slot, productId, frontId, key, onProgress, o
   const xhr = new XMLHttpRequest();
   let sent = false;
   let cancelled = false;
+  let waitTimer = null;
+  let timedOut = false;
+  const networkFailure = () => ({ ok: false, data: {}, error: uploadErrorFrom({ status: 0, data: {}, networkFailed: true }) });
 
   const promise = new Promise((resolve) => {
     xhr.upload.onprogress = (e) => {
@@ -36,8 +42,15 @@ export function startUpload({ file, slot, productId, frontId, key, onProgress, o
     xhr.upload.onload = () => {
       sent = true;
       onSent?.();
+      waitTimer = setTimeout(() => {
+        if (cancelled) return;
+        timedOut = true;
+        xhr.abort();
+        if (key) discardUpload(key);
+      }, CHECK_TIMEOUT_MS);
     };
     xhr.onload = () => {
+      clearTimeout(waitTimer);
       if (cancelled) return resolve({ cancelled: true });
       let data = {};
       try {
@@ -47,10 +60,14 @@ export function startUpload({ file, slot, productId, frontId, key, onProgress, o
       resolve({ ok, data, error: ok ? null : uploadErrorFrom({ status: xhr.status, data }) });
     };
     xhr.onerror = () => {
+      clearTimeout(waitTimer);
       if (cancelled) return resolve({ cancelled: true });
-      resolve({ ok: false, data: {}, error: uploadErrorFrom({ status: 0, data: {}, networkFailed: true }) });
+      resolve(networkFailure());
     };
-    xhr.onabort = () => resolve({ cancelled: true });
+    xhr.onabort = () => {
+      clearTimeout(waitTimer);
+      resolve(timedOut ? networkFailure() : { cancelled: true });
+    };
     xhr.open("POST", `${API_BASE_URL}/api/artworks/`);
     xhr.send(form);
   });
@@ -58,6 +75,7 @@ export function startUpload({ file, slot, productId, frontId, key, onProgress, o
   function cancel() {
     if (cancelled) return;
     cancelled = true;
+    clearTimeout(waitTimer);
     xhr.abort();
     if (sent && key) {
       // The server may already have stored it; best effort, nothing to wait for.
@@ -83,11 +101,11 @@ export async function assignPages({ sourceId, front, back, frontId, backId, key 
   if (backId) body.back_id = backId;
   if (key) body.upload_key = key;
   try {
-    const res = await fetch(`${API_BASE_URL}/api/sources/${sourceId}/assign/`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
+    const res = await fetchWithTimeout(
+      `${API_BASE_URL}/api/sources/${sourceId}/assign/`,
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) },
+      CHECK_TIMEOUT_MS
+    );
     const data = await res.json().catch(() => ({}));
     return { ok: res.ok, data, error: res.ok ? null : uploadErrorFrom({ status: res.status, data }) };
   } catch {

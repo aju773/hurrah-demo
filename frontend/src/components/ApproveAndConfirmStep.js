@@ -7,7 +7,12 @@ import Countdown from "./Countdown";
 import { combineFindings, warningShortName } from "@/lib/findings";
 import { fetchPreview } from "@/lib/preview";
 import ArtworkPreview from "./ArtworkPreview";
+import { fetchWithTimeout } from "@/lib/network";
 import FirstVisitHint from "./FirstVisitHint";
+import LoadFailure from "./LoadFailure";
+
+// A placed Order takes longer to answer than a page load (it re-checks the Artwork).
+const SUBMIT_TIMEOUT_MS = 30000;
 
 // +971 is prefilled: every customer is on a UAE mobile.
 const EMPTY_DETAILS = { name: "", mobile: "+971", area: "", address_line: "", email: "", company: "", note: "" };
@@ -49,10 +54,12 @@ export default function ApproveAndConfirmStep({
   const t = useTranslations("ApproveAndConfirmStep");
   const [preview, setPreview] = useState(null);
   const [previewError, setPreviewError] = useState(false);
+  const [attempt, setAttempt] = useState(0); // bumped by Retry
   const [details, setDetails] = useState(EMPTY_DETAILS);
   const [notice, setNotice] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState(null);
+  const [submitRetryable, setSubmitRetryable] = useState(false); // the failure was the connection or the server, not the Order
 
   useEffect(() => {
     let cancelled = false;
@@ -68,10 +75,20 @@ export default function ApproveAndConfirmStep({
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [frontId, backId, sameAsFront, sizeCode, sizeChoice?.mode, sizeChoice?.choice, sizeChoice?.applies_to?.join(",")]);
+  }, [frontId, backId, sameAsFront, sizeCode, sizeChoice?.mode, sizeChoice?.choice, sizeChoice?.applies_to?.join(","), attempt]);
 
   if (previewError) {
-    return <div className="p-[24px] text-[#bb0027] text-[14px]">{t("loadError")}</div>;
+    return (
+      <LoadFailure
+        className="p-[24px]"
+        message={t("loadError")}
+        retryLabel={t("retry")}
+        onRetry={() => {
+          setPreviewError(false);
+          setAttempt((n) => n + 1);
+        }}
+      />
+    );
   }
   if (!preview || (commerceEnabled && !quote) || !clock) {
     return <div className="p-[24px] text-[#575c64] text-[14px]">{t("loading")}</div>;
@@ -114,6 +131,7 @@ export default function ApproveAndConfirmStep({
   async function handleSubmit() {
     setSubmitting(true);
     setSubmitError(null);
+    setSubmitRetryable(false);
     setNotice(null);
     try {
       const body = {
@@ -139,12 +157,21 @@ export default function ApproveAndConfirmStep({
         browsing_language: browsingLanguage,
         idempotency_key: idempotencyKey,
       };
-      const res = await fetch(`${API_BASE_URL}/api/products/${FLYERS_SLUG}/orders/`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      const data = await res.json();
+      let res;
+      try {
+        res = await fetchWithTimeout(
+          `${API_BASE_URL}/api/products/${FLYERS_SLUG}/orders/`,
+          { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) },
+          SUBMIT_TIMEOUT_MS
+        );
+      } catch {
+        // Offline or too slow: the Order may or may not have been placed. The same
+        // idempotency key goes out again on Retry, so it is placed once either way.
+        setSubmitError(t("networkError"));
+        setSubmitRetryable(true);
+        return;
+      }
+      const data = await res.json().catch(() => ({}));
       if (res.status === 201 || res.status === 200) {
         onSubmitted(data);
         return;
@@ -153,6 +180,9 @@ export default function ApproveAndConfirmStep({
         onClockExpire(); // refresh + clear ticks: the proof on screen is stale
         setSubmitError(null);
         setNotice(t("staleNotice"));
+      } else if (res.status >= 500 || res.status === 429) {
+        setSubmitError(t("networkError"));
+        setSubmitRetryable(true);
       } else if (data.code === "invalid_delivery" || data.code === "invalid_contact") {
         setSubmitError(t(commerceEnabled ? "invalidDelivery" : "invalidContact"));
       } else if (data.code === "artwork_has_errors") {
@@ -271,7 +301,11 @@ export default function ApproveAndConfirmStep({
           </div>
 
           {hasError && <p className="text-[#bb0027] text-[13px] font-semibold">{t("hasErrors")}</p>}
-          {submitError && <p className="text-[#bb0027] text-[13px] font-semibold">{submitError}</p>}
+          {submitError && submitRetryable ? (
+            <LoadFailure message={submitError} retryLabel={t("retry")} onRetry={handleSubmit} />
+          ) : (
+            submitError && <p className="text-[#bb0027] text-[13px] font-semibold">{submitError}</p>
+          )}
 
           <div className="flex flex-wrap items-center justify-end gap-[12px]">
             <button

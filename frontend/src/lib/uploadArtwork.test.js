@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { newUploadKey, startUpload } from "./uploadArtwork";
+import { assignPages, newUploadKey, startUpload } from "./uploadArtwork";
+import { CHECK_TIMEOUT_MS } from "./network";
 
 // A hand-driven XMLHttpRequest: the test decides when bytes are sent, when the
 // server answers and when the connection drops.
@@ -137,6 +138,64 @@ describe("startUpload", () => {
     cancel();
     xhr.respond(201, { front: { id: 9 } });
     expect(await promise).toEqual({ cancelled: true });
+  });
+});
+
+describe("a slow server", () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+
+  it("gives up on a check that takes too long, as a network failure the customer can retry", async () => {
+    const { promise } = startUpload(args());
+    const [xhr] = FakeXhr.instances;
+    xhr.finishSending();
+    await vi.advanceTimersByTimeAsync(CHECK_TIMEOUT_MS + 1);
+    const result = await promise;
+    expect(result.ok).toBe(false);
+    expect(result.error.code).toBe("network_failed");
+    expect(xhr.aborted).toBe(true);
+    // The server may have kept the file; the retry sends the same key, so it is dropped or reused.
+    expect(fetch.mock.calls[0][0]).toMatch(/upload_key=k1$/);
+  });
+
+  it("does not start the clock while bytes are still going out (a slow connection is not a slow server)", async () => {
+    const { promise, cancel } = startUpload(args());
+    FakeXhr.instances[0].sendBytes(10, 100);
+    await vi.advanceTimersByTimeAsync(CHECK_TIMEOUT_MS * 3);
+    expect(FakeXhr.instances[0].aborted).toBe(false);
+    cancel();
+    await promise;
+  });
+
+  it("an answer in time cancels the clock", async () => {
+    const { promise } = startUpload(args());
+    const [xhr] = FakeXhr.instances;
+    xhr.finishSending();
+    xhr.respond(201, { front: { id: 1 }, errors: [] });
+    expect((await promise).ok).toBe(true);
+    await vi.advanceTimersByTimeAsync(CHECK_TIMEOUT_MS * 2);
+    expect(xhr.aborted).toBe(false);
+  });
+});
+
+describe("assignPages", () => {
+  afterEach(() => vi.useRealTimers());
+
+  it("turns a dropped connection into network_failed", async () => {
+    vi.stubGlobal("fetch", vi.fn(() => Promise.reject(new TypeError("Failed to fetch"))));
+    const result = await assignPages({ sourceId: 4, front: 1 });
+    expect(result).toMatchObject({ ok: false, error: { code: "network_failed" } });
+  });
+
+  it("turns a server that never answers into network_failed", async () => {
+    vi.useFakeTimers();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((url, options) => new Promise((_, reject) => options.signal.addEventListener("abort", () => reject(new Error("aborted")))))
+    );
+    const pending = assignPages({ sourceId: 4, front: 1 });
+    await vi.advanceTimersByTimeAsync(CHECK_TIMEOUT_MS + 1);
+    expect(await pending).toMatchObject({ ok: false, error: { code: "network_failed" } });
   });
 });
 

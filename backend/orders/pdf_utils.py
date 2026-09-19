@@ -20,6 +20,8 @@ request thread that triggered the upload.
 import io
 import re
 from concurrent.futures import ProcessPoolExecutor
+from concurrent.futures import TimeoutError as FutureTimeoutError
+from concurrent.futures.process import BrokenProcessPool
 
 import pikepdf
 
@@ -275,13 +277,48 @@ def _get_executor():
     return _executor
 
 
+def _reset_executor():
+    """Drops the worker pool and stops its workers, so a job that ran out of time
+    can't keep a worker busy for the requests behind it. The next job starts a fresh pool."""
+    global _executor
+    pool, _executor = _executor, None
+    if pool is None:
+        return
+    for process in list((getattr(pool, "_processes", None) or {}).values()):
+        try:
+            process.terminate()
+        except Exception:
+            pass
+    pool.shutdown(wait=False, cancel_futures=True)
+
+
+def run_bounded(fn, *args, timeout):
+    """Runs `fn(*args)` in the worker pool and waits at most `timeout` seconds:
+    (True, result) when it finished, (False, None) when it ran out of time (its
+    worker is stopped). Errors `fn` raises propagate, as they would in-process."""
+    for attempt in (1, 2):
+        future = _get_executor().submit(fn, *args)
+        try:
+            return True, future.result(timeout=timeout)
+        except FutureTimeoutError:
+            _reset_executor()
+            return False, None
+        except BrokenProcessPool:
+            # A worker died (or was stopped by another request's timeout): start over once.
+            _reset_executor()
+            if attempt == 2:
+                raise
+
+
 def analyze_pdf(file_obj, size_values, tolerance_mm, bleed_min_mm, bleed_max_mm, timeout=30):
     """Read `file_obj` (a Django UploadedFile or any file-like object) in a
     process pool worker. `size_values` is a list of plain dicts
     {id, code, width_mm, height_mm} for the Product's active Size values."""
     file_obj.seek(0)
     file_bytes = file_obj.read()
-    future = _get_executor().submit(
-        analyze_pdf_bytes, file_bytes, size_values, tolerance_mm, bleed_min_mm, bleed_max_mm
+    finished, result = run_bounded(
+        analyze_pdf_bytes, file_bytes, size_values, tolerance_mm, bleed_min_mm, bleed_max_mm, timeout=timeout
     )
-    return future.result(timeout=timeout)
+    if not finished:
+        raise TimeoutError("PDF analysis ran out of time")
+    return result

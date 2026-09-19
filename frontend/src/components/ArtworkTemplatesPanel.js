@@ -3,6 +3,8 @@
 import { useEffect, useId, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { API_BASE_URL, FLYERS_SLUG } from "@/lib/api";
+import { fetchWithTimeout } from "@/lib/network";
+import LoadFailure from "./LoadFailure";
 
 /**
  * "Artwork templates and guide", beside the upload slots: a download link for the
@@ -16,17 +18,18 @@ export default function ArtworkTemplatesPanel({ productSlug = FLYERS_SLUG }) {
   const locale = useLocale();
   const headingId = useId();
   const [state, setState] = useState({ status: "loading", data: null });
+  const [attempt, setAttempt] = useState(0); // bumped by Retry
 
   useEffect(() => {
     let cancelled = false;
-    fetch(`${API_BASE_URL}/api/products/${productSlug}/templates/?locale=${locale}`, { cache: "no-store" })
+    fetchWithTimeout(`${API_BASE_URL}/api/products/${productSlug}/templates/?locale=${locale}`, { cache: "no-store" })
       .then((res) => (res.ok ? res.json() : Promise.reject(new Error("templates"))))
       .then((data) => !cancelled && setState({ status: "ok", data }))
       .catch(() => !cancelled && setState({ status: "error", data: null }));
     return () => {
       cancelled = true;
     };
-  }, [productSlug, locale]);
+  }, [productSlug, locale, attempt]);
 
   const shell = "flex flex-col gap-[12px] bg-white border border-[#e2bebc] rounded-[12px] p-[16px] w-full";
   const heading = (
@@ -41,9 +44,14 @@ export default function ArtworkTemplatesPanel({ productSlug = FLYERS_SLUG }) {
     return (
       <section aria-labelledby={headingId} className={shell}>
         {heading}
-        <p role="status" className="text-[#5d3f3e] text-[13px]">
-          {t("unavailable")}
-        </p>
+        <LoadFailure
+          message={t("unavailable")}
+          retryLabel={t("retry")}
+          onRetry={() => {
+            setState({ status: "loading", data: null });
+            setAttempt((n) => n + 1);
+          }}
+        />
       </section>
     );
   }

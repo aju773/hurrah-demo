@@ -74,6 +74,10 @@ _Avoid_: Crop, stretch, scale to fill
 Whether a page is portrait or landscape. Recorded per side; not an Option, so a Size matches either way round.
 _Avoid_: Rotation, layout
 
+**Page picker**:
+The dialog that opens after a PDF of more than 2 pages (up to 50) is uploaded, showing a thumbnail of every page so the customer chooses which page is Front and which is Back (or no Back). Only the chosen pages become Artwork and get a Preflight report; the uploaded file is kept as a source file until then and expires after 24 hours if never used. Front and Back must be the same Size.
+_Avoid_: Page selector, page splitter, split PDF
+
 ### Commerce
 
 **Commerce switch**:

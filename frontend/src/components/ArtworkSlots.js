@@ -4,9 +4,10 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { API_BASE_URL } from "@/lib/api";
 import { NETWORK_FAILED, SERVER_BUSY } from "@/lib/artworkErrors";
-import { newUploadKey, startUpload } from "@/lib/uploadArtwork";
+import { assignPages, discardUpload, newUploadKey, startUpload } from "@/lib/uploadArtwork";
 import ArtworkSlot from "./ArtworkSlot";
 import DesignHelpDrawer from "./DesignHelpDrawer";
+import PagePicker from "./PagePicker";
 
 // A slot's error is {code, message}: the code picks the translated text in
 // ArtworkSlot, and the server's English message covers a code we don't know yet.
@@ -20,6 +21,10 @@ const EMPTY_SLOT = { status: "empty", fileName: "", file: null, artwork: null, e
  * both slots. "Use the same artwork for the back" re-uploads Front's file
  * into the Back slot without the customer picking it twice.
  *
+ * A PDF of more than 2 pages opens the Page picker (phase one stored the file,
+ * no Artwork yet); the customer's Front/Back choice is phase two. `orderedSize`
+ * is the Size code the picker warns against.
+ *
  * `sameAsBack` and its toggle are controlled by the parent (the draft-order
  * state, ticket 05) so a sync dialog's "use the same artwork for the back"
  * choice can drive this slot exactly like the checkbox does. The on*Result
@@ -27,6 +32,7 @@ const EMPTY_SLOT = { status: "empty", fileName: "", file: null, artwork: null, e
  */
 export default function ArtworkSlots({
   productId,
+  orderedSize = null,
   initialFrontId,
   initialBackId,
   sameAsBack,
@@ -40,6 +46,9 @@ export default function ArtworkSlots({
   const [front, setFront] = useState(EMPTY_SLOT);
   const [back, setBack] = useState(EMPTY_SLOT);
   const [designHelpOpen, setDesignHelpOpen] = useState(false);
+  // The open Page picker: {source, file, key (of phase one), busy, error}.
+  const [picker, setPicker] = useState(null);
+  const assignAttemptRef = useRef({ signature: null, key: null }); // one key per identical choice, so a resend is safe
   // Whether the current Front file is the one that auto-filled Back (a 2-page
   // PDF's page 2) — removing Front then has to clear that Back card too, the
   // same as it does for "same as back", or a stale "Detected" card is left
@@ -84,22 +93,71 @@ export default function ArtworkSlots({
     if (!result.ok) return;
     const { data } = result;
 
+    if (data.source) {
+      // More than 2 pages: nothing is Artwork yet. The slot waits, empty, behind the picker.
+      setFront(EMPTY_SLOT);
+      setPicker({ source: data.source, file, key, busy: false, error: null });
+      return;
+    }
+    await applyFrontResult(file, data, key);
+  }
+
+  async function applyFrontResult(file, data, key) {
     setFront(okSlot(file, data.front, key));
     onFrontResult?.(data.front, data.back);
     frontFilledBothRef.current = Boolean(data.back);
 
     if (data.back) {
-      // A 2-page PDF dropped into Front auto-fills Back from page 2.
+      // A 2-page PDF (or a picker choice of two pages) fills Back as well.
       setBack(okSlot(file, data.back, key));
       onSameAsBackChange?.(false);
     } else if (sameAsBack) {
-      await syncBackToFront(file, data.front?.id);
+      await syncBackToFront(file, data.front);
     }
   }
 
-  async function syncBackToFront(file, frontId, key = newUploadKey()) {
-    const result = await runUpload("back", { file, key, frontId, retry: () => syncBackToFront(file, frontId, key) });
-    if (!result.ok) return;
+  // Phase two: the customer's Front/Back pages become Artwork. The picker stays open,
+  // busy, while the pages are checked, so a refused choice is explained where they made it.
+  async function handleAssign({ front: frontPage, back: backPage }) {
+    const signature = `${picker.source.id}:${frontPage}:${backPage}`;
+    if (assignAttemptRef.current.signature !== signature) assignAttemptRef.current = { signature, key: newUploadKey() };
+    const key = assignAttemptRef.current.key;
+    setPicker((p) => ({ ...p, busy: true, error: null }));
+    const result = await assignPages({ sourceId: picker.source.id, front: frontPage, back: backPage, key });
+    if (!result.ok) {
+      setPicker((p) => ({ ...p, busy: false, error: result.error }));
+      return;
+    }
+    const { file } = picker;
+    setPicker(null);
+    await applyFrontResult(file, result.data, key);
+  }
+
+  // Abandoning the picker orders nothing; the stored source is dropped if it can be
+  // (and expires by itself if the tab just closes).
+  function handlePickerCancel() {
+    discardUpload(picker?.key);
+    setPicker(null);
+  }
+
+  // Copies Front's page into Back. A Front chosen in the Page picker is copied
+  // from its stored source; any other Front by sending its file again.
+  async function syncBackToFront(file, frontArtwork, key = newUploadKey()) {
+    const retry = () => syncBackToFront(file, frontArtwork, key);
+    let result;
+    if (frontArtwork?.source_id) {
+      const setSlot = setSlotFor.back;
+      setSlot({ ...EMPTY_SLOT, status: "checking", fileName: frontArtwork.original_filename, key });
+      result = await assignPages({ sourceId: frontArtwork.source_id, back: frontArtwork.page_index, frontId: frontArtwork.id, key });
+      if (!result.ok) {
+        retryRef.current.back = retry;
+        setSlot({ ...EMPTY_SLOT, status: "error", fileName: frontArtwork.original_filename, error: result.error });
+        return;
+      }
+    } else {
+      result = await runUpload("back", { file, key, frontId: frontArtwork?.id, retry });
+      if (!result.ok) return;
+    }
     setBack(okSlot(file, result.data.back, key));
     onBackResult?.(result.data.back);
   }
@@ -163,7 +221,9 @@ export default function ArtworkSlots({
       if (frontData) setFront(asSlot(frontData));
       if (backData) setBack(asSlot(backData));
       // A 2-page PDF's page 2 in Back: removing Front has to clear it too.
-      frontFilledBothRef.current = Boolean(frontData && backData && frontData.source_page_count === 2 && backData.page_index === 2);
+      frontFilledBothRef.current = Boolean(
+        frontData && backData && ((frontData.source_page_count === 2 && backData.page_index === 2) || (frontData.source_id != null && frontData.source_id === backData.source_id))
+      );
     })();
     return () => {
       cancelled = true;
@@ -175,8 +235,8 @@ export default function ArtworkSlots({
   // from the checkbox above or from a sync dialog's "use the same artwork
   // for the back" choice (ticket 05), which sets this prop from outside.
   useEffect(() => {
-    if (sameAsBack && front.status === "ok" && front.file && back.status !== "ok" && back.status !== "uploading" && back.status !== "checking") {
-      syncBackToFront(front.file, front.artwork?.id);
+    if (sameAsBack && front.status === "ok" && (front.file || front.artwork?.source_id) && back.status !== "ok" && back.status !== "uploading" && back.status !== "checking") {
+      syncBackToFront(front.file, front.artwork);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sameAsBack, front.status]);
@@ -234,6 +294,17 @@ export default function ArtworkSlots({
       >
         {t("designHelp")}
       </button>
+
+      {picker && (
+        <PagePicker
+          source={picker.source}
+          orderedSize={orderedSize}
+          busy={picker.busy}
+          error={picker.error}
+          onConfirm={handleAssign}
+          onCancel={handlePickerCancel}
+        />
+      )}
 
       <DesignHelpDrawer
         open={designHelpOpen}

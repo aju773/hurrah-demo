@@ -227,6 +227,9 @@ export function reduce(state, action) {
         bleedMm: action.artwork.bleedMm ?? null,
         imageUrl: action.artwork.imageUrl ?? null,
         hasError: Boolean(action.artwork.hasError),
+        // The Page picker's choice: which stored source and which of its pages.
+        sourceId: action.artwork.sourceId ?? null,
+        page: action.artwork.page ?? null,
       };
       let back = state.slots.back;
       let frontFilledBoth = false;
@@ -238,6 +241,8 @@ export function reduce(state, action) {
           bleedMm: front.bleedMm,
           imageUrl: action.artwork.backImageUrl ?? null,
           hasError: Boolean(action.artwork.backHasError),
+          sourceId: action.artwork.sourceId ?? null,
+          page: action.artwork.backPage ?? null,
         };
         frontFilledBoth = true;
       }
@@ -252,6 +257,8 @@ export function reduce(state, action) {
         mm: action.artwork.mm ?? null,
         imageUrl: action.artwork.imageUrl ?? null,
         hasError: Boolean(action.artwork.hasError),
+        sourceId: action.artwork.sourceId ?? null,
+        page: action.artwork.page ?? null,
       };
       return withSlots(state, { ...state.slots, back, sameBack: false });
     }

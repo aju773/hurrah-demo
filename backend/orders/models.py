@@ -1,6 +1,8 @@
 import secrets
+from datetime import timedelta
 
 from django.db import models
+from django.utils import timezone
 
 
 class Product(models.Model):
@@ -154,6 +156,38 @@ SLOT_CHOICES = [
 ]
 
 
+SOURCE_TTL = timedelta(hours=24)
+
+
+def _source_expiry():
+    return timezone.now() + SOURCE_TTL
+
+
+class SourceFile(models.Model):
+    """A multi-page PDF held for the Page picker (phase one of a two-phase upload).
+    It is not Artwork: nothing on it is checked or ordered until the customer
+    assigns pages to Front and Back (orders/source_views.py). `pages` is the page
+    list the picker shows. Sources that are never used expire (`expires_at`); the
+    scheduled cleanup that purges them is the demo-reset ticket."""
+
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="sources")
+    file = models.FileField(upload_to="sources/%Y/%m/%d/")
+    original_filename = models.CharField(max_length=255)
+    page_count = models.PositiveIntegerField()
+    # [{number, orientation, trim_width_mm, trim_height_mm, matched_size_id, matched_size_code}]
+    pages = models.JSONField(default=list)
+    upload_key = models.CharField(max_length=64, blank=True, db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField(default=_source_expiry)
+
+    def __str__(self):
+        return f"{self.original_filename} ({self.page_count} pages)"
+
+    @property
+    def is_expired(self):
+        return self.expires_at <= timezone.now()
+
+
 class Artwork(models.Model):
     """A file uploaded into one Front/Back slot for a Product, together with what
     was detected from it. See orders/pdf_utils.py for the detection rules."""
@@ -166,6 +200,9 @@ class Artwork(models.Model):
     # (a 2-page PDF dropped into Front fills both slots from pages 1 and 2).
     source_page_count = models.PositiveIntegerField(default=0)
     page_index = models.PositiveIntegerField(default=1)
+    # The Page picker source this page was chosen from, if any (null for a one-shot
+    # upload), so the picker can be reopened without uploading again.
+    source = models.ForeignKey("SourceFile", on_delete=models.SET_NULL, null=True, blank=True, related_name="artworks")
 
     # Nullable: null means the detected trim didn't match any of the Product's
     # active Size values (see detected_width_mm/height_mm for the measured mm).

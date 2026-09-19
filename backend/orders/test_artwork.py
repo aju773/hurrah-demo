@@ -11,7 +11,7 @@ from rest_framework.test import APIClient
 
 from . import preflight
 from .fixtures_pdf import build_f2, build_f3, build_pdf
-from .models import Artwork, Option, OptionValue, Product
+from .models import Artwork, Option, OptionValue, Product, SourceFile
 from .pdf_utils import ERROR_MESSAGES_EN
 from .test_preflight import _damaged_but_repairable
 from .views import PREFLIGHT_ERROR_MESSAGES_EN
@@ -89,17 +89,21 @@ class ArtworkUploadEndpointTests(TestCase):
         self.assertIn("back_one_page", codes)
         self.assertEqual(Artwork.objects.count(), 0)
 
-    def test_three_pages_asks_for_a_two_page_file_until_the_picker_exists(self):
+    def test_three_pages_opens_the_page_picker_instead_of_making_artwork(self):
         res = self.upload(build_pdf(*[{"media": (148, 210)}] * 3))
-        self.assertEqual(res.status_code, 400)
-        codes = [e["code"] for e in res.json()["errors"]]
-        self.assertEqual(codes, ["page_choice_needed"])
-        self.assertEqual(res.json()["page_count"], 3)
+        self.assertEqual(res.status_code, 201, res.content)
+        data = res.json()
+        self.assertEqual(data["page_count"], 3)
+        self.assertEqual(len(data["source"]["pages"]), 3)
+        self.assertIsNone(data["front"])
+        self.assertIsNone(data["back"])
+        self.assertEqual(data["errors"], [])
         self.assertEqual(Artwork.objects.count(), 0)
 
     def test_fifty_pages_is_not_over_the_cap(self):
         res = self.upload(build_pdf(*[{"media": (148, 210)}] * 50))
-        self.assertEqual(res.json()["errors"][0]["code"], "page_choice_needed")
+        self.assertEqual(res.status_code, 201, res.content)
+        self.assertEqual(len(res.json()["source"]["pages"]), 50)
 
     def test_fifty_one_pages_is_too_many_pages(self):
         res = self.upload(build_pdf(*[{"media": (148, 210)}] * 51))
@@ -109,6 +113,7 @@ class ArtworkUploadEndpointTests(TestCase):
         self.assertIn("50", error["message"])
         self.assertNotIn("1 or 2", error["message"])
         self.assertEqual(res.json()["page_count"], 51)
+        self.assertEqual(SourceFile.objects.count(), 0)
 
     def test_back_size_differs_from_front(self):
         front_res = self.upload(build_pdf({"media": (148, 210)}), slot="front")

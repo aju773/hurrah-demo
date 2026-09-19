@@ -241,3 +241,11 @@ def build_f3(user_password="secret"):
     pdf.close()
     encrypted.seek(0)
     return encrypted
+
+
+def build_five_page_mixed():
+    """A 5-page PDF with mixed sizes where the flyer is on pages 3 and 4, for the
+    page picker: an A4 cover, an A6 divider, then an A5 Front and Back (148x210mm
+    TrimBox with 3mm bleed, like F2), then an A4 closing page."""
+    flyer = {"media": (154, 216), "trim": (3, 3, 151, 213), "bleed": (0, 0, 154, 216)}
+    return build_pdf({"media": (210, 297)}, {"media": (105, 148)}, flyer, flyer, {"media": (210, 297)})

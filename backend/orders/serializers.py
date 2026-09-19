@@ -39,6 +39,7 @@ class ArtworkSerializer(serializers.ModelSerializer):
             "original_filename",
             "source_page_count",
             "page_index",
+            "source_id",
             "matched_size",
             "matched_size_code",
             "matched_size_label",

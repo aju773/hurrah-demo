@@ -211,12 +211,14 @@
     "too_many_pages": "This PDF has more than 50 pages. Keep only your flyer pages, save them as a new PDF, then upload that.",
     "back_one_page": "Back takes one page. Upload a PDF with just the back.",
     "back_size_differs": "Back must be the same size as front. Upload a back in the same size, or change the front.",
-    "page_choice_needed": "This PDF has more than 2 pages, and Front and Back take up to 2. Save just your flyer pages as a 1- or 2-page PDF, then upload that.",
     "file_unreadable": "We couldn't open this file. If it's password-protected, remove the password; otherwise export it again as a PDF, then upload that.",
     "file_too_large": "Files can be up to 100 MB. Reduce the image quality or export a smaller PDF, then upload that.",
     "network_failed": "We couldn't reach the server. Check your connection, then try again.",
     "server_busy": "We're busy right now. Wait a minute, then try again.",
-    "upload_failed": "Upload failed. Try again, or upload a different file."
+    "upload_failed": "Upload failed. Try again, or upload a different file.",
+    "same_page_twice": "Front and Back can't be the same page. Pick a different page for the back, or choose no back.",
+    "invalid_page": "That page isn't in your file. Pick one of the pages shown.",
+    "source_expired": "This upload has expired. Upload your file again."
   },
   "ArtworkSlots": {
     "front": "Front",
@@ -229,7 +231,7 @@
     "error": "Error",
     "dragDrop": "Drag & drop a PDF here",
     "browsePrompt": "or <link>browse from your computer</link>",
-    "pdfOnly": "PDF only",
+    "pdfOnly": "PDF only, up to 50 pages",
     "checking": "Checking your file…",
     "uploading": "Uploading {fileName}…",
     "uploadingPercent": "{percent}%",
@@ -328,5 +330,30 @@
     "files_wrong_type": "Reference files must be JPG, PNG or PDF.",
     "files_too_large": "Each reference file must be 20MB or smaller.",
     "introPriced": "Free design help — we’ll quote after your brief"
+  },
+  "PagePicker": {
+    "title": "Choose your flyer pages",
+    "pageCount": "{count, plural, one {# page} other {# pages}}",
+    "instructions": "Pick the page to print on the front and, if you want one, a page for the back. Other pages are ignored.",
+    "pagesLabel": "Pages in your file",
+    "thumbnailAlt": "Page {page}",
+    "page": "Page {page}",
+    "portrait": "Portrait",
+    "landscape": "Landscape",
+    "customSize": "{width} × {height} mm",
+    "front": "Front",
+    "back": "Back",
+    "useAsFront": "Use page {page} as Front",
+    "useAsBack": "Use page {page} as Back",
+    "summary": "Front: {front} · Back: {back}",
+    "none": "not chosen",
+    "noBack": "none",
+    "errorPrefix": "Can't continue:",
+    "warningPrefix": "Note:",
+    "backSizeDiffers": "Front is {front} but Back is {back}. Front and Back must be the same size, so pick a back that matches, or no back.",
+    "differsFromOrder": "{side} page {page} is {size}, but your order is {ordered}. You can choose what to do next.",
+    "cancel": "Cancel",
+    "confirm": "Use these pages",
+    "checking": "Checking your pages…"
   }
 }

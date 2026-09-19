@@ -212,6 +212,7 @@ export default function FlyersConfigurator({ initialCatalogue, initialConfigurat
       <ArtworkSlots
         key={artworkResetKey}
         productId={catalogue.product_id}
+        orderedSize={selection.size ?? null}
         initialFrontId={state.slots.front?.id}
         initialBackId={state.slots.back?.id}
         sameAsBack={state.slots.sameBack}
@@ -230,6 +231,9 @@ export default function FlyersConfigurator({ initialCatalogue, initialConfigurat
             backImageUrl: back?.page_image ?? null,
             hasError: !front.is_valid,
             backHasError: back ? !back.is_valid : false,
+            sourceId: front.source_id ?? null,
+            page: front.page_index ?? null,
+            backPage: back?.page_index ?? null,
           });
         }}
         onBackResult={(back) =>
@@ -240,6 +244,8 @@ export default function FlyersConfigurator({ initialCatalogue, initialConfigurat
             bleedMm: back.bleed_mm ?? null,
             imageUrl: back.page_image ?? null,
             hasError: !back.is_valid,
+            sourceId: back.source_id ?? null,
+            page: back.page_index ?? null,
           })
         }
         onFrontRemoved={() => removeArtwork("front")}

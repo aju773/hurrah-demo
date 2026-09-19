@@ -507,3 +507,32 @@ describe("Edit options / Change file from Step 3 (ticket 06)", () => {
     expect(s.returnToApprove).toBe(false);
   });
 });
+
+describe("page picker choices in the draft", () => {
+  const FLYER = { id: 31, matchedSizeCode: "a5", pages: 2, backId: 32, sourceId: 7, page: 3, backPage: 4 };
+
+  it("remembers which source and pages Front and Back came from", () => {
+    const s = uploadFront(initDraft(DEFAULTS), FLYER);
+    expect(s.slots.front).toMatchObject({ id: 31, sourceId: 7, page: 3 });
+    expect(s.slots.back).toMatchObject({ id: 32, sourceId: 7, page: 4 });
+  });
+
+  it("keeps them across a refresh (serialize then restore)", () => {
+    const s = uploadFront(initDraft(DEFAULTS), FLYER);
+    const restored = restoreDraft(JSON.parse(JSON.stringify(serializeDraft(s))), DEFAULTS);
+    expect(restored.slots.front).toMatchObject({ sourceId: 7, page: 3 });
+    expect(restored.slots.back).toMatchObject({ sourceId: 7, page: 4 });
+  });
+
+  it("a Back added later remembers its page too", () => {
+    let s = uploadFront(initDraft(DEFAULTS), { id: 31, matchedSizeCode: "a5", pages: 1, sourceId: 7, page: 3 });
+    s = reduce(s, { type: "UPLOAD_BACK", artwork: { id: 33, matchedSizeCode: "a5", sourceId: 7, page: 4 } });
+    expect(s.slots.back).toMatchObject({ sourceId: 7, page: 4 });
+  });
+
+  it("a one-shot upload has no source", () => {
+    const s = uploadFront(initDraft(DEFAULTS), F2_A5_DOUBLE);
+    expect(s.slots.front.sourceId).toBeNull();
+  });
+});
+

@@ -1,6 +1,7 @@
 from django.conf import settings
 from django.core.files.base import ContentFile
 from django.shortcuts import get_object_or_404
+from django.urls import reverse
 from rest_framework import generics, status
 from rest_framework.exceptions import APIException
 from rest_framework.response import Response
@@ -8,13 +9,12 @@ from rest_framework.throttling import SimpleRateThrottle
 from rest_framework.views import APIView
 
 from . import preflight, size_choice
-from .models import Artwork, Product, SLOT_BACK, SLOT_CHOICES, SLOT_FRONT
+from .models import Artwork, Product, SLOT_BACK, SLOT_CHOICES, SLOT_FRONT, SourceFile
 from .pdf_utils import (
     ERROR_BACK_ONE_PAGE,
     ERROR_BACK_SIZE_DIFFERS,
     ERROR_MESSAGES_EN,
     ERROR_NOT_A_PDF,
-    ERROR_PAGE_CHOICE_NEEDED,
     ERROR_SERVER_BUSY,
     ERROR_TOO_MANY_PAGES,
     MAX_PAGES,
@@ -72,7 +72,7 @@ def _preflight_thresholds(product):
     }
 
 
-def _save_artwork(product, slot, uploaded_file, page_result, source_page_count, page_index, file_bytes, file_repaired, upload_key=""):
+def _save_artwork(product, slot, uploaded_file, page_result, source_page_count, page_index, file_bytes, file_repaired, upload_key="", source=None):
     matched_size_id = page_result.get("matched_size_id")
     report = preflight.run_preflight(
         file_bytes,
@@ -86,6 +86,7 @@ def _save_artwork(product, slot, uploaded_file, page_result, source_page_count, 
         product=product,
         slot=slot,
         upload_key=upload_key,
+        source=source,
         file=uploaded_file,
         original_filename=uploaded_file.name,
         source_page_count=source_page_count,
@@ -122,7 +123,51 @@ def _save_artwork(product, slot, uploaded_file, page_result, source_page_count, 
 MAX_UPLOAD_KEY_LENGTH = 64
 
 
-def _upload_payload(request, created, page_count):
+def _source_payload(request, source):
+    """The Page picker's page list for one stored source. Thumbnails are URLs
+    that render the page on first request (orders/source_views.py)."""
+    return {
+        "id": source.id,
+        "page_count": source.page_count,
+        "original_filename": source.original_filename,
+        "expires_at": source.expires_at.isoformat(),
+        "pages": [
+            {
+                **page,
+                "thumbnail_url": request.build_absolute_uri(
+                    reverse("source-page-thumbnail", args=[source.id, page["number"]])
+                ),
+            }
+            for page in source.pages
+        ],
+    }
+
+
+def _create_source(product, uploaded_file, analysis, upload_key):
+    """Phase one: keep the file and the page list, and make no Artwork."""
+    pages = [
+        {
+            "number": number,
+            "orientation": page["orientation"],
+            "trim_width_mm": page["trim_width_mm"],
+            "trim_height_mm": page["trim_height_mm"],
+            "matched_size_id": page["matched_size_id"],
+            "matched_size_code": page["matched_size_code"],
+        }
+        for number, page in enumerate(analysis["pages"], start=1)
+    ]
+    uploaded_file.seek(0)
+    return SourceFile.objects.create(
+        product=product,
+        file=uploaded_file,
+        original_filename=uploaded_file.name,
+        page_count=analysis["page_count"],
+        pages=pages,
+        upload_key=upload_key,
+    )
+
+
+def _upload_payload(request, created, page_count, source=None):
     errors = [
         {"code": artwork.error_code, "slot": slot_name, "message": artwork.error_message}
         for slot_name, artwork in created.items()
@@ -133,6 +178,7 @@ def _upload_payload(request, created, page_count):
         "front": ArtworkSerializer(created[SLOT_FRONT], context={"request": request}).data if SLOT_FRONT in created else None,
         "back": ArtworkSerializer(created[SLOT_BACK], context={"request": request}).data if SLOT_BACK in created else None,
         "errors": errors,
+        **({"source": _source_payload(request, source)} if source is not None else {}),
     }
 
 
@@ -179,9 +225,13 @@ class ArtworkUploadView(APIView):
     A 2-page PDF dropped into Front auto-fills both slots. The file is judged by
     its content, never its name. Errors are returned as {"errors": [{"code",
     "slot", "message"}], ...}: not_a_pdf, file_too_large, file_unreadable,
-    too_many_pages (over 50), page_choice_needed (3-50 pages, until the page
-    picker), back_one_page, back_size_differs, and server_busy (429, over the
-    rate limit). See pdf_utils.ERROR_MESSAGES_EN.
+    too_many_pages (over 50), back_one_page, back_size_differs, and server_busy
+    (429, over the rate limit). See pdf_utils.ERROR_MESSAGES_EN.
+
+    A PDF of 3-50 pages dropped into Front is phase one of the Page picker: the
+    file is stored as a SourceFile, no Artwork is made, and the response carries
+    {"source": {id, pages: [...]}, "front": null, "back": null}. The customer then
+    assigns pages with POST /api/sources/<id>/assign/ (orders/source_views.py).
     """
 
     throttle_classes = [ArtworkUploadThrottle]
@@ -211,6 +261,9 @@ class ArtworkUploadView(APIView):
             earlier = list(Artwork.objects.filter(product=product, upload_key=upload_key).order_by("id"))
             if earlier:
                 return Response(_upload_payload(request, {a.slot: a for a in earlier}, earlier[0].source_page_count), status=status.HTTP_201_CREATED)
+            earlier_source = SourceFile.objects.filter(product=product, upload_key=upload_key).first()
+            if earlier_source is not None:
+                return Response(_upload_payload(request, {}, earlier_source.page_count, source=earlier_source), status=status.HTTP_201_CREATED)
 
         file_bytes = uploaded_file.read()
         uploaded_file.seek(0)
@@ -241,10 +294,11 @@ class ArtworkUploadView(APIView):
 
         if page_count > MAX_PAGES:
             return _error_response(ERROR_TOO_MANY_PAGES, page_count=page_count)
-        if page_count > 2:
-            return _error_response(ERROR_PAGE_CHOICE_NEEDED, page_count=page_count)
-        if slot == SLOT_BACK and page_count == 2:
+        if slot == SLOT_BACK and page_count >= 2:
             return _error_response(ERROR_BACK_ONE_PAGE, page_count=page_count, slot=SLOT_BACK)
+        if page_count > 2:
+            source = _create_source(product, uploaded_file, result, upload_key)
+            return Response(_upload_payload(request, {}, page_count, source=source), status=status.HTTP_201_CREATED)
 
         uploaded_file.seek(0)
         file_repaired = file_check["repaired"]
@@ -288,6 +342,7 @@ class ArtworkUploadView(APIView):
         for artwork in Artwork.objects.filter(upload_key=upload_key):
             if not _on_an_order(artwork):
                 artwork.delete()
+        SourceFile.objects.filter(upload_key=upload_key, artworks__isnull=True).delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 

@@ -38,7 +38,9 @@ ERROR_NOT_A_PDF = "not_a_pdf"
 ERROR_TOO_MANY_PAGES = "too_many_pages"
 ERROR_BACK_ONE_PAGE = "back_one_page"
 ERROR_BACK_SIZE_DIFFERS = "back_size_differs"
-ERROR_PAGE_CHOICE_NEEDED = "page_choice_needed"
+ERROR_SAME_PAGE_TWICE = "same_page_twice"
+ERROR_INVALID_PAGE = "invalid_page"
+ERROR_SOURCE_EXPIRED = "source_expired"
 ERROR_NETWORK_FAILED = "network_failed"
 ERROR_SERVER_BUSY = "server_busy"
 
@@ -48,13 +50,16 @@ MAX_PAGES = 50
 # a reason plus a next step. The translated wording lives in the frontend message
 # files (ArtworkErrors); file_unreadable and file_too_large are in views.py, from
 # orders/preflight.py. network_failed is raised by the browser, never the server.
-# page_choice_needed stands in for the page picker until ticket 09 replaces it.
+# same_page_twice, invalid_page and source_expired come from the Page picker's
+# phase two (orders/source_views.py).
 ERROR_MESSAGES_EN = {
     ERROR_NOT_A_PDF: "This file isn't a PDF. Save or export your design as a PDF, then upload that.",
     ERROR_TOO_MANY_PAGES: f"This PDF has more than {MAX_PAGES} pages. Keep only your flyer pages, save them as a new PDF, then upload that.",
     ERROR_BACK_ONE_PAGE: "Back takes one page. Upload a PDF with just the back.",
     ERROR_BACK_SIZE_DIFFERS: "Back must be the same size as front. Upload a back in the same size, or change the front.",
-    ERROR_PAGE_CHOICE_NEEDED: "This PDF has more than 2 pages, and Front and Back take up to 2. Save just your flyer pages as a 1- or 2-page PDF, then upload that.",
+    ERROR_SAME_PAGE_TWICE: "Front and Back can't be the same page. Pick a different page for the back, or choose no back.",
+    ERROR_INVALID_PAGE: "That page isn't in your file. Pick one of the pages shown.",
+    ERROR_SOURCE_EXPIRED: "This upload has expired. Upload your file again.",
     ERROR_NETWORK_FAILED: "We couldn't reach the server. Check your connection, then try again.",
     ERROR_SERVER_BUSY: "We're busy right now. Wait a minute, then try again.",
 }

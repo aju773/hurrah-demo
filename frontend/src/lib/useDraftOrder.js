@@ -80,6 +80,8 @@ function toSlotArtwork(data) {
     bleedMm: data.bleed_mm ?? null,
     imageUrl: data.page_image ?? null,
     hasError: !data.is_valid,
+    sourceId: data.source_id ?? null,
+    page: data.page_index ?? null,
   };
 }
 

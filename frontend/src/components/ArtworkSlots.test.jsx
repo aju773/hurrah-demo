@@ -129,3 +129,126 @@ describe("ArtworkSlots upload flow", () => {
     expect(xhr(1).body.get("upload_key")).not.toBe(xhr(0).body.get("upload_key"));
   });
 });
+
+const PAGE = (number, code, w = 148, h = 210) => ({ number, matched_size_code: code, trim_width_mm: w, trim_height_mm: h, orientation: "portrait", thumbnail_url: `http://x/${number}.png` });
+const SOURCE = { id: 7, page_count: 5, original_filename: "brochure.pdf", pages: [PAGE(1, "a4", 210, 297), PAGE(2, "a6", 105, 148), PAGE(3, "a5"), PAGE(4, "a5"), PAGE(5, "a4", 210, 297)] };
+const PHASE_ONE = { page_count: 5, front: null, back: null, errors: [], source: SOURCE };
+const FRONT_3 = { ...ARTWORK, id: 31, page_index: 3, source_id: 7 };
+const BACK_4 = { ...ARTWORK, id: 32, slot: "back", page_index: 4, source_id: 7 };
+
+function mockAssign(response) {
+  const fetchMock = vi.fn((url, init) => {
+    if (String(url).includes("/assign/")) return Promise.resolve({ ok: response.ok ?? true, status: response.status ?? 201, json: () => Promise.resolve(response.body) });
+    return Promise.resolve({ ok: true });
+  });
+  vi.stubGlobal("fetch", fetchMock);
+  return fetchMock;
+}
+const assignCalls = (fetchMock) => fetchMock.mock.calls.filter(([url]) => String(url).includes("/assign/"));
+
+describe("ArtworkSlots page picker", () => {
+  async function openPicker(props) {
+    const view = renderSlots({ orderedSize: "a5", ...props });
+    pickFront(view.container);
+    await act(async () => xhr().respond(201, PHASE_ONE));
+    return view;
+  }
+
+  it("opens a picker with every page instead of an error, and makes no Artwork yet", async () => {
+    const { onFrontResult } = await openPicker();
+    const dialog = screen.getByRole("dialog", { name: "Choose your flyer pages" });
+    expect(dialog).toBeInTheDocument();
+    expect(screen.getAllByRole("img")).toHaveLength(5);
+    expect(screen.getByText("Page 3")).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(onFrontResult).not.toHaveBeenCalled();
+  });
+
+  it("assigns pages 3 and 4 and fills Front and Back like a one-shot upload", async () => {
+    const fetchMock = mockAssign({ body: { page_count: 5, front: FRONT_3, back: BACK_4, errors: [] } });
+    const { onFrontResult } = await openPicker();
+    fireEvent.click(screen.getByRole("button", { name: "Use page 3 as Front" }));
+    fireEvent.click(screen.getByRole("button", { name: "Use page 4 as Back" }));
+    await act(async () => fireEvent.click(screen.getByRole("button", { name: "Use these pages" })));
+    const [[url, init]] = assignCalls(fetchMock);
+    expect(url).toContain("/api/sources/7/assign/");
+    expect(JSON.parse(init.body)).toMatchObject({ front: 3, back: 4 });
+    expect(onFrontResult).toHaveBeenCalledWith(FRONT_3, BACK_4);
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(screen.getAllByText("Detected")).toHaveLength(2);
+  });
+
+  it("will not continue until Front is chosen, and explains a Back of another size", async () => {
+    await openPicker();
+    const confirm = screen.getByRole("button", { name: "Use these pages" });
+    expect(confirm).toBeDisabled();
+    fireEvent.click(screen.getByRole("button", { name: "Use page 3 as Front" }));
+    expect(confirm).toBeEnabled();
+    fireEvent.click(screen.getByRole("button", { name: "Use page 1 as Back" }));
+    expect(confirm).toBeDisabled();
+    expect(screen.getByRole("alert")).toHaveTextContent("Front is A5 but Back is A4. Front and Back must be the same size");
+    fireEvent.click(screen.getByRole("button", { name: "Use page 4 as Back" }));
+    expect(confirm).toBeEnabled();
+  });
+
+  it("warns, without blocking, about a page that is not the ordered Size", async () => {
+    await openPicker({ orderedSize: "a4" });
+    fireEvent.click(screen.getByRole("button", { name: "Use page 3 as Front" }));
+    expect(screen.getByText(/Front page 3 is A5, but your order is A4/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Use these pages" })).toBeEnabled();
+  });
+
+  it("keeps the picker open with the server's reason when a choice is refused", async () => {
+    mockAssign({ ok: false, status: 400, body: { errors: [{ code: "back_size_differs", slot: "back", message: "x" }] } });
+    const { onFrontResult } = await openPicker();
+    fireEvent.click(screen.getByRole("button", { name: "Use page 3 as Front" }));
+    await act(async () => fireEvent.click(screen.getByRole("button", { name: "Use these pages" })));
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(screen.getByRole("alert")).toHaveTextContent("Back must be the same size as front");
+    expect(onFrontResult).not.toHaveBeenCalled();
+  });
+
+  it("a resent choice reuses its key so the server makes the Artwork once", async () => {
+    const fetchMock = mockAssign({ ok: false, status: 429, body: { errors: [{ code: "server_busy", message: "x" }] } });
+    await openPicker();
+    fireEvent.click(screen.getByRole("button", { name: "Use page 3 as Front" }));
+    await act(async () => fireEvent.click(screen.getByRole("button", { name: "Use these pages" })));
+    await act(async () => fireEvent.click(screen.getByRole("button", { name: "Use these pages" })));
+    const [first, second] = assignCalls(fetchMock).map(([, init]) => JSON.parse(init.body).upload_key);
+    expect(first).toBeTruthy();
+    expect(second).toBe(first);
+  });
+
+  it("Cancel and Escape both abandon the picker: no Artwork, source dropped", async () => {
+    const fetchMock = mockAssign({ body: {} });
+    const { onFrontResult } = await openPicker();
+    fireEvent.click(screen.getByRole("button", { name: "Cancel", hidden: false }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(onFrontResult).not.toHaveBeenCalled();
+    expect(fetchMock.mock.calls.some(([url, init]) => init?.method === "DELETE" && String(url).includes("upload_key="))).toBe(true);
+    expect(screen.getAllByText("Drag & drop a PDF here")).toHaveLength(2);
+  });
+
+  it("Escape closes the picker", async () => {
+    mockAssign({ body: {} });
+    await openPicker();
+    fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("copies a picker Front's page into Back for 'Use the same artwork', not the multi-page file", async () => {
+    const answers = [
+      { page_count: 5, front: FRONT_3, back: null, errors: [] },
+      { page_count: 5, front: null, back: { ...BACK_4, id: 40, page_index: 3 }, errors: [] },
+    ];
+    const fetchMock = vi.fn(() => Promise.resolve({ ok: true, status: 201, json: () => Promise.resolve(answers.shift()) }));
+    vi.stubGlobal("fetch", fetchMock);
+    const { onBackResult } = await openPicker({ sameAsBack: true });
+    fireEvent.click(screen.getByRole("button", { name: "Use page 3 as Front" }));
+    await act(async () => fireEvent.click(screen.getByRole("button", { name: "Use these pages" })));
+    const bodies = fetchMock.mock.calls.map(([, init]) => JSON.parse(init.body));
+    expect(bodies[1]).toMatchObject({ back: 3, front_id: 31 });
+    expect(FakeXhr.instances).toHaveLength(1); // the multi-page file was never re-sent
+    expect(onBackResult).toHaveBeenCalled();
+  });
+});

@@ -1,0 +1,9 @@
+@import "tailwindcss";
+
+body {
+  font-family: var(--font-plus-jakarta-sans), sans-serif;
+}
+
+html[dir="rtl"] body {
+  font-family: var(--font-cairo), var(--font-plus-jakarta-sans), sans-serif;
+}

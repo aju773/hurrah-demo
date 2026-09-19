@@ -1,0 +1,42 @@
+"""Preview rendering: the page image and thumbnail stored beside an Artwork
+for step 2's "Check & preview" (.scratch/flyer-demo-build/issues/07-check-and-preview-step.md).
+
+Renders the same page pypdfium2 already opens for Preflight's bleed check
+(orders/preflight._render_page_rgb), at 150 dpi for the page-box image and a
+400px-longest-edge derivative for the thumbnail. Runs directly inside the
+upload request, alongside Preflight, not through pdf_utils's process pool.
+"""
+
+import io
+
+RENDER_DPI = 150.0
+THUMBNAIL_LONGEST_EDGE_PX = 400
+
+
+def render_artwork_images(file_bytes, page_index):
+    """PNG bytes for the page-box image (150 dpi) and its thumbnail (400px
+    longest edge, never upscaled)."""
+    import pypdfium2 as pdfium
+
+    pdf = pdfium.PdfDocument(file_bytes)
+    try:
+        page = pdf[page_index - 1]
+        bitmap = page.render(scale=RENDER_DPI / 72.0)
+        image = bitmap.to_pil().convert("RGB")
+    finally:
+        pdf.close()
+
+    page_buf = io.BytesIO()
+    image.save(page_buf, format="PNG")
+
+    width_px, height_px = image.size
+    longest = max(width_px, height_px)
+    if longest > THUMBNAIL_LONGEST_EDGE_PX:
+        scale = THUMBNAIL_LONGEST_EDGE_PX / longest
+        thumbnail = image.resize((max(1, round(width_px * scale)), max(1, round(height_px * scale))))
+    else:
+        thumbnail = image
+    thumb_buf = io.BytesIO()
+    thumbnail.save(thumb_buf, format="PNG")
+
+    return {"page_png": page_buf.getvalue(), "thumbnail_png": thumb_buf.getvalue()}

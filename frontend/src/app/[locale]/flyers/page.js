@@ -2,7 +2,6 @@ import { getLocale, getTranslations } from "next-intl/server";
 import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
 import FlyersConfigurator from "@/components/FlyersConfigurator";
-import LocaleControls from "@/components/LocaleControls";
 import PageLoadFailure from "@/components/PageLoadFailure";
 import { API_BASE_URL, FLYERS_SLUG } from "@/lib/api";
 import { fetchWithTimeout } from "@/lib/network";
@@ -29,24 +28,19 @@ export default async function FlyersPage() {
   // answers with an error (see above); a distinct error message keeps that
   // distinguishable from FlyersConfigurator's own initial-loading state.
   const hasError = !catalogue || !configuration;
-  // The Commerce switch rides in the catalogue payload; without it, stay money-free.
-  const commerceEnabled = catalogue?.commerce_enabled === true;
 
   return (
     <div className="relative mx-auto bg-[#f9f9ff]" style={{ maxWidth: "1512px" }}>
-      <SiteHeader commerceEnabled={commerceEnabled} />
+      <SiteHeader />
       <main id="main" tabIndex={-1} className="outline-none flex flex-col gap-[20px] px-[16px] sm:px-[32px] py-[26px] w-full">
-        <div className="flex flex-wrap items-center justify-between gap-[12px]">
-          <h1 className="text-[#151c27] text-[28px] font-extrabold tracking-[-0.7px]">{t("title")}</h1>
-          <LocaleControls />
-        </div>
+        <h1 className="text-[#151c27] text-[28px] font-extrabold tracking-[-0.7px]">{t("title")}</h1>
         {hasError ? (
           <PageLoadFailure message={t("loadError")} retryLabel={t("retry")} />
         ) : (
           <FlyersConfigurator initialCatalogue={catalogue} initialConfiguration={configuration} />
         )}
       </main>
-      <SiteFooter commerceEnabled={commerceEnabled} />
+      <SiteFooter />
     </div>
   );
 }

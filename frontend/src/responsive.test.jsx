@@ -110,23 +110,23 @@ describe("choosing a file on a phone", () => {
 });
 
 describe("site header", () => {
-  it("has a phone header and hides the desktop one below lg, so nothing runs off the screen", () => {
+  it("is one slim row with the logo home and the language toggle, at every width", () => {
     const { container } = render(withIntl(<SiteHeader />));
-    const [phone, desktop] = container.children;
-    expect(classes(phone)).toContain("lg:hidden");
-    expect(classes(desktop)).toEqual(expect.arrayContaining(["hidden", "lg:block"]));
+    const header = container.querySelector("header");
+    expect(classes(header)).toEqual(expect.arrayContaining(["flex", "items-center", "justify-between"]));
+    expect(screen.getByRole("link", { name: en.SiteHeader.brand })).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: en.LanguageToggle.label })).toBeInTheDocument();
+    expect(untapped(container)).toEqual([]);
   });
 
-  it("keeps the phone header's cart behind the Commerce switch", () => {
-    const off = render(withIntl(<SiteHeader />)).container;
-    expect(off.querySelector('.lg\\:hidden img[alt="cart"]')).toBeNull();
-    cleanup();
-    const on = render(withIntl(<SiteHeader commerceEnabled />)).container;
-    expect(on.querySelector('.lg\\:hidden img[alt="cart"]')).not.toBeNull();
+  it("has no search, category menu, nav links or cart that go nowhere", () => {
+    const { container } = render(withIntl(<SiteHeader />));
+    expect(container.querySelector("input, nav, img")).toBeNull();
   });
 
   it("works in Arabic too", () => {
-    const { container } = render(withIntl(<SiteHeader />, "ar"));
-    expect(container.querySelector(".lg\\:hidden")).toHaveTextContent(ar.SiteHeader.searchPlaceholder);
+    render(withIntl(<SiteHeader />, "ar"));
+    expect(screen.getByRole("link", { name: ar.SiteHeader.brand })).toBeInTheDocument();
+    expect(screen.getByText(ar.LanguageToggle.draftTranslation)).toBeInTheDocument();
   });
 });

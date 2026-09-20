@@ -30,8 +30,8 @@ function buildPrefill(t, configurationLine, drNumber) {
 const EMPTY_FORM = { name: "", phone: "", email: "", business_name: "", brief: "", flyer_language: "en" };
 
 /**
- * The "Need a design?" drawer. Opened from the Flyers page, the upload slots
- * and the hotline card — all pass the same shape of props. Closing it (via
+ * The "Need a design?" drawer. Opened from the Flyers page and the upload slots
+ * — all pass the same shape of props. Closing it (via
  * `onClose`) never touches the caller's own options/uploads state.
  */
 export default function DesignHelpDrawer({ open, onClose, product, configurationLine, configurationSnapshot, commerceEnabled = false }) {

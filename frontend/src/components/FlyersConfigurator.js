@@ -250,13 +250,6 @@ export default function FlyersConfigurator({ initialCatalogue, initialConfigurat
         </button>
       </div>
 
-      <div className="flex items-center gap-[10px] bg-[#f0f3ff] rounded-[12px] p-[12px]">
-        <span className="text-[#5d3f3e] text-[12px] font-semibold">{t("hotlineLabel")}</span>
-        <button type="button" onClick={() => setDesignHelpOpen(true)} className="text-[#bb0027] text-[12px] font-bold underline">
-          {t("chatWithUs")}
-        </button>
-      </div>
-
       {syncBanner}
 
       {state.notices?.length > 0 && (

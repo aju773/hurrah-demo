@@ -72,7 +72,8 @@ test("Arabic numbers use Western digits and money reads 'N درهم'", async ({ 
   expect(text).not.toMatch(/[٠-٩]/);
 });
 
-test("header and footer stay English on the Arabic page", async ({ page }) => {
+test("the brand and footer line stay English on the Arabic page", async ({ page }) => {
   await page.goto("/ar/flyers");
-  await expect(page.getByText("About Hurrah")).toBeVisible();
+  await expect(page.locator("header").getByText("Hurrah")).toBeVisible();
+  await expect(page.getByText("Licensed Commercial Entity")).toBeVisible();
 });

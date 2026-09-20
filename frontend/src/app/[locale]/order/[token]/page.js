@@ -3,7 +3,6 @@ import { Link } from "@/i18n/navigation";
 import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
 import CopyButton from "@/components/CopyButton";
-import LocaleControls from "@/components/LocaleControls";
 import OrderStatusBanner from "@/components/OrderStatusBanner";
 import PageLoadFailure from "@/components/PageLoadFailure";
 import { isolateLtr } from "@/lib/bidi";
@@ -54,11 +53,11 @@ export default async function OrderConfirmationPage({ params }) {
   if (order === UNAVAILABLE) {
     return (
       <div className="relative mx-auto bg-[#f9f9ff]" style={{ maxWidth: "1512px" }}>
-        <SiteHeader commerceEnabled={commerceEnabled} />
+        <SiteHeader />
         <main id="main" className="flex flex-col items-center justify-center gap-[16px] px-[16px] sm:px-[32px] py-[64px]">
           <PageLoadFailure message={t("loadError")} retryLabel={t("retry")} />
         </main>
-        <SiteFooter commerceEnabled={commerceEnabled} />
+        <SiteFooter />
       </div>
     );
   }
@@ -66,14 +65,14 @@ export default async function OrderConfirmationPage({ params }) {
   if (!order) {
     return (
       <div className="relative mx-auto bg-[#f9f9ff]" style={{ maxWidth: "1512px" }}>
-        <SiteHeader commerceEnabled={commerceEnabled} />
+        <SiteHeader />
         <main id="main" className="flex flex-col items-center justify-center gap-[16px] px-[16px] sm:px-[32px] py-[64px]">
           <h1 className="text-[#151c27] text-[20px] font-bold">{t("notFound")}</h1>
           <Link href="/flyers" className="bg-[#e51937] px-[24px] py-[12px] rounded-[12px] text-white text-[14px] font-semibold">
             {t("orderMore")}
           </Link>
         </main>
-        <SiteFooter commerceEnabled={commerceEnabled} />
+        <SiteFooter />
       </div>
     );
   }
@@ -82,12 +81,8 @@ export default async function OrderConfirmationPage({ params }) {
 
   return (
     <div className="relative mx-auto bg-[#f9f9ff]" style={{ maxWidth: "1512px" }} dir={locale === "ar" ? "rtl" : "ltr"}>
-      <SiteHeader commerceEnabled={commerceEnabled} />
+      <SiteHeader />
       <main id="main" className="flex flex-col gap-[20px] px-[16px] sm:px-[32px] py-[26px] w-full max-w-[720px] mx-auto">
-        <div className="flex justify-end">
-          <LocaleControls />
-        </div>
-
         <div className="flex flex-wrap items-center justify-between gap-[12px]">
           <h1 className="text-[#151c27] text-[22px] font-bold">{t("received", { number: isolateLtr(order.number) })}</h1>
           <div className="flex items-center gap-[8px]">
@@ -171,7 +166,7 @@ export default async function OrderConfirmationPage({ params }) {
           </Link>
         </div>
       </main>
-      <SiteFooter commerceEnabled={commerceEnabled} />
+      <SiteFooter />
     </div>
   );
 }

@@ -16,3 +16,18 @@ test("the retired standalone upload page redirects to Flyers in both languages",
     await expect(page).toHaveURL(new RegExp(`/${locale}/flyers$`));
   }
 });
+
+test("the site root opens the Flyers journey in both languages", async ({ page }) => {
+  for (const locale of ["en", "ar"]) {
+    await page.goto(`/${locale}`);
+    await expect(page).toHaveURL(new RegExp(`/${locale}/flyers$`));
+  }
+});
+
+test("the journey shows no control that goes nowhere", async ({ page }) => {
+  await page.goto("/en/flyers");
+  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+  const dead = await page.locator('a[href="#"], a:not([href])').count();
+  expect(dead).toBe(0);
+  await expect(page.locator("header nav, header input, footer a")).toHaveCount(0);
+});

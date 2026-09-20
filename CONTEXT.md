@@ -98,6 +98,12 @@ _Avoid_: Lead, enquiry, design order
 The language the customer was using the site in (English or Arabic). Kept on a Design request so staff reply in it. Not the language of the flyer itself, which the brief states separately.
 _Avoid_: Locale (in customer-facing talk), design language
 
+### Site chrome
+
+**Site chrome**:
+The header and footer around every page of the journey. Holds only what works in the demo: the logo, the language toggle and, in Arabic, the draft-translation pill. Anything that cannot be clicked through to a real result is left out, not greyed out.
+_Avoid_: Shell, layout, navigation
+
 ### Hints
 
 **Hints**:

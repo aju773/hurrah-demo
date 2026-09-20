@@ -391,8 +391,13 @@ export function reduce(state, action) {
       // a retry of this one, so it needs its own key.
       return { ...state, idempotencyKey: action.key };
 
-    case "RESTORE":
-      return { ...initDraft(action.defaults), ...action.saved };
+    case "RESTORE": {
+      const restored = { ...initDraft(action.defaults), ...action.saved };
+      // Steps 2 and 3 draw the Front's preview; without a stored Front there is
+      // nothing to draw, so a stale draft reopens on the artwork step.
+      if (restored.step > 0 && !restored.slots?.front?.id) restored.step = 0;
+      return restored;
+    }
 
     default:
       return state;

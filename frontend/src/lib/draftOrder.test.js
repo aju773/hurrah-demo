@@ -337,6 +337,12 @@ describe("persistence and rehydrate", () => {
     expect(canContinue(rehydrated)).toBe(true);
   });
 
+  it("reopens on the artwork step when the saved draft is past it but has no Front", () => {
+    const s = { ...initDraft(DEFAULTS), step: 1 };
+    const rehydrated = restoreDraft(JSON.parse(JSON.stringify(serializeDraft(s))), DEFAULTS);
+    expect(rehydrated.step).toBe(0);
+  });
+
   it("uses the Back slot for sync, not the front-filled-both flag, once B1 replaces a real second page", () => {
     let s = uploadFront(initDraft(DEFAULTS), F2_A5_DOUBLE);
     s = settle(reduce(s, { type: "UPLOAD_BACK", artwork: BACK_A5 }));

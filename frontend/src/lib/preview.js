@@ -8,6 +8,7 @@ import { fetchWithTimeout } from "@/lib/network";
  * when the payload can't be had (offline, server error, too slow): the steps
  * offer Retry. */
 export async function fetchPreview({ frontId, backId, sameAsFront, sizeCode, sizeChoice }) {
+  if (!frontId) return null;
   const params = new URLSearchParams({ front: frontId });
   if (sameAsFront) params.set("same_as_front", "true");
   else if (backId) params.set("back", backId);

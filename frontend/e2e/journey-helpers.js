@@ -20,6 +20,7 @@ export const DEMO_FILES = {
   needsFixing: path.join(FIXTURE_DIR, "f1-layla-a4-no-bleed.pdf"),
   protected: path.join(FIXTURE_DIR, "f3-password-protected.pdf"),
   damaged: path.join(FIXTURE_DIR, "f4-damaged-repairable.pdf"),
+  fivePages: path.join(FIXTURE_DIR, "f5-five-pages-flyer-on-3-and-4.pdf"),
 };
 
 export const VIEWPORTS = {
@@ -42,6 +43,8 @@ export function copyFor(locale) {
     const fixed = value.split("{")[0].trim();
     return new RegExp(`^${fixed.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`);
   };
+  // Text with simple {placeholders} filled in: `copy.with("PagePicker", "useAsFront", { page: 3 })`.
+  words.with = (namespace, key, values) => text(namespace, key).replace(/\{(\w+)\}/g, (_, name) => String(values[name]));
   return words;
 }
 
@@ -68,7 +71,8 @@ export async function expectNoMoney(page) {
 }
 
 /** `test` with two extras on every page: hints off (scripted runs, as the Hints
- * flag allows) and a failure if the page logs a console error or throws.
+ * flag allows; a run about the hints themselves sets `hintsOn`) and a failure if
+ * the page logs a console error or throws.
  *
  * A run that uploads a file the demo refuses on purpose sets
  * `refusedUploadsExpected`: the browser then logs the refusal's 4xx as a console
@@ -76,7 +80,8 @@ export async function expectNoMoney(page) {
  * still checked on screen). */
 export const test = base.extend({
   refusedUploadsExpected: [false, { option: true }],
-  page: async ({ page, refusedUploadsExpected }, provide) => {
+  hintsOn: [false, { option: true }],
+  page: async ({ page, refusedUploadsExpected, hintsOn }, provide) => {
     const problems = [];
     page.on("console", (message) => {
       if (message.type() !== "error") return;
@@ -85,9 +90,11 @@ export const test = base.extend({
       problems.push(`console.error: ${message.text()}`);
     });
     page.on("pageerror", (error) => problems.push(`uncaught: ${error.message}`));
-    await page.addInitScript(() => {
-      window.__HURRAH_HINTS__ = false;
-    });
+    if (!hintsOn) {
+      await page.addInitScript(() => {
+        window.__HURRAH_HINTS__ = false;
+      });
+    }
     await provide(page);
     expect(problems, "unhandled console errors").toEqual([]);
   },
@@ -111,4 +118,37 @@ export async function staffMovesOrder(browser, testInfo, number, moveLabel) {
   } finally {
     await context.close();
   }
+}
+
+export async function uploadFront(page, file) {
+  await page.locator('input[type="file"]').first().setInputFiles(file);
+}
+
+/** Every step is checked the same way: no money on the page, and on a phone no
+ * sideways scroll. */
+export async function checkPage(page, size) {
+  await expectNoMoney(page);
+  if (size === "phone") {
+    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+    expect(overflow, `sideways scroll of ${overflow}px on ${page.url()}`).toBeLessThanOrEqual(0);
+  }
+}
+
+/** Step 2 to step 3 (Approve & confirm). */
+export async function continueToApproval(page, t) {
+  await page.getByRole("button", { name: t("CheckAndPreviewStep", "next") }).click();
+  await expect(page.getByRole("button", { name: t("ApproveAndConfirmStep", "submit") })).toBeVisible();
+}
+
+/** Step 3: contact details, every approval box, submit. Lands on the confirmation
+ * page and returns the Order number. */
+export async function approveAndSubmit(page, t, locale) {
+  await page.getByLabel(t("ApproveAndConfirmStep", "fieldName")).fill("Layla Hassan");
+  await page.getByLabel(t("ApproveAndConfirmStep", "fieldMobile")).fill("+971501234567");
+  for (const box of await page.getByRole("checkbox").all()) await box.check();
+  await page.getByRole("button", { name: t("ApproveAndConfirmStep", "submit") }).click();
+  await expect(page).toHaveURL(new RegExp(`/${locale}/order/`));
+  const heading = page.getByRole("heading", { level: 1 });
+  await expect(heading).toContainText(/HUR-\d+/);
+  return (await heading.innerText()).match(/HUR-\d+/)[0];
 }

@@ -4,7 +4,20 @@
 // passes again and again with no manual steps. Two personas, each ending on the
 // Order confirmation page after a short staff moment, in English and Arabic, at
 // desktop width and at 390px.
-import { test, expect, DEMO_FILES, VIEWPORTS, copyFor, expectNoMoney, resetDemo, staffMovesOrder } from "./journey-helpers";
+import {
+  test,
+  expect,
+  DEMO_FILES,
+  VIEWPORTS,
+  approveAndSubmit,
+  checkPage,
+  continueToApproval,
+  copyFor,
+  expectNoMoney,
+  resetDemo,
+  staffMovesOrder,
+  uploadFront,
+} from "./journey-helpers";
 
 const RUNS = [
   { locale: "en", size: "desktop" },
@@ -34,38 +47,6 @@ async function catalogueNames(request, testInfo, locale) {
  * file that differs from it raises the size/sides dialogs instead of auto-filling. */
 async function chooseOption(page, names, code, value) {
   await page.getByRole("group", { name: names.optionName(code), exact: true }).getByRole("button", { name: names.valueLabel(code, value), exact: true }).click();
-}
-
-async function uploadFront(page, file) {
-  await page.locator('input[type="file"]').first().setInputFiles(file);
-}
-
-/** Every step is checked the same way: no money on the page, and on a phone no
- * sideways scroll. */
-async function checkPage(page, size) {
-  await expectNoMoney(page);
-  if (size === "phone") {
-    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
-    expect(overflow, `sideways scroll of ${overflow}px on ${page.url()}`).toBeLessThanOrEqual(0);
-  }
-}
-
-async function continueToApproval(page, t) {
-  await page.getByRole("button", { name: t("CheckAndPreviewStep", "next") }).click();
-  await expect(page.getByRole("button", { name: t("ApproveAndConfirmStep", "submit") })).toBeVisible();
-}
-
-/** Step 3: contact details, every approval box, submit. Lands on the confirmation
- * page and returns the Order number. */
-async function approveAndSubmit(page, t, locale) {
-  await page.getByLabel(t("ApproveAndConfirmStep", "fieldName")).fill("Layla Hassan");
-  await page.getByLabel(t("ApproveAndConfirmStep", "fieldMobile")).fill("+971501234567");
-  for (const box of await page.getByRole("checkbox").all()) await box.check();
-  await page.getByRole("button", { name: t("ApproveAndConfirmStep", "submit") }).click();
-  await expect(page).toHaveURL(new RegExp(`/${locale}/order/`));
-  const heading = page.getByRole("heading", { level: 1 });
-  await expect(heading).toContainText(/HUR-\d+/);
-  return (await heading.innerText()).match(/HUR-\d+/)[0];
 }
 
 async function expectStatus(page, pattern) {

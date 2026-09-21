@@ -380,10 +380,13 @@ def _slot_resize(mode, ordered_trim_mm, artwork, product_bleed_mm, rotate=False)
     return size_choice.compute_size_choice(mode, ordered_trim_mm, file_trim_mm, artwork.bleed_mm, product_bleed_mm)
 
 
-def _slot_preview(request, artwork, resize=None, product_bleed_mm=0.0, rotate=False):
+def _slot_preview(request, artwork, resize=None, product_bleed_mm=0.0, rotate=False, shown_as=None):
     """One slot's preview payload. `rotate` (Rotate: a clockwise quarter turn) turns
     the geometry and the Findings' boxes and reports `rotation: 90` so the browser
-    draws the page image turned; the stored file and report are never changed."""
+    draws the page image turned; the stored file and report are never changed.
+    `shown_as` is the side the customer sees this file as when Swap moved it: its
+    Findings are then labelled with that side."""
+    slot = shown_as or artwork.slot
     report = artwork.preflight_report
     file_trim_mm = [artwork.trim_width_mm, artwork.trim_height_mm]
     if rotate and None not in file_trim_mm:
@@ -392,7 +395,9 @@ def _slot_preview(request, artwork, resize=None, product_bleed_mm=0.0, rotate=Fa
     transform = None
     if resize is not None:
         transform = {"mode": resize["mode"], "scale": resize["scale"]}
-        findings = preflight.rescale_report(report, resize, product_bleed_mm, artwork.slot, artwork.page_index)["findings"]
+        findings = preflight.rescale_report(report, resize, product_bleed_mm, slot, artwork.page_index)["findings"]
+    if shown_as:
+        findings = [{**f, "slot": shown_as} for f in findings]
     return {
         "artwork_id": artwork.id,
         "image_url": _image_url(request, artwork.page_image),
@@ -420,7 +425,9 @@ class ArtworkPreviewView(APIView):
     `transform` and a Preflight report re-run on the scaled result — the file
     itself is never re-rendered. rotate=front,back (default none) turns the
     named sides a quarter turn clockwise (Rotate): the geometry, the page
-    image's `rotation` and each Finding's box follow.
+    image's `rotation` and each Finding's box follow. swap=true shows the uploaded
+    Back as Front and the uploaded Front as Back (Swap); it needs both files, and
+    rotate/resize_applies_to then name the sides as shown.
     """
 
     def get(self, request, slug):
@@ -438,6 +445,16 @@ class ArtworkPreviewView(APIView):
             if not back_id.isdigit():
                 return Response({"detail": "back must be an Artwork id."}, status=status.HTTP_400_BAD_REQUEST)
             back = get_object_or_404(Artwork, pk=back_id, product=product, slot=SLOT_BACK)
+
+        swap = request.query_params.get("swap") == "true"
+        if swap:
+            if same_as_front or back is None:
+                return Response(
+                    {"detail": "Swap needs both a Front and a Back file.", "code": "swap_needs_both_sides"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            front, back = back, front
+        front_shown_as, back_shown_as = (SLOT_FRONT, SLOT_BACK) if swap else (None, None)
 
         size_code = request.query_params.get("size")
         ordered_value = None
@@ -465,7 +482,7 @@ class ArtworkPreviewView(APIView):
             back_resize = _slot_resize(resize_mode, ordered_trim_mm, back, product.bleed_mm, rotate_back) if "back" in resize_applies_to else None
             back_payload = {
                 "same_as_front": False,
-                **_slot_preview(request, back, resize=back_resize, product_bleed_mm=product.bleed_mm, rotate=rotate_back),
+                **_slot_preview(request, back, resize=back_resize, product_bleed_mm=product.bleed_mm, rotate=rotate_back, shown_as=back_shown_as),
             }
         else:
             back_payload = None
@@ -476,7 +493,7 @@ class ArtworkPreviewView(APIView):
             "product_safe_mm": product.safe_mm,
             "front": {
                 "same_as_front": False,
-                **_slot_preview(request, front, resize=front_resize, product_bleed_mm=product.bleed_mm, rotate=rotate_front),
+                **_slot_preview(request, front, resize=front_resize, product_bleed_mm=product.bleed_mm, rotate=rotate_front, shown_as=front_shown_as),
             },
             "back": back_payload,
         })

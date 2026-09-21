@@ -10,7 +10,7 @@ import ArtworkTemplatesPanel from "./ArtworkTemplatesPanel";
 import DesignHelpDrawer from "./DesignHelpDrawer";
 import SyncDialog from "./SyncDialog";
 import { ShowHintsLink } from "./FirstVisitHint";
-import { rotatedSides } from "@/lib/draftOrder";
+import { rotatedSides, swappedSides } from "@/lib/draftOrder";
 import { toBackPayload, toFrontPayload } from "@/lib/reopenPicker";
 
 /** The Artwork page: upload slots with the Findings and Proof preview under them
@@ -36,6 +36,7 @@ export default function ArtworkPage({
   const [previewBlocked, setPreviewBlocked] = useState(false); // ArtworkChecks: an Error Finding remains
   const [summaryOpen, setSummaryOpen] = useState(false); // the Summary bar at narrow widths
   const front = state.slots.front;
+  const swapped = swappedSides(state); // Front and Back trade places; the cells below name the sides as printed
   const continueReason = !front ? "continueNeedsArtwork" : dialog ? "continueHasOpenDialog" : !canContinue || previewBlocked ? "continueHasError" : null;
 
   return (
@@ -88,8 +89,10 @@ export default function ArtworkPage({
               sizeChoice={state.sizeChoice}
               rotate={rotatedSides(state)}
               onRotate={actions.rotate}
-              canChoosePages={actions.canChoosePages}
-              onChoosePages={actions.openChoosePages}
+              swap={swapped}
+              onSwap={actions.swap}
+              canChoosePages={swapped ? { front: actions.canChoosePages?.back, back: actions.canChoosePages?.front } : actions.canChoosePages}
+              onChoosePages={(side) => actions.openChoosePages(swapped ? (side === "front" ? "back" : "front") : side)}
               onBlockedChange={setPreviewBlocked}
             />
           )}

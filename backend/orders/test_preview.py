@@ -272,3 +272,91 @@ class RotatePreviewTests(TestCase):
     def test_same_as_front_back_has_no_rotation_of_its_own(self):
         data = self.preview(same_as_front="true", rotate="front,back").json()
         self.assertEqual(data["back"], {"same_as_front": True})
+
+
+@override_settings(MEDIA_ROOT=tempfile.mkdtemp())
+class SwapPreviewTests(TestCase):
+    """Swap (ticket 06 of .scratch/flyer-two-page-journey): `swap=true` on the
+    preview endpoint shows the uploaded Back as Front and the uploaded Front as
+    Back. Needs both sides; the stored files and reports are never changed."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls._media_root = tempfile.mkdtemp()
+
+    @classmethod
+    def tearDownClass(cls):
+        shutil.rmtree(cls._media_root, ignore_errors=True)
+        super().tearDownClass()
+
+    def setUp(self):
+        self.override = override_settings(MEDIA_ROOT=self._media_root)
+        self.override.enable()
+        self.client = APIClient()
+        self.product = make_product()
+        res = self.client.post(
+            "/api/artworks/",
+            {"file": as_upload(build_f1()), "slot": "front", "product": self.product.id},
+            format="multipart",
+        )
+        assert res.status_code == 201, res.content
+        self.upload = res.json()  # F1: front + back pages of one file
+        self.front_id = self.upload["front"]["id"]
+        self.back_id = self.upload["back"]["id"]
+
+    def tearDown(self):
+        self.override.disable()
+
+    def preview(self, **params):
+        params.setdefault("front", self.front_id)
+        params.setdefault("back", self.back_id)
+        return self.client.get(f"/api/products/{self.product.slug}/preview/", params)
+
+    def test_without_swap_the_sides_are_as_uploaded(self):
+        data = self.preview(size="a4").json()
+        self.assertEqual(data["front"]["artwork_id"], self.front_id)
+        self.assertEqual(data["back"]["artwork_id"], self.back_id)
+
+    def test_swap_shows_the_uploaded_back_as_front_and_the_front_as_back(self):
+        data = self.preview(size="a4", swap="true").json()
+        self.assertEqual(data["front"]["artwork_id"], self.back_id)
+        self.assertEqual(data["back"]["artwork_id"], self.front_id)
+        self.assertEqual(data["back"]["same_as_front"], False)
+
+    def test_swap_moves_each_finding_to_the_side_it_now_shows(self):
+        plain = self.preview(size="a4").json()
+        swapped = self.preview(size="a4", swap="true").json()
+        self.assertEqual([f["code"] for f in swapped["front"]["findings"]], [f["code"] for f in plain["back"]["findings"]])
+        self.assertEqual([f["code"] for f in swapped["back"]["findings"]], [f["code"] for f in plain["front"]["findings"]])
+        self.assertTrue(all(f["slot"] in (None, "front") for f in swapped["front"]["findings"]))
+        self.assertTrue(all(f["slot"] in (None, "back") for f in swapped["back"]["findings"]))
+
+    def test_swap_needs_a_back_file(self):
+        res = self.client.get(
+            f"/api/products/{self.product.slug}/preview/", {"front": self.front_id, "size": "a4", "swap": "true"}
+        )
+        self.assertEqual(res.status_code, 400)
+        self.assertEqual(res.json()["code"], "swap_needs_both_sides")
+
+    def test_swap_needs_a_back_that_is_not_the_front_again(self):
+        res = self.preview(size="a4", swap="true", same_as_front="true")
+        self.assertEqual(res.status_code, 400)
+        self.assertEqual(res.json()["code"], "swap_needs_both_sides")
+
+    def test_swap_leaves_the_stored_artworks_and_reports_unchanged(self):
+        urls = [f"/api/artworks/{self.front_id}/", f"/api/artworks/{self.back_id}/"]
+        before = [self.client.get(url).json() for url in urls]
+        self.preview(size="a4", swap="true")
+        self.assertEqual([self.client.get(url).json() for url in urls], before)
+
+    def test_rotate_names_the_side_as_swapped(self):
+        data = self.preview(size="a4", swap="true", rotate="front").json()
+        self.assertEqual(data["front"]["artwork_id"], self.back_id)
+        self.assertEqual(data["front"]["rotation"], 90)
+        self.assertEqual(data["back"]["rotation"], 0)
+
+    def test_swap_combines_with_fit_on_both_sides(self):
+        data = self.preview(size="a5", swap="true", resize_mode="fit").json()
+        self.assertEqual(data["front"]["transform"]["mode"], "fit")
+        self.assertEqual(data["back"]["transform"]["mode"], "fit")

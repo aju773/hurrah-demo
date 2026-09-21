@@ -244,6 +244,7 @@ export default function useDraftOrder({ defaults, locale, initialConfiguration, 
     removeArtwork: (slot) => dispatch({ type: "REMOVE_ARTWORK", slot }),
     toggleSameBack: () => dispatch({ type: "TOGGLE_SAME_BACK" }),
     rotate: (slot) => dispatch({ type: "TOGGLE_ROTATE", slot }),
+    swap: () => dispatch({ type: "TOGGLE_SWAP" }),
     previewSwitch: (key) => dispatch({ type: "PREVIEW_SWITCH", key }),
     // `extra` carries { result, fileTrimMm } for how="fit"/"fill" (ticket 09):
     // lib/sizeChoice.computeSizeChoice()'s return value plus the file's own

@@ -162,6 +162,62 @@ class OrderSubmitApiTests(TestCase):
         self.assertEqual(res.status_code, 201, res.content)
         self.assertEqual(Order.objects.get().line.size_choice, {})
 
+    def test_swap_is_recorded_on_the_order_line_artwork(self):
+        self.set_now(dubai(2026, 9, 16, 9, 0))
+        upload_data = self.upload(build_f2())
+        front, back = upload_data["front"], upload_data["back"]
+        config = self.get_config(paper="350gsm-matt", sides="double", quantity="500", turnaround="same-day")
+        payload = self.submit_payload(config, front, back, "swap-key")
+        payload["size_choice"] = {"swap": True}
+
+        res = self.client.post(SUBMIT_URL, payload, format="json")
+        self.assertEqual(res.status_code, 201, res.content)
+        self.assertEqual(res.json()["line"]["size_choice"], {"swap": True})
+        line = Order.objects.get().line
+        self.assertEqual(line.size_choice, {"swap": True})
+        # The uploaded files stay where they were uploaded.
+        self.assertEqual(line.front_artwork_id, front["id"])
+        self.assertEqual(line.back_artwork_id, back["id"])
+
+    def test_swap_is_kept_beside_fit_and_rotate(self):
+        self.set_now(dubai(2026, 9, 16, 9, 0))
+        upload_data = self.upload(build_f2())
+        front, back = upload_data["front"], upload_data["back"]
+        config = self.get_config(paper="350gsm-matt", sides="double", quantity="500", turnaround="same-day")
+        payload = self.submit_payload(config, front, back, "swap-fit-key")
+        payload["size_choice"] = {"choice": "keep_size_scale", "mode": "fit", "swap": True, "rotate": {"front": True, "back": False}}
+
+        res = self.client.post(SUBMIT_URL, payload, format="json")
+        self.assertEqual(res.status_code, 201, res.content)
+        line = Order.objects.get().line
+        self.assertEqual(line.size_choice["mode"], "fit")
+        self.assertIs(line.size_choice["swap"], True)
+        self.assertEqual(line.size_choice["rotate"], {"front": True, "back": False})
+
+    def test_swap_without_a_back_is_not_recorded(self):
+        self.set_now(dubai(2026, 9, 16, 9, 0))
+        upload_data = self.upload(build_f2())
+        front = upload_data["front"]
+        config = self.get_config(paper="350gsm-matt", sides="single", quantity="500", turnaround="same-day")
+        payload = self.submit_payload(config, front, None, "swap-no-back-key")
+        payload["size_choice"] = {"swap": True}
+
+        res = self.client.post(SUBMIT_URL, payload, format="json")
+        self.assertEqual(res.status_code, 201, res.content)
+        self.assertEqual(Order.objects.get().line.size_choice, {})
+
+    def test_no_swap_leaves_the_size_choice_empty(self):
+        self.set_now(dubai(2026, 9, 16, 9, 0))
+        upload_data = self.upload(build_f2())
+        front, back = upload_data["front"], upload_data["back"]
+        config = self.get_config(paper="350gsm-matt", sides="double", quantity="500", turnaround="same-day")
+        payload = self.submit_payload(config, front, back, "no-swap-key")
+        payload["size_choice"] = {"swap": False}
+
+        res = self.client.post(SUBMIT_URL, payload, format="json")
+        self.assertEqual(res.status_code, 201, res.content)
+        self.assertEqual(Order.objects.get().line.size_choice, {})
+
     # ---- F2 (Omar, all green, Same-day) -> In production, 838.95 --------
 
     def test_f2_all_green_same_day_creates_in_production_order_at_838_95(self):

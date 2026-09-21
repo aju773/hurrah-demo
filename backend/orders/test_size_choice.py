@@ -4,7 +4,7 @@
 
 from django.test import TestCase
 
-from .size_choice import FILL, FIT, clean_rotate, compute_size_choice, rotate_bbox_mm, rotated_mm
+from .size_choice import FILL, FIT, clean_rotate, clean_swap, compute_size_choice, rotate_bbox_mm, rotated_mm
 
 
 class ComputeSizeChoiceTests(TestCase):
@@ -86,3 +86,20 @@ class RotateTests(TestCase):
         self.assertIsNone(clean_rotate({"front": False, "back": False}, same_as_front=False, has_back=True))
         self.assertIsNone(clean_rotate("sideways", same_as_front=False, has_back=True))
         self.assertIsNone(clean_rotate(None, same_as_front=False, has_back=True))
+
+
+class SwapTests(TestCase):
+    """Swap: which uploaded page is Front and which is Back, stored beside the
+    size choice (ticket 06 of .scratch/flyer-two-page-journey)."""
+
+    def test_clean_swap_is_true_only_for_true_with_two_different_sides(self):
+        self.assertTrue(clean_swap(True, same_as_front=False, has_back=True))
+
+    def test_clean_swap_needs_a_back_that_is_not_the_front_again(self):
+        self.assertFalse(clean_swap(True, same_as_front=False, has_back=False))
+        self.assertFalse(clean_swap(True, same_as_front=True, has_back=False))
+
+    def test_clean_swap_is_false_for_anything_but_true(self):
+        self.assertFalse(clean_swap(False, same_as_front=False, has_back=True))
+        self.assertFalse(clean_swap("yes", same_as_front=False, has_back=True))
+        self.assertFalse(clean_swap(None, same_as_front=False, has_back=True))

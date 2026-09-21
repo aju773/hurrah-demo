@@ -70,14 +70,16 @@ def _has_error(report):
 
 def _size_choice_record(value, same_as_front, has_back):
     """The size choice as the Order line stores it: the customer's Fit/Fill choice
-    with Rotate cleaned up beside it ({"rotate": {"front", "back"}}, left out when
-    nothing is rotated). {} when there is neither."""
+    with Rotate ({"rotate": {"front", "back"}}) and Swap ({"swap": true}) cleaned
+    up beside it, each left out when it does not apply. {} when there is none."""
     if not isinstance(value, dict):
         return {}
-    record = {key: item for key, item in value.items() if key != "rotate"}
+    record = {key: item for key, item in value.items() if key not in ("rotate", "swap")}
     rotate = size_choice.clean_rotate(value.get("rotate"), same_as_front, has_back)
     if rotate:
         record["rotate"] = rotate
+    if size_choice.clean_swap(value.get("swap"), same_as_front, has_back):
+        record["swap"] = True
     return record
 
 

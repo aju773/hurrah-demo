@@ -122,6 +122,23 @@ describe("ApproveAndConfirmStep with the Commerce switch off", () => {
     expect(JSON.parse(fetchMock.mock.calls[0][1].body).size_choice).toEqual({ rotate: { front: true, back: true } });
   });
 
+  it("records Swap beside Rotate, and asks for the swapped proof", async () => {
+    const fetchMock = vi.fn(async () => ({ status: 201, json: async () => ({ token: "tok", number: "HUR-10001" }) }));
+    vi.stubGlobal("fetch", fetchMock);
+    const { container } = renderStep({ extra: { backId: 2, sameAsFront: false, swap: true, rotate: { front: true, back: false } } });
+    await screen.findByTestId("proof");
+    expect(vi.mocked(fetchPreview)).toHaveBeenCalledWith(expect.objectContaining({ swap: true }));
+    const [name, mobile] = container.querySelectorAll("input[type=text]");
+    fireEvent.change(name, { target: { value: "Layla" } });
+    fireEvent.change(mobile, { target: { value: "+971 50 123 4567" } });
+    fireEvent.click(screen.getByRole("button", { name: en.ApproveAndConfirmStep.submit }));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalled());
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body);
+    expect(body.size_choice).toEqual({ swap: true, rotate: { front: true, back: false } });
+    expect(body.front_artwork).toBe(1); // the files stay as uploaded
+    expect(body.back_artwork).toBe(2);
+  });
+
   it("sends no size choice when nothing is turned or resized", async () => {
     const fetchMock = vi.fn(async () => ({ status: 201, json: async () => ({ token: "tok", number: "HUR-10001" }) }));
     vi.stubGlobal("fetch", fetchMock);

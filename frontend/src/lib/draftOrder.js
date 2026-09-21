@@ -54,6 +54,10 @@ export function initDraft(defaults) {
     // kept with the size choice; the uploaded file is never changed. `back` is the
     // Back file's own turn (a same-as-front Back turns with the Front: see rotatedSides).
     rotate: { front: false, back: false },
+    // Swap: the uploaded Back prints as Front and the uploaded Front as Back. An
+    // instruction only; needs both files (see swappedSides). `rotate` stays keyed
+    // by the uploaded file, so a turn follows its page across a Swap.
+    swap: false,
     previews: {},
     pendingRequote: null,
     // True after choosing single-sided dropped an uploaded Back; the Artwork page
@@ -169,24 +173,36 @@ export function guardPage(state, requested, { restorable }) {
   return requested;
 }
 
-/** The turns Preview and Approve apply, per side: a same-as-front Back turns with the
- * Front, and a side with no file is never turned. */
+/** Whether Swap is in force: it needs a Front and a Back that is not the Front again. */
+export function swappedSides(state) {
+  return Boolean(state.swap && state.slots.front && state.slots.back && !state.slots.sameBack);
+}
+
+/** The turns Preview and Approve apply, per side as printed (after Swap): a
+ * same-as-front Back turns with the Front, and a side with no file is never turned. */
 export function rotatedSides(state) {
   const front = Boolean(state.slots.front && state.rotate?.front);
   if (state.slots.sameBack) return { front, back: front };
-  return { front, back: Boolean(state.slots.back && state.rotate?.back) };
+  const back = Boolean(state.slots.back && state.rotate?.back);
+  return swappedSides(state) ? { front: back, back: front } : { front, back };
 }
 
 /** The `size_choice` an Order is sent with: the Fit/Fill choice (if the customer made
- * one) with Rotate beside it, or null when there is neither. */
-export function sizeChoiceWithRotate(sizeChoice, rotate) {
+ * one) with Rotate (`rotate`, per side as printed) and Swap beside it, or null when
+ * there is none of them. */
+export function sizeChoiceWithInstructions(sizeChoice, rotate, swap) {
   const resize = sizeChoice?.choice === "keep_size_scale" ? sizeChoice : null;
-  if (!rotate?.front && !rotate?.back) return resize;
-  return { ...(resize ?? {}), rotate: { front: Boolean(rotate.front), back: Boolean(rotate.back) } };
+  const turned = rotate?.front || rotate?.back;
+  if (!turned && !swap) return resize;
+  return {
+    ...(resize ?? {}),
+    ...(swap ? { swap: true } : {}),
+    ...(turned ? { rotate: { front: Boolean(rotate.front), back: Boolean(rotate.back) } } : {}),
+  };
 }
 
 export function sizeChoiceForOrder(state) {
-  return sizeChoiceWithRotate(state.sizeChoice, rotatedSides(state));
+  return sizeChoiceWithInstructions(state.sizeChoice, rotatedSides(state), swappedSides(state));
 }
 
 /** The next side effect the caller (a hook, in the real app) should perform,
@@ -260,6 +276,8 @@ function withSlots(state, slots, { resetSizeChoice = true } = {}) {
     slots,
     resolvedChoices: {},
     sizeChoice: resetSizeChoice ? null : state.sizeChoice,
+    // Swap belongs to the pair of files it was chosen for.
+    swap: false,
     previews: {},
   }));
 }
@@ -288,6 +306,7 @@ export function reduce(state, action) {
         resolvedChoices,
         slots,
         rotate: dropsBack ? withoutRotation(state.rotate, "back") : state.rotate,
+        swap: dropsBack ? false : state.swap,
         backDropped: dropsBack || (option === SIDES_OPTION && value !== SIDES_SINGLE ? false : state.backDropped),
         // A later Size change from Edit spec reopens the mismatch dialog and
         // makes any earlier Fit/Fill instruction stale (spec: "resets when
@@ -368,9 +387,18 @@ export function reduce(state, action) {
       // Turns (or un-turns) one side. Only the instruction changes; what the customer
       // approved was a different Proof, so the ticks go.
       if (action.slot !== "front" && action.slot !== "back") return state;
+      // `action.slot` is the side as printed; the turn is kept with the uploaded file.
+      const file = swappedSides(state) ? (action.slot === "front" ? "back" : "front") : action.slot;
       const rotate = { front: false, back: false, ...state.rotate };
-      rotate[action.slot] = !rotate[action.slot];
+      rotate[file] = !rotate[file];
       return clearTicks({ ...state, rotate });
+    }
+
+    case "TOGGLE_SWAP": {
+      // Needs both files. Only the instruction changes; the Proof is a different
+      // one now, so the ticks go.
+      if (!state.slots.front || !state.slots.back || state.slots.sameBack) return state;
+      return clearTicks({ ...state, swap: !state.swap });
     }
 
     case "TOGGLE_SAME_BACK": {
@@ -515,7 +543,7 @@ export function reduce(state, action) {
 
 // ---- persistence ------------------------------------------------------
 
-const PERSISTED_KEYS = ["config", "source", "touched", "slots", "resolvedChoices", "sizeChoice", "rotate", "backDropped", "page", "ticks", "idempotencyKey", "returnToApprove"];
+const PERSISTED_KEYS = ["config", "source", "touched", "slots", "resolvedChoices", "sizeChoice", "rotate", "swap", "backDropped", "page", "ticks", "idempotencyKey", "returnToApprove"];
 
 /** A JSON-safe snapshot for sessionStorage / the URL. Dialogs and previews are
  * derived, not persisted. */

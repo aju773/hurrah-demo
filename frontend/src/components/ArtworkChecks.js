@@ -43,9 +43,11 @@ const HEADLINE_CLASS = {
  * "Choose pages" (`canChoosePages.front/back`, answered by `onChoosePages(side)`),
  * so pages can be re-chosen without uploading again. Each side has a Rotate button
  * (`rotate`: {front, back} says which are turned, `onRotate(side)` turns or un-turns
- * one); the preview and Findings arrive already turned.
+ * one); the preview and Findings arrive already turned. With both a Front and a
+ * Back it also offers Swap (`swap` says whether it is on, `onSwap()` toggles it): the
+ * uploaded Back then prints as Front, and everything here names the sides as printed.
  */
-export default function ArtworkChecks({ frontId, backId, sameAsFront, sizeCode, sizeChoice, rotate, onRotate, canChoosePages = {}, onChoosePages, onBlockedChange }) {
+export default function ArtworkChecks({ frontId, backId, sameAsFront, sizeCode, sizeChoice, rotate, onRotate, swap, onSwap, canChoosePages = {}, onChoosePages, onBlockedChange }) {
   const t = useTranslations("ArtworkChecks");
   const tPreflight = useTranslations("Preflight");
   const tFindings = useTranslations("Findings");
@@ -66,7 +68,7 @@ export default function ArtworkChecks({ frontId, backId, sameAsFront, sizeCode, 
 
   useEffect(() => {
     let cancelled = false;
-    fetchPreview({ frontId, backId, sameAsFront, sizeCode, sizeChoice, rotate }).then((data) => {
+    fetchPreview({ frontId, backId, sameAsFront, sizeCode, sizeChoice, rotate, swap }).then((data) => {
       if (cancelled) return;
       if (!data) setError(true);
       else {
@@ -78,7 +80,7 @@ export default function ArtworkChecks({ frontId, backId, sameAsFront, sizeCode, 
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [frontId, backId, sameAsFront, sizeCode, sizeChoice?.mode, sizeChoice?.choice, sizeChoice?.applies_to?.join(","), rotate?.front, rotate?.back, attempt]);
+  }, [frontId, backId, sameAsFront, sizeCode, sizeChoice?.mode, sizeChoice?.choice, sizeChoice?.applies_to?.join(","), rotate?.front, rotate?.back, swap, attempt]);
 
   const blocked = preview ? !canGoNext(combineFindings({
     front: { findings: preview.front?.findings ?? [] },
@@ -152,6 +154,15 @@ export default function ArtworkChecks({ frontId, backId, sameAsFront, sizeCode, 
             <ToggleButton active={!withGuides} onClick={() => setWithGuides(false)} label={t("asPrinted")} />
             <ToggleButton active={withGuides} onClick={() => setWithGuides(true)} label={t("withGuides")} />
           </div>
+
+          {onSwap && backId && !sameAsFront && (
+            <div className="flex flex-wrap items-center gap-x-[12px] gap-y-[4px]">
+              <button type="button" onClick={onSwap} className="tap inline-flex items-center justify-center text-[#bb0027] text-[12px] font-bold underline">
+                {t(swap ? "undoSwap" : "swapSides")}
+              </button>
+              {swap && <span className="text-[#575c64] text-[12px]">{t("swapNote")}</span>}
+            </div>
+          )}
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-[12px]">
             <PreviewCell

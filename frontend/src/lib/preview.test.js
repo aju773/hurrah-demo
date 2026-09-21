@@ -19,6 +19,17 @@ describe("fetchPreview", () => {
     fetchSpy.mockRestore();
   });
 
+  it("asks for the swap only when there are two different files", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue({ ok: true, json: async () => ({}) });
+    await fetchPreview({ frontId: 1, backId: 2, sizeCode: "a5", swap: true });
+    expect(new URL(fetchSpy.mock.calls[0][0]).searchParams.get("swap")).toBe("true");
+    await fetchPreview({ frontId: 1, sizeCode: "a5", swap: true }); // no Back
+    await fetchPreview({ frontId: 1, backId: 2, sameAsFront: true, sizeCode: "a5", swap: true }); // Back is the Front again
+    await fetchPreview({ frontId: 1, backId: 2, sizeCode: "a5", swap: false });
+    for (const [url] of fetchSpy.mock.calls.slice(1)) expect(new URL(url).searchParams.has("swap")).toBe(false);
+    fetchSpy.mockRestore();
+  });
+
   it("resolves null without a request when there is no Front id", async () => {
     const fetchSpy = vi.spyOn(globalThis, "fetch");
     expect(await fetchPreview({ frontId: undefined, sizeCode: "a5" })).toBeNull();

@@ -113,3 +113,19 @@ describe("useDraftOrder opened at a page's address", () => {
     expect(result.current.isRestorable()).toBe(true);
   });
 });
+
+describe("useDraftOrder Rotate and Swap actions", () => {
+  it("turns a side and swaps the two sides (Swap needs both files)", async () => {
+    const BACK = { ...FRONT, id: 6 };
+    saveDraft({ slots: { front: FRONT, back: BACK, sameBack: false } });
+    vi.stubGlobal("fetch", vi.fn((url) => (isConfiguration(url) ? ok(CONFIGURATION) : ok({ id: 5 }))));
+    const { result } = renderHook(() => useDraftOrder({ defaults: DEFAULTS, locale: "en", initialConfiguration: CONFIGURATION }));
+    await waitFor(() => expect(result.current.rehydrating).toBe(false));
+    act(() => result.current.rotate("front"));
+    expect(result.current.state.rotate).toEqual({ front: true, back: false });
+    act(() => result.current.swap());
+    expect(result.current.state.swap).toBe(true);
+    act(() => result.current.swap());
+    expect(result.current.state.swap).toBe(false);
+  });
+});

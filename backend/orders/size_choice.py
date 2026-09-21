@@ -59,6 +59,16 @@ def clean_rotate(value, same_as_front, has_back):
     return {"front": front, "back": back} if front or back else None
 
 
+# Swap: which uploaded page is Front and which is Back, stored beside the size
+# choice as {"swap": true}. It needs both a Front and a Back file (a Back that is
+# the Front again has nothing to swap with). Rotate then names sides as printed,
+# after the swap. An instruction only: the uploaded files are never rewritten.
+def clean_swap(value, same_as_front, has_back):
+    """Whether an Order line records Swap: `value` is literally True and there are
+    two different files to swap."""
+    return value is True and has_back and not same_as_front
+
+
 def _target_trim_mm(ordered_trim_mm, file_trim_mm):
     ordered_w, ordered_h = ordered_trim_mm
     file_w, file_h = file_trim_mm

@@ -265,6 +265,9 @@ class OrderLineInline(admin.StackedInline):
         rotate = choice.get("rotate") or {}
         turned = [label for label, side in (("Front", "front"), ("Back", "back")) if rotate.get(side)]
         rotate_text = f"Rotated 90° clockwise: {' and '.join(turned)}" if turned else ""
+        if choice.get("swap"):
+            swap_text = "Swapped: the file uploaded as Back prints as Front and the file uploaded as Front prints as Back"
+            rotate_text = f"{swap_text}. {rotate_text}" if rotate_text else swap_text
         if not choice.get("mode"):
             return rotate_text or "Kept at the file's own size"
         mode = str(choice.get("mode", "")).title()
@@ -276,13 +279,20 @@ class OrderLineInline(admin.StackedInline):
         text = f"{mode}: " + ", ".join(bits) if bits else mode
         return f"{text}. {rotate_text}" if rotate_text else text
 
+    @staticmethod
+    def _printed_side(line, uploaded_slot):
+        """The side a file prints as: Swap trades the uploaded Front and Back."""
+        if (line.size_choice or {}).get("swap") and line.back_artwork is not None and not line.same_as_front:
+            return "Back" if uploaded_slot == "front" else "Front"
+        return uploaded_slot.title()
+
     def _artworks(self, line):
-        artworks = [("Front", line.front_artwork)]
+        artworks = [(self._printed_side(line, "front"), line.front_artwork)]
         if line.same_as_front:
             artworks.append(("Back", None))
         elif line.back_artwork is not None:
-            artworks.append(("Back", line.back_artwork))
-        return artworks
+            artworks.append((self._printed_side(line, "back"), line.back_artwork))
+        return sorted(artworks, key=lambda pair: pair[0] != "Front")
 
     @admin.display(description="Previews")
     def previews(self, line):
@@ -322,9 +332,9 @@ class OrderLineInline(admin.StackedInline):
             if not report:
                 continue
             if not report.get("findings"):
-                rows.append((slot.title(), "ok", "", "", "", "No findings"))
+                rows.append((self._printed_side(line, slot), "ok", "", "", "", "No findings"))
             for f in report.get("findings", []):
-                rows.append((slot.title(), f["severity"], f["code"], f.get("value") if f.get("value") is not None else "",
+                rows.append((self._printed_side(line, slot), f["severity"], f["code"], f.get("value") if f.get("value") is not None else "",
                              f.get("page") or "", f.get("message", "")))
         if not rows:
             return "Not recorded"

@@ -32,8 +32,8 @@ const preview = (findings) => ({
   back: { same_as_front: true },
 });
 
-function show({ rotate = { front: false, back: false }, rotateAction = vi.fn(), front = { id: 1 }, canContinue = Boolean(front), dialog = null, locale = "en", onContinue = vi.fn(), backDropped = false, quote = null, editOptions = vi.fn() } = {}) {
-  const state = { commerceEnabled: Boolean(quote), quote, notices: [], backDropped, previews: {}, sizeChoice: null, rotate, slots: { front, back: null, sameBack: true } };
+function show({ rotate = { front: false, back: false }, rotateAction = vi.fn(), front = { id: 1 }, canContinue = Boolean(front), dialog = null, locale = "en", onContinue = vi.fn(), backDropped = false, quote = null, editOptions = vi.fn(), back = null, sameBack = !back, swap = false, swapAction = vi.fn(), canChoosePages = {}, openChoosePages = vi.fn() } = {}) {
+  const state = { commerceEnabled: Boolean(quote), quote, notices: [], backDropped, previews: {}, sizeChoice: null, rotate, swap, slots: { front, back, sameBack } };
   render(
     <NextIntlClientProvider locale={locale} messages={locale === "ar" ? ar : en}>
       <ArtworkPage
@@ -48,11 +48,11 @@ function show({ rotate = { front: false, back: false }, rotateAction = vi.fn(), 
         configurationLine="A5 · 500 · Standard"
         syncBanner={null}
         reopenPicker={null}
-        actions={{ canChoosePages: {}, onContinue, editOptions, rotate: rotateAction }}
+        actions={{ canChoosePages, openChoosePages, onContinue, editOptions, rotate: rotateAction, swap: swapAction }}
       />
     </NextIntlClientProvider>
   );
-  return { onContinue, editOptions, rotateAction };
+  return { onContinue, editOptions, rotateAction, swapAction, openChoosePages };
 }
 
 describe("the Artwork page's findings, preview and Continue", () => {
@@ -109,6 +109,57 @@ describe("the Artwork page's Rotate control", () => {
     vi.mocked(fetchPreview).mockResolvedValue(preview([]));
     show({ rotate: { front: true, back: false } });
     expect(await screen.findByRole("button", { name: "Continue" })).toBeEnabled();
+  });
+});
+
+describe("the Artwork page's Swap control", () => {
+  const twoSides = { back: { id: 2 }, sameBack: false };
+  const bothPreview = { ...preview([]), back: { same_as_front: false, image_url: "/b.png", findings: [] } };
+
+  it("is offered only when both a Front and a Back exist", async () => {
+    vi.mocked(fetchPreview).mockResolvedValue(preview([]));
+    show(); // the Back is the Front again
+    await screen.findAllByTestId("proof");
+    expect(screen.queryByRole("button", { name: /Swap/ })).toBeNull();
+    cleanup();
+    vi.mocked(fetchPreview).mockResolvedValue({ ...preview([]), back: null });
+    show({ back: null, sameBack: false }); // no Back yet
+    await screen.findAllByTestId("proof");
+    expect(screen.queryByRole("button", { name: /Swap/ })).toBeNull();
+    cleanup();
+    vi.mocked(fetchPreview).mockResolvedValue(bothPreview);
+    show(twoSides);
+    expect(await screen.findByRole("button", { name: "Swap Front and Back" })).toBeInTheDocument();
+  });
+
+  it("hands the swap to the page's action and previews with it applied", async () => {
+    vi.mocked(fetchPreview).mockResolvedValue(bothPreview);
+    const { swapAction } = show({ ...twoSides, swap: true });
+    expect(await screen.findByText(en.ArtworkChecks.swapNote)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Undo swap" }));
+    expect(swapAction).toHaveBeenCalledTimes(1);
+    expect(fetchPreview).toHaveBeenCalledWith(expect.objectContaining({ frontId: 1, backId: 2, swap: true }));
+  });
+
+  it("says nothing about a swap that is not on", async () => {
+    vi.mocked(fetchPreview).mockResolvedValue(bothPreview);
+    show(twoSides);
+    await screen.findByRole("button", { name: "Swap Front and Back" });
+    expect(screen.queryByText(en.ArtworkChecks.swapNote)).toBeNull();
+  });
+
+  it("keeps Continue available after a swap: swapping is not an Error", async () => {
+    vi.mocked(fetchPreview).mockResolvedValue(bothPreview);
+    show({ ...twoSides, swap: true });
+    expect(await screen.findByRole("button", { name: "Continue" })).toBeEnabled();
+  });
+
+  it("Choose pages on a shown side opens the picker for the file behind it", async () => {
+    vi.mocked(fetchPreview).mockResolvedValue(bothPreview);
+    const { openChoosePages } = show({ ...twoSides, swap: true, canChoosePages: { front: false, back: true } });
+    // only the uploaded Back has pages to choose; it is shown as Front now
+    fireEvent.click(await screen.findByRole("button", { name: en.ArtworkChecks.choosePages }));
+    expect(openChoosePages).toHaveBeenCalledWith("back");
   });
 });
 

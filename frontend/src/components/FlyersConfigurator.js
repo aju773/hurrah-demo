@@ -9,7 +9,7 @@ import { ShowHintsLink } from "./FirstVisitHint";
 import ReopenPagePicker from "./ReopenPagePicker";
 import { pickerTargetFor } from "@/lib/pagePicker";
 import { reopenedActions } from "@/lib/reopenPicker";
-import { guardPage, pageForPath, PAGE_APPROVE, PAGE_ARTWORK, PAGE_OPTIONS, PAGE_PATHS, rotatedSides } from "@/lib/draftOrder";
+import { guardPage, pageForPath, PAGE_APPROVE, PAGE_ARTWORK, PAGE_OPTIONS, PAGE_PATHS, rotatedSides, swappedSides } from "@/lib/draftOrder";
 import OptionsPage from "./OptionsPage";
 import ArtworkPage from "./ArtworkPage";
 import ApproveAndConfirmStep from "./ApproveAndConfirmStep";
@@ -45,6 +45,8 @@ export default function FlyersConfigurator({ initialCatalogue, initialConfigurat
     uploadBack,
     removeArtwork,
     toggleSameBack,
+    rotate,
+    swap,
     previewSwitch,
     resolveDialog,
     refresh,
@@ -225,6 +227,7 @@ export default function FlyersConfigurator({ initialCatalogue, initialConfigurat
           sizeCode={selection.size}
           sizeChoice={state.sizeChoice}
           rotate={rotatedSides(state)}
+          swap={swappedSides(state)}
           ticks={state.ticks}
           onSetTick={setTick}
           onClockExpire={handleClockExpire}
@@ -259,6 +262,8 @@ export default function FlyersConfigurator({ initialCatalogue, initialConfigurat
         actions={{
           setDesignHelpOpen,
           toggleSameBack,
+          rotate,
+          swap,
           uploadFront,
           uploadBack,
           removeArtwork,

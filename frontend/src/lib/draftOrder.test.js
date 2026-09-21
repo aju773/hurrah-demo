@@ -13,6 +13,7 @@ import {
   rotatedSides,
   serializeDraft,
   sizeChoiceForOrder,
+  swappedSides,
 } from "./draftOrder";
 
 const DEFAULTS = { size: "a5", paper: "170gsm-gloss", sides: "single", quantity: "500", turnaround: "standard" };
@@ -803,5 +804,92 @@ describe("Rotate (ticket 05 of the two-page journey)", () => {
     expect(sizeChoiceForOrder(s)).toEqual({ ...s.sizeChoice, rotate: { front: true, back: false } });
     s = reduce(s, { type: "TOGGLE_ROTATE", slot: "front" });
     expect(sizeChoiceForOrder(s)).toEqual(s.sizeChoice);
+  });
+});
+
+describe("Swap (ticket 06 of the two-page journey)", () => {
+  const withBoth = () => {
+    const s = uploadFront(pick(initDraft(DEFAULTS), "sides", "double"), F5_A5_SINGLE);
+    return reduce(s, { type: "UPLOAD_BACK", artwork: BACK_A5 });
+  };
+  const swap = (s) => reduce(s, { type: "TOGGLE_SWAP" });
+
+  it("starts unswapped", () => {
+    expect(initDraft(DEFAULTS).swap).toBe(false);
+    expect(swappedSides(withBoth())).toBe(false);
+  });
+
+  it("swaps and undoes, leaving the files and the Configuration alone", () => {
+    let s = withBoth();
+    const before = { config: s.config, slots: s.slots };
+    s = swap(s);
+    expect(s.swap).toBe(true);
+    expect(swappedSides(s)).toBe(true);
+    expect(s.config).toEqual(before.config);
+    expect(s.slots).toEqual(before.slots);
+    s = swap(s);
+    expect(swappedSides(s)).toBe(false);
+  });
+
+  it("needs both a Front and a Back: nothing happens without them", () => {
+    const frontOnly = uploadFront(pick(initDraft(DEFAULTS), "sides", "double"), F5_A5_SINGLE);
+    expect(swap(frontOnly).swap).toBe(false);
+    expect(swap(initDraft(DEFAULTS)).swap).toBe(false);
+    expect(swap(reduce(frontOnly, { type: "TOGGLE_SAME_BACK" })).swap).toBe(false);
+  });
+
+  it("clears the Approve ticks, because the Proof changed", () => {
+    const s = swap(reduce(withBoth(), { type: "SET_TICK", name: "approval", value: true }));
+    expect(s.ticks).toEqual({ approval: false, warnings: false });
+  });
+
+  it("is kept across the Options page and back, and across other picks", () => {
+    let s = swap(withBoth());
+    s = pick(s, "paper", "350gsm-matt");
+    s = reduce(s, { type: "GO_TO_PAGE", page: "options" });
+    s = reduce(s, { type: "GO_TO_PAGE", page: "artwork" });
+    expect(s.swap).toBe(true);
+  });
+
+  it("survives a saved draft, and a draft saved before Swap opens unswapped", () => {
+    const s = swap(withBoth());
+    const saved = JSON.parse(JSON.stringify(serializeDraft(s)));
+    expect(restoreDraft(saved, DEFAULTS).swap).toBe(true);
+    delete saved.swap;
+    expect(restoreDraft(saved, DEFAULTS).swap).toBe(false);
+  });
+
+  it("is dropped when either file is replaced or removed, or the Back goes", () => {
+    expect(reduce(swap(withBoth()), { type: "UPLOAD_BACK", artwork: { id: 9, matchedSizeCode: "a5" } }).swap).toBe(false);
+    expect(reduce(swap(withBoth()), { type: "UPLOAD_FRONT", artwork: F2_A5_DOUBLE }).swap).toBe(false);
+    expect(reduce(swap(withBoth()), { type: "REMOVE_ARTWORK", slot: "back" }).swap).toBe(false);
+    expect(reduce(swap(withBoth()), { type: "REMOVE_ARTWORK", slot: "front" }).swap).toBe(false);
+    expect(pick(swap(withBoth()), "sides", "single").swap).toBe(false);
+    expect(reduce(swap(withBoth()), { type: "TOGGLE_SAME_BACK" }).swap).toBe(false);
+  });
+
+  it("Rotate follows the page it was chosen for: the swapped Front is the uploaded Back", () => {
+    let s = reduce(withBoth(), { type: "TOGGLE_ROTATE", slot: "front" }); // uploaded Front turned
+    expect(rotatedSides(s)).toEqual({ front: true, back: false });
+    s = swap(s);
+    expect(rotatedSides(s)).toEqual({ front: false, back: true }); // still that page, now the Back
+    s = reduce(s, { type: "TOGGLE_ROTATE", slot: "front" }); // the shown Front = the uploaded Back
+    expect(s.rotate).toEqual({ front: true, back: true });
+    expect(rotatedSides(s)).toEqual({ front: true, back: true });
+    s = swap(s);
+    expect(rotatedSides(s)).toEqual({ front: true, back: true });
+  });
+
+  it("sizeChoiceForOrder: Swap alone, beside Rotate and a Fit/Fill choice, or nothing", () => {
+    let s = withBoth();
+    expect(sizeChoiceForOrder(s)).toBeNull();
+    s = swap(s);
+    expect(sizeChoiceForOrder(s)).toEqual({ swap: true });
+    s = reduce(s, { type: "TOGGLE_ROTATE", slot: "front" });
+    expect(sizeChoiceForOrder(s)).toEqual({ swap: true, rotate: { front: true, back: false } });
+    s = { ...s, sizeChoice: { choice: "keep_size_scale", mode: "fit", scale_pct: 70.5, applies_to: ["front", "back"] } };
+    expect(sizeChoiceForOrder(s)).toEqual({ ...s.sizeChoice, swap: true, rotate: { front: true, back: false } });
+    // Undoing the Swap: the turn stays with the uploaded Back, which is the Back again.
+    expect(sizeChoiceForOrder(swap(s))).toEqual({ ...s.sizeChoice, rotate: { front: false, back: true } });
   });
 });

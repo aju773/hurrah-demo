@@ -4,7 +4,7 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import en from "../../messages/en.json";
 import ar from "../../messages/ar.json";
-import CheckAndPreviewStep from "./CheckAndPreviewStep";
+import ArtworkChecks from "./ArtworkChecks";
 import { fetchPreview } from "@/lib/preview";
 
 vi.mock("@/lib/preview", () => ({ fetchPreview: vi.fn() }));
@@ -29,15 +29,15 @@ afterEach(() => {
 function show(locale = "en") {
   return render(
     <NextIntlClientProvider locale={locale} messages={locale === "ar" ? ar : en}>
-      <CheckAndPreviewStep frontId={1} backId={null} sameAsFront sizeCode="a5" sizeChoice={null} onBack={vi.fn()} onNext={vi.fn()} />
+      <ArtworkChecks frontId={1} backId={null} sameAsFront sizeCode="a5" sizeChoice={null} />
     </NextIntlClientProvider>
   );
 }
 
-describe("CheckAndPreviewStep when the preview can't be loaded", () => {
+describe("ArtworkChecks when the preview can't be loaded", () => {
   for (const locale of ["en", "ar"]) {
     it(`says so and offers Retry, which asks again (${locale})`, async () => {
-      const m = (locale === "ar" ? ar : en).CheckAndPreviewStep;
+      const m = (locale === "ar" ? ar : en).ArtworkChecks;
       vi.mocked(fetchPreview).mockResolvedValueOnce(null).mockResolvedValue(PREVIEW);
       show(locale);
       expect(await screen.findByRole("alert")).toHaveTextContent(m.loadError);

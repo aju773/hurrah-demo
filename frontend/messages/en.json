@@ -46,9 +46,10 @@
     "syncError": "We couldn't update your options and prices. Your choices are kept, so you can try again.",
     "retry": "Retry",
     "startOrdering": "Start ordering",
-    "editOptions": "Edit options"
+    "editOptions": "Edit options",
+    "continueHasError": "Fix every Error above before continuing."
   },
-  "CheckAndPreviewStep": {
+  "ArtworkChecks": {
     "loading": "Loading your preview…",
     "loadError": "Something went wrong loading your preview. Please try again.",
     "noFindings": "No problems found.",
@@ -68,10 +69,6 @@
     "legendBleed": "Bleed",
     "legendSafe": "Safe area",
     "legendMissingBleed": "Missing bleed",
-    "backButton": "← Back",
-    "next": "Next: approve & confirm",
-    "uploadAnotherFile": "Upload another file",
-    "nextDisabledError": "Fix every Error above before continuing.",
     "close": "Close",
     "zoomFit": "Fit",
     "previewOnlyNote": "Preview only — your file prints at its full quality.",

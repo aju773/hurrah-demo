@@ -327,7 +327,7 @@ describe("persistence and rehydrate", () => {
     s = uploadFront(s, F5_A5_SINGLE);
     const [dialog] = openDialogs(s);
     s = reduce(s, { type: "RESOLVE_DIALOG", key: dialog.key, how: "same" });
-    s = { ...s, page: "check" };
+    s = { ...s, page: "approve" };
 
     const saved = serializeDraft(s);
     expect(saved).not.toHaveProperty("previews");
@@ -336,13 +336,13 @@ describe("persistence and rehydrate", () => {
     const rehydrated = restoreDraft(JSON.parse(JSON.stringify(saved)), DEFAULTS);
     expect(rehydrated.config).toEqual(s.config);
     expect(rehydrated.slots).toEqual(s.slots);
-    expect(rehydrated.page).toBe("check");
+    expect(rehydrated.page).toBe("approve");
     expect(openDialogs(rehydrated)).toEqual([]);
     expect(canContinue(rehydrated)).toBe(true);
   });
 
   it("reopens on the Artwork page when the saved draft is past it but has no Front", () => {
-    for (const page of ["check", "approve"]) {
+    for (const page of ["check", "approve"]) { // "check": drafts saved before it was merged into Artwork
       const s = { ...initDraft(DEFAULTS), page };
       const rehydrated = restoreDraft(JSON.parse(JSON.stringify(serializeDraft(s))), DEFAULTS);
       expect(rehydrated.page).toBe("artwork");
@@ -491,12 +491,12 @@ describe("Edit options / Change file from the Approve page (ticket 06)", () => {
     }
   });
 
-  it("Options -> Artwork keeps the return trip; landing on Check or Approve ends it", () => {
+  it("Options -> Artwork keeps the return trip; landing on Approve ends it", () => {
     let s = reduce(onApprove(), { type: "EDIT_FROM_APPROVE", focus: "options" });
     s = reduce(s, { type: "GO_TO_PAGE", page: "artwork" });
     expect(s).toMatchObject({ page: "artwork", returnToApprove: true });
     expect(reduce(s, { type: "GO_TO_PAGE", page: "options" }).returnToApprove).toBe(true);
-    expect(reduce(s, { type: "GO_TO_PAGE", page: "check" }).returnToApprove).toBe(false);
+    expect(reduce(s, { type: "GO_TO_PAGE", page: "approve" }).returnToApprove).toBe(false);
   });
 
   it("CLEAR_FOCUS drops the focus target once handled", () => {
@@ -532,9 +532,9 @@ describe("Edit options / Change file from the Approve page (ticket 06)", () => {
     expect(rehydrated.focus).toBeNull();
   });
 
-  it("a plain GO_TO_PAGE to Check forgets the return trip", () => {
+  it("a plain GO_TO_PAGE to Approve forgets the return trip", () => {
     let s = reduce(onApprove(), { type: "EDIT_FROM_APPROVE", focus: "options" });
-    s = reduce(s, { type: "GO_TO_PAGE", page: "check" });
+    s = reduce(s, { type: "GO_TO_PAGE", page: "approve" });
     expect(s.returnToApprove).toBe(false);
   });
 });
@@ -584,7 +584,7 @@ describe("journey pages and the redirect guard", () => {
 
   it("each page has its own address, and only those addresses map back to a page", () => {
     expect(PAGE_PATHS.options).toBe("/flyers");
-    expect(new Set(Object.values(PAGE_PATHS)).size).toBe(4);
+    expect(new Set(Object.values(PAGE_PATHS)).size).toBe(3);
     for (const [page, path] of Object.entries(PAGE_PATHS)) {
       expect(pageForPath(path)).toBe(page);
       expect(pageForPath(`${path}/`)).toBe(page);
@@ -597,8 +597,8 @@ describe("journey pages and the redirect guard", () => {
     expect(guardPage(initDraft(DEFAULTS), "options", { restorable: false })).toBe("options");
   });
 
-  it("Artwork, Check and Approve with no restorable Configuration go to the Options page", () => {
-    for (const page of ["artwork", "check", "approve"]) {
+  it("Artwork and Approve with no restorable Configuration go to the Options page", () => {
+    for (const page of ["artwork", "approve"]) {
       expect(guardPage(withFront(), page, { restorable: false })).toBe("options");
     }
   });
@@ -607,14 +607,22 @@ describe("journey pages and the redirect guard", () => {
     expect(guardPage(initDraft(DEFAULTS), "artwork", { restorable: true })).toBe("artwork");
   });
 
-  it("Check and Approve without accepted Front Artwork go to the Artwork page", () => {
+  it("Approve without accepted Front Artwork goes to the Artwork page", () => {
     const noFront = initDraft(DEFAULTS);
     const errored = settle(reduce(noFront, { type: "UPLOAD_FRONT", artwork: { ...F5_A5_SINGLE, hasError: true } }));
-    for (const page of ["check", "approve"]) {
-      expect(guardPage(noFront, page, { restorable: true })).toBe("artwork");
-      expect(guardPage(errored, page, { restorable: true })).toBe("artwork");
-      expect(guardPage(withFront(), page, { restorable: true })).toBe(page);
-    }
+    expect(guardPage(noFront, "approve", { restorable: true })).toBe("artwork");
+    expect(guardPage(errored, "approve", { restorable: true })).toBe("artwork");
+    expect(guardPage(withFront(), "approve", { restorable: true })).toBe("approve");
+  });
+
+  it("the old Check address is no longer a page", () => {
+    expect(pageForPath("/flyers/check")).toBeNull();
+    expect(guardPage(withFront(), "check", { restorable: true })).toBe("options");
+  });
+
+  it("a draft saved on the old Check page reopens on the Artwork page", () => {
+    const saved = JSON.parse(JSON.stringify(serializeDraft(withFront())));
+    expect(restoreDraft({ ...saved, page: "check" }, DEFAULTS).page).toBe("artwork");
   });
 
   it("an unknown page goes to the Options page", () => {

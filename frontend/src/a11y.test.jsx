@@ -6,7 +6,7 @@ import axe from "axe-core";
 import en from "../messages/en.json";
 import ar from "../messages/ar.json";
 import ArtworkSlot from "@/components/ArtworkSlot";
-import CheckAndPreviewStep from "@/components/CheckAndPreviewStep";
+import ArtworkChecks from "@/components/ArtworkChecks";
 import ApproveAndConfirmStep from "@/components/ApproveAndConfirmStep";
 import EnlargedPreview from "@/components/EnlargedPreview";
 import PagePicker from "@/components/PagePicker";
@@ -113,7 +113,7 @@ const STEPS = {
   "Step 1: page picker": () => <PagePicker source={{ id: 7, page_count: 3, original_filename: "menu.pdf", pages: [page(1, "a4", 210, 297), page(2, "a5"), page(3, "a5")] }} orderedSize="a5" initialChoice={{ front: 2, back: 3, same: false }} onConfirm={vi.fn()} onCancel={vi.fn()} />,
   "Step 1: page picker with a refused choice": () => <PagePicker source={{ id: 7, page_count: 3, original_filename: "menu.pdf", pages: [page(1, "a4", 210, 297), page(2, "a5"), page(3, "a5")] }} orderedSize="a5" initialChoice={{ front: 2, back: 1, same: false }} error={{ code: "network_failed", message: "Network" }} onConfirm={vi.fn()} onCancel={vi.fn()} />,
   "Step 1: Need a design? drawer": () => <DesignHelpDrawer open onClose={vi.fn()} product={{ id: 1 }} configurationLine="A5 · 170gsm" configurationSnapshot={{}} />,
-  "Step 2: check and preview": () => <CheckAndPreviewStep frontId={1} backId={null} sameAsFront sizeCode="a5" sizeChoice={null} onBack={vi.fn()} onNext={vi.fn()} canChoosePages={{ front: true }} onChoosePages={vi.fn()} />,
+  "Artwork page: findings and preview": () => <ArtworkChecks frontId={1} backId={null} sameAsFront sizeCode="a5" sizeChoice={null} canChoosePages={{ front: true }} onChoosePages={vi.fn()} />,
   "Step 2: enlarged preview": () => {
     const groups = combineFindings({ front: { findings: PREVIEW.front.findings }, back: null, sameAsFront: true });
     return <EnlargedPreview t={(k) => k} initialSlot="front" initialSelectedKey={groups[0].key} preview={PREVIEW} orderedTrimMm={[148, 210]} productBleedMm={3} productSafeMm={5} groups={groups} onClose={vi.fn()} />;
@@ -157,7 +157,7 @@ describe("automated accessibility check: no serious or critical issues", () => {
         );
         const { container } = render(withIntl(build(), locale));
         // Async steps (preview, templates) settle before the scan.
-        if (name.startsWith("Step 2: check")) await screen.findAllByText(/Must fix|يجب/);
+        if (name.startsWith("Artwork page: findings")) await screen.findAllByText(/Must fix|يجب/);
         if (name.includes("templates")) await waitFor(() => expect(container.querySelector("section")).not.toBeNull());
         if (name.includes("approve")) await waitFor(() => expect(container.querySelector("input[type=checkbox]")).not.toBeNull());
         expect(await seriousViolations(document.body)).toEqual([]);

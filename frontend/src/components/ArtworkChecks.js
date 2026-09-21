@@ -36,14 +36,15 @@ const HEADLINE_CLASS = {
 };
 
 /**
- * Step 2, "Check & preview" (ticket 07): one Findings list for both sides
- * next to Front/Back previews with pins, an As printed / With guides toggle
- * and legend. Next is disabled while any Error remains. A side whose file was
- * picked from a stored PDF offers "Choose pages" (`canChoosePages.front/back`,
- * answered by `onChoosePages(side)`), so pages can be re-chosen without uploading again.
+ * The Findings and Proof preview on the Artwork page: one Findings list for both
+ * sides above Front/Back previews with pins, an As printed / With guides toggle
+ * and legend. `onBlockedChange(true)` tells the page while any Error remains, so
+ * its Continue stays disabled. A side whose file was picked from a stored PDF offers
+ * "Choose pages" (`canChoosePages.front/back`, answered by `onChoosePages(side)`),
+ * so pages can be re-chosen without uploading again.
  */
-export default function CheckAndPreviewStep({ frontId, backId, sameAsFront, sizeCode, sizeChoice, onBack, onNext, canChoosePages = {}, onChoosePages }) {
-  const t = useTranslations("CheckAndPreviewStep");
+export default function ArtworkChecks({ frontId, backId, sameAsFront, sizeCode, sizeChoice, canChoosePages = {}, onChoosePages, onBlockedChange }) {
+  const t = useTranslations("ArtworkChecks");
   const tPreflight = useTranslations("Preflight");
   const tFindings = useTranslations("Findings");
   const [preview, setPreview] = useState(null);
@@ -77,6 +78,18 @@ export default function CheckAndPreviewStep({ frontId, backId, sameAsFront, size
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [frontId, backId, sameAsFront, sizeCode, sizeChoice?.mode, sizeChoice?.choice, sizeChoice?.applies_to?.join(","), attempt]);
 
+  const blocked = preview ? !canGoNext(combineFindings({
+    front: { findings: preview.front?.findings ?? [] },
+    back: preview.back?.same_as_front ? null : { findings: preview.back?.findings ?? [] },
+    sameAsFront: Boolean(preview.back?.same_as_front),
+  })) : false;
+  useEffect(() => {
+    onBlockedChange?.(blocked);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [blocked]);
+  // Leaving the page (or losing the Front) must not leave Continue blocked by a preview that is gone.
+  useEffect(() => () => onBlockedChange?.(false), []); // eslint-disable-line react-hooks/exhaustive-deps
+
   // One live region for the whole step, mounted before the preview arrives, so the
   // result ("Must fix before ordering", "Ready to print"…) is announced when it lands.
   if (error) {
@@ -97,7 +110,6 @@ export default function CheckAndPreviewStep({ frontId, backId, sameAsFront, size
   });
   const overallHeadline = orderHeadline(groups);
   const passed = passedChecks(groups, { resized: sizeChoice?.choice === "keep_size_scale" });
-  const nextEnabled = canGoNext(groups);
 
   return (
     <div className="flex flex-col gap-[16px] w-full">
@@ -109,8 +121,8 @@ export default function CheckAndPreviewStep({ frontId, backId, sameAsFront, size
         {headlineText(tPreflight, overallHeadline)}
       </div>
 
-      <div className="grid grid-cols-12 gap-[20px] w-full items-start">
-        <div className="col-span-12 lg:col-span-5 min-w-0 flex flex-col gap-[8px]">
+      <div className="flex flex-col gap-[16px] w-full">
+        <div className="min-w-0 flex flex-col gap-[8px]">
           <FirstVisitHint step="findings" />
           {groups.length === 0 ? (
             <p className="text-[#575c64] text-[13px]">{t("noFindings")}</p>
@@ -133,7 +145,7 @@ export default function CheckAndPreviewStep({ frontId, backId, sameAsFront, size
           </p>
         </div>
 
-        <div className="col-span-12 lg:col-span-7 min-w-0 flex flex-col gap-[10px]">
+        <div className="min-w-0 flex flex-col gap-[10px]">
           <div className="flex items-center gap-[8px]">
             <ToggleButton active={!withGuides} onClick={() => setWithGuides(false)} label={t("asPrinted")} />
             <ToggleButton active={withGuides} onClick={() => setWithGuides(true)} label={t("withGuides")} />
@@ -188,31 +200,6 @@ export default function CheckAndPreviewStep({ frontId, backId, sameAsFront, size
 
           <Legend t={t} missingBleedLabel={t("legendMissingBleed")} />
         </div>
-      </div>
-
-      {!nextEnabled && (
-        <p id="next-disabled-reason" className="text-[#b0001d] text-[13px] font-semibold text-end">
-          <span aria-hidden="true">⛔</span> {t("nextDisabledError")}
-        </p>
-      )}
-      <div className="flex flex-wrap items-center justify-end gap-[12px]">
-        <button type="button" onClick={onBack} className="h-[44px] px-[24px] rounded-[8px] text-[14px] font-semibold bg-white text-[#151c27] shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)]">
-          {t("backButton")}
-        </button>
-        {!nextEnabled && (
-          <button type="button" className="h-[44px] px-[24px] rounded-[8px] text-[14px] font-semibold bg-[#e2e8f8] text-[#575c64]">
-            {t("uploadAnotherFile")}
-          </button>
-        )}
-        <button
-          type="button"
-          disabled={!nextEnabled}
-          aria-describedby={!nextEnabled ? "next-disabled-reason" : undefined}
-          onClick={onNext}
-          className="h-[44px] px-[24px] rounded-[8px] text-[14px] font-semibold bg-[#e51937] text-white disabled:opacity-40 disabled:cursor-not-allowed"
-        >
-          {t("next")}
-        </button>
       </div>
 
       {enlarged && (

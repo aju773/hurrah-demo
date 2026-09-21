@@ -39,14 +39,13 @@ export async function uploadF1AndMatchOrder(page) {
   await expect(continueButton).toBeEnabled();
 }
 
-/** F1's Front low-resolution row in step 2's findings list. */
+/** F1's Front low-resolution row in the Artwork page's findings list. */
 export function frontLowPpiRow(page) {
   return page.getByRole("button", { name: /Front.*low resolution/ });
 }
 
-/** Continue to step 2 (Check & preview). */
+/** The Findings for the uploaded file show on the Artwork page itself. */
 export async function goToStep2(page) {
-  await page.getByRole("button", { name: "Continue" }).click();
   await expect(frontLowPpiRow(page)).toBeVisible();
 }
 

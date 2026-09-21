@@ -134,9 +134,9 @@ export async function checkPage(page, size) {
   }
 }
 
-/** Step 2 to step 3 (Approve & confirm). */
+/** The Artwork page's Continue to Approve & confirm. */
 export async function continueToApproval(page, t) {
-  await page.getByRole("button", { name: t("CheckAndPreviewStep", "next") }).click();
+  await page.getByRole("button", { name: t("FlyersConfigurator", "continue") }).click();
   await expect(page.getByRole("button", { name: t("ApproveAndConfirmStep", "submit") })).toBeVisible();
 }
 

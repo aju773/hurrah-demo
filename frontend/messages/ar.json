@@ -46,9 +46,10 @@
     "syncError": "تعذّر تحديث الخيارات والأسعار. اختياراتك محفوظة، يمكنك المحاولة مرة أخرى.",
     "retry": "إعادة المحاولة",
     "startOrdering": "ابدأ الطلب",
-    "editOptions": "تعديل الخيارات"
+    "editOptions": "تعديل الخيارات",
+    "continueHasError": "أصلح كل خطأ أعلاه للمتابعة."
   },
-  "CheckAndPreviewStep": {
+  "ArtworkChecks": {
     "loading": "جارٍ تحميل المعاينة…",
     "loadError": "حدث خطأ أثناء تحميل المعاينة. يرجى المحاولة مرة أخرى.",
     "noFindings": "لم يتم العثور على مشاكل.",
@@ -68,10 +69,6 @@
     "legendBleed": "الهامش",
     "legendSafe": "المنطقة الآمنة",
     "legendMissingBleed": "هامش ناقص",
-    "backButton": "→ رجوع",
-    "next": "التالي: الموافقة والتأكيد",
-    "uploadAnotherFile": "رفع ملف آخر",
-    "nextDisabledError": "أصلح كل خطأ أعلاه للمتابعة.",
     "close": "إغلاق",
     "zoomFit": "احتواء",
     "previewOnlyNote": "معاينة فقط — يُطبع ملفك بجودته الكاملة.",

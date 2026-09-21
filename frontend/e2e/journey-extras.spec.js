@@ -49,15 +49,14 @@ for (const locale of LOCALES) {
       await expect(page.getByRole("dialog")).toHaveCount(0);
       await checkPage(page, "desktop");
 
-      // Step 2 shows a preview for each side, made from those pages, and the pages are A5 with bleed: nothing to fix.
-      await page.getByRole("button", { name: t("FlyersConfigurator", "continue") }).click();
-      const preview = (side) => page.getByRole("img", { name: t.with("CheckAndPreviewStep", "previewLabel", { side: t("CheckAndPreviewStep", side) }), exact: true });
+      // The Artwork page shows a preview for each side, made from those pages, and the pages are A5 with bleed: nothing to fix.
+      const preview = (side) => page.getByRole("img", { name: t.with("ArtworkChecks", "previewLabel", { side: t("ArtworkChecks", side) }), exact: true });
       const pictureOf = (side) => preview(side).locator("image").first().getAttribute("href");
       await expect(preview("front")).toBeVisible();
       await expect(preview("back")).toBeVisible();
       expect(await pictureOf("front")).toMatch(new RegExp(`front-${front.id}\\.png$`));
       expect(await pictureOf("back")).toMatch(new RegExp(`back-${back.id}\\.png$`));
-      await expect(page.getByText(t("CheckAndPreviewStep", "noFindings"))).toBeVisible();
+      await expect(page.getByText(t("ArtworkChecks", "noFindings"))).toBeVisible();
       await expect(page.locator("[data-hint]")).toHaveCount(0);
       await checkPage(page, "desktop");
 
@@ -86,7 +85,6 @@ for (const locale of LOCALES) {
       await expect(page.getByRole("dialog")).toHaveCount(0);
       await checkPage(page, "desktop");
 
-      await page.getByRole("button", { name: t("FlyersConfigurator", "continue") }).click();
       await expect(page.getByRole("status").filter({ hasText: t("Preflight", "headlineOk").replace(/^\S+\s/, "") })).toBeVisible();
       await continueToConfirmationFromStep2(page, t, locale);
     });
@@ -95,7 +93,7 @@ for (const locale of LOCALES) {
 
 /** From a step 2 that is already showing "Ready to print" to the confirmation page. */
 async function continueToConfirmationFromStep2(page, t, locale) {
-  await expect(page.getByText(t("CheckAndPreviewStep", "noFindings"))).toBeVisible();
+  await expect(page.getByText(t("ArtworkChecks", "noFindings"))).toBeVisible();
   await checkPage(page, "desktop");
   await continueToApproval(page, t);
   await checkPage(page, "desktop");
@@ -132,7 +130,6 @@ for (const locale of LOCALES) {
       await expect(page.locator('[data-hint="options"]')).toHaveCount(0);
 
       // The customer's file is still there; the rest of the journey carries on with the other hints in view.
-      await page.getByRole("button", { name: t("FlyersConfigurator", "continue") }).click();
       await expect(page.locator('[data-hint="findings"]')).toBeVisible();
       await continueToApproval(page, t);
       await expect(page.locator('[data-hint="approval"]')).toBeVisible();

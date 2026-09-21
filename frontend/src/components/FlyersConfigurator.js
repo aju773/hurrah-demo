@@ -9,13 +9,12 @@ import { ShowHintsLink } from "./FirstVisitHint";
 import ReopenPagePicker from "./ReopenPagePicker";
 import { pickerTargetFor } from "@/lib/pagePicker";
 import { reopenedActions } from "@/lib/reopenPicker";
-import { guardPage, pageForPath, PAGE_APPROVE, PAGE_ARTWORK, PAGE_CHECK, PAGE_OPTIONS, PAGE_PATHS } from "@/lib/draftOrder";
+import { guardPage, pageForPath, PAGE_APPROVE, PAGE_ARTWORK, PAGE_OPTIONS, PAGE_PATHS } from "@/lib/draftOrder";
 import OptionsPage from "./OptionsPage";
 import ArtworkPage from "./ArtworkPage";
-import CheckAndPreviewStep from "./CheckAndPreviewStep";
 import ApproveAndConfirmStep from "./ApproveAndConfirmStep";
 
-// One draft, four pages, each at its own address (lib/draftOrder PAGE_PATHS). This
+// One draft, three pages, each at its own address (lib/draftOrder PAGE_PATHS). This
 // component lives in the flyers layout, so it stays mounted while the customer moves
 // between pages and the draft in memory is never lost on the way.
 export default function FlyersConfigurator({ initialCatalogue, initialConfiguration }) {
@@ -26,7 +25,7 @@ export default function FlyersConfigurator({ initialCatalogue, initialConfigurat
   const [catalogue] = useState(initialCatalogue);
   const [designHelpOpen, setDesignHelpOpen] = useState(false);
   const [artworkResetKey, setArtworkResetKey] = useState(0);
-  const [reopenTarget, setReopenTarget] = useState(null); // the Page picker reopened on the Artwork or Check page
+  const [reopenTarget, setReopenTarget] = useState(null); // the Page picker reopened on the Artwork page
   const mountedLocale = useRef(locale);
   const [openedPage] = useState(() => pageForPath(pathname)); // the address the customer arrived at
   const draft = useDraftOrder({
@@ -155,7 +154,7 @@ export default function FlyersConfigurator({ initialCatalogue, initialConfigurat
 
   const syncBanner = syncFailed && <LoadFailure message={t("syncError")} retryLabel={t("retry")} onRetry={retrySync} />;
 
-  // "Choose pages" (Artwork and Check pages): the same picker, on the file already stored.
+  // "Choose pages" (Artwork page): the same picker, on the file already stored.
   const canChoosePages = { front: Boolean(pickerTargetFor("front", state.slots)), back: Boolean(pickerTargetFor("back", state.slots)) };
   function openChoosePages(which) {
     const target = pickerTargetFor(which, state.slots);
@@ -191,7 +190,7 @@ export default function FlyersConfigurator({ initialCatalogue, initialConfigurat
   // (returnToApprove already clears the ticks).
   function handleContinue() {
     if (!state.returnToApprove) {
-      go(PAGE_CHECK);
+      go(PAGE_APPROVE);
       return;
     }
     returnToApprove();
@@ -208,28 +207,6 @@ export default function FlyersConfigurator({ initialCatalogue, initialConfigurat
   function handleOrderSubmitted(order) {
     clearPersistedDraft();
     router.push(`/order/${order.token}`);
-  }
-
-  if (state.page === PAGE_CHECK) {
-    return (
-      <div className="flex flex-col gap-[20px] w-full" dir={locale === "ar" ? "rtl" : "ltr"}>
-        <CheckAndPreviewStep
-          frontId={state.slots.front?.id}
-          backId={state.slots.back?.id}
-          sameAsFront={state.slots.sameBack}
-          sizeCode={selection.size}
-          sizeChoice={state.sizeChoice}
-          onBack={() => go(PAGE_ARTWORK)}
-          onNext={() => go(PAGE_APPROVE)}
-          canChoosePages={canChoosePages}
-          onChoosePages={openChoosePages}
-        />
-        {reopenPicker}
-        <div className="flex justify-end">
-          <ShowHintsLink />
-        </div>
-      </div>
-    );
   }
 
   if (state.page === PAGE_APPROVE) {
@@ -253,7 +230,7 @@ export default function FlyersConfigurator({ initialCatalogue, initialConfigurat
           browsingLanguage={locale}
           locale={locale}
           idempotencyKey={state.idempotencyKey}
-          onBack={() => go(PAGE_CHECK)}
+          onBack={() => go(PAGE_ARTWORK)}
           onEdit={handleEditFromApprove}
           onSubmitted={handleOrderSubmitted}
         />
@@ -285,6 +262,7 @@ export default function FlyersConfigurator({ initialCatalogue, initialConfigurat
           uploadBack,
           removeArtwork,
           openChoosePages,
+          canChoosePages,
           previewSwitch,
           resolveDialog,
           refresh,

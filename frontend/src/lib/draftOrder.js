@@ -15,19 +15,17 @@ export const SIDES_OPTION = "sides";
 export const SIDES_SINGLE = "single";
 export const SIDES_DOUBLE = "double";
 
-// The pages of the journey, in order. "check" is the old Check & preview page; it
-// stays behind the Artwork page until it is merged into it.
+// The pages of the journey, in order. Findings and the Proof preview live on the
+// Artwork page, beside the upload.
 export const PAGE_OPTIONS = "options";
 export const PAGE_ARTWORK = "artwork";
-export const PAGE_CHECK = "check";
 export const PAGE_APPROVE = "approve";
-export const PAGES = [PAGE_OPTIONS, PAGE_ARTWORK, PAGE_CHECK, PAGE_APPROVE];
+export const PAGES = [PAGE_OPTIONS, PAGE_ARTWORK, PAGE_APPROVE];
 
 /** Each page's address under the locale (the Options page keeps the flyers address). */
 export const PAGE_PATHS = {
   [PAGE_OPTIONS]: "/flyers",
   [PAGE_ARTWORK]: "/flyers/artwork",
-  [PAGE_CHECK]: "/flyers/check",
   [PAGE_APPROVE]: "/flyers/approve",
 };
 
@@ -139,8 +137,8 @@ export function canContinue(state) {
   return Boolean(state.slots.front) && noSlotHasPreflightError(state.slots) && openDialogs(state).length === 0;
 }
 
-/** Whether the Approve and Check pages may open: a Front that Preflight has not
- * rejected and no open dialog. Same rule as the Artwork page's Continue. */
+/** Whether the Approve page may open: a Front that Preflight has not rejected and
+ * no open dialog. Same rule as the Artwork page's Continue. */
 export function hasAcceptedFront(state) {
   return canContinue(state);
 }
@@ -155,12 +153,12 @@ export function isRestorableDraft(saved) {
 }
 
 /** Where a customer asking for `requested` may actually land. Opening the Artwork
- * or a later page with no restorable Configuration goes to the Options page; opening
- * Check or Approve without accepted Front Artwork goes to the Artwork page. */
+ * or Approve page with no restorable Configuration goes to the Options page; opening
+ * Approve without accepted Front Artwork goes to the Artwork page. */
 export function guardPage(state, requested, { restorable }) {
   if (!PAGES.includes(requested) || requested === PAGE_OPTIONS) return PAGE_OPTIONS;
   if (!restorable) return PAGE_OPTIONS;
-  if (requested !== PAGE_ARTWORK && !hasAcceptedFront(state)) return PAGE_ARTWORK;
+  if (requested === PAGE_APPROVE && !hasAcceptedFront(state)) return PAGE_ARTWORK;
   return requested;
 }
 
@@ -406,8 +404,8 @@ export function reduce(state, action) {
 
     case "GO_TO_PAGE": {
       // Options -> Artwork keeps "return to approval" (Edit options from Approve
-      // runs through the Artwork page); landing on Check or Approve ends it.
-      const keepReturn = action.page === PAGE_OPTIONS || action.page === PAGE_ARTWORK;
+      // runs through the Artwork page); landing on Approve ends it.
+      const keepReturn = action.page !== PAGE_APPROVE;
       return { ...state, page: action.page, returnToApprove: keepReturn ? state.returnToApprove : false };
     }
 
@@ -445,10 +443,11 @@ export function reduce(state, action) {
     case "RESTORE": {
       const restored = { ...initDraft(action.defaults), ...action.saved };
       delete restored.step; // drafts saved before the journey had pages
+      if (restored.page === "check") restored.page = PAGE_ARTWORK; // drafts saved before Check was merged into Artwork
       if (!PAGES.includes(restored.page)) restored.page = PAGE_OPTIONS;
-      // Check and Approve draw the Front's preview; without a stored Front there is
+      // Approve draws the Front's preview; without a stored Front there is
       // nothing to draw, so a stale draft reopens on the Artwork page.
-      if ((restored.page === PAGE_CHECK || restored.page === PAGE_APPROVE) && !restored.slots?.front?.id) restored.page = PAGE_ARTWORK;
+      if (restored.page === PAGE_APPROVE && !restored.slots?.front?.id) restored.page = PAGE_ARTWORK;
       return restored;
     }
 

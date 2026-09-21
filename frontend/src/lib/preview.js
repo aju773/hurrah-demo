@@ -3,7 +3,7 @@ import { fetchWithTimeout } from "@/lib/network";
 
 /** GET the step 2/3 preview payload (orders/views.ArtworkPreviewView): Front/
  * Back image URLs, geometry and Findings for the current slots/Size/size
- * choice. Shared by CheckAndPreviewStep (ticket 07) and ApproveAndConfirmStep
+ * choice. Shared by ArtworkChecks (ticket 07) and ApproveAndConfirmStep
  * (ticket 10), which both draw the same server-rendered pages. Resolves null
  * when the payload can't be had (offline, server error, too slow): the steps
  * offer Retry. */

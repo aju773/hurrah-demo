@@ -75,9 +75,8 @@ for (const { locale, size } of RUNS) {
       await expect(page.getByRole("group", { name: names.optionName("sides"), exact: true }).getByRole("button", { name: names.valueLabel("sides", "double"), exact: true })).toContainText("✓");
       await checkPage(page, size);
 
-      await page.getByRole("button", { name: t("FlyersConfigurator", "continue") }).click();
-      await expect(page.getByText(t("CheckAndPreviewStep", "noFindings"))).toBeVisible();
-      await expect(page.getByRole("img", { name: t.startsWith("CheckAndPreviewStep", "previewLabel") }).first()).toBeVisible();
+      await expect(page.getByText(t("ArtworkChecks", "noFindings"))).toBeVisible();
+      await expect(page.getByRole("img", { name: t.startsWith("ArtworkChecks", "previewLabel") }).first()).toBeVisible();
       await checkPage(page, size);
 
       await continueToApproval(page, t);
@@ -114,7 +113,6 @@ for (const { locale, size } of RUNS) {
       await expect(dialog).toHaveCount(0);
       await checkPage(page, size);
 
-      await page.getByRole("button", { name: t("FlyersConfigurator", "continue") }).click();
       await expect(page.getByText(t("Findings", "low_ppi_warning")).first()).toBeVisible();
       await expect(page.getByText(t("Findings", "bleed_missing_warning")).first()).toBeVisible();
       await checkPage(page, size);
@@ -123,8 +121,8 @@ for (const { locale, size } of RUNS) {
       await page.getByRole("button", { name: t("Findings", "low_ppi_warning") }).first().click();
       const enlarged = page.getByRole("dialog");
       await expect(enlarged).toBeVisible();
-      await expect(enlarged.getByText(t("CheckAndPreviewStep", "previewOnlyNote"))).toBeVisible();
-      await enlarged.getByRole("button", { name: t("CheckAndPreviewStep", "close") }).first().click();
+      await expect(enlarged.getByText(t("ArtworkChecks", "previewOnlyNote"))).toBeVisible();
+      await enlarged.getByRole("button", { name: t("ArtworkChecks", "close") }).first().click();
       await expect(enlarged).toBeHidden();
 
       await continueToApproval(page, t);
@@ -170,13 +168,10 @@ test.describe("keyboard only", () => {
     await page.keyboard.press("Enter");
     await (await chooser).setFiles(DEMO_FILES.printReady);
 
+    await expect(page.getByText(t("ArtworkChecks", "noFindings"))).toBeVisible();
     const next = page.getByRole("button", { name: t("FlyersConfigurator", "continue") });
     await expect(next).toBeEnabled();
     await tabTo(page, next);
-    await page.keyboard.press("Enter");
-
-    await expect(page.getByText(t("CheckAndPreviewStep", "noFindings"))).toBeVisible();
-    await tabTo(page, page.getByRole("button", { name: t("CheckAndPreviewStep", "next") }));
     await page.keyboard.press("Enter");
 
     await tabTo(page, page.getByLabel(t("ApproveAndConfirmStep", "fieldName")));
@@ -235,7 +230,6 @@ test.describe("damaged file", () => {
     const t = copyFor("en");
     await page.goto("/en/flyers");
     await page.locator('input[type="file"]').first().setInputFiles(DEMO_FILES.damaged);
-    await page.getByRole("button", { name: t("FlyersConfigurator", "continue") }).click();
     await expect(page.getByText(t("Findings", "file_repaired_warning")).first()).toBeVisible();
     await expectNoMoney(page);
   });

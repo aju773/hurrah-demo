@@ -1,18 +1,21 @@
 "use client";
 
+import { useState } from "react";
 import { useTranslations } from "next-intl";
 import SummaryPanel from "./SummaryPanel";
 import { Notices } from "./OptionsPage";
 import ArtworkSlots from "./ArtworkSlots";
+import ArtworkChecks from "./ArtworkChecks";
 import ArtworkTemplatesPanel from "./ArtworkTemplatesPanel";
 import DesignHelpDrawer from "./DesignHelpDrawer";
 import SyncDialog from "./SyncDialog";
 import { ShowHintsLink } from "./FirstVisitHint";
 import { toBackPayload, toFrontPayload } from "@/lib/reopenPicker";
 
-/** The Artwork page: upload slots, Artwork templates, Design request, Page picker
+/** The Artwork page: upload slots with the Findings and Proof preview under them
+ * as soon as a Front is uploaded, Artwork templates, Design request, Page picker
  * and Sync dialog, with the live Summary beside them and "Edit options" back to
- * the Options page. */
+ * the Options page. Continue goes straight to Approve. */
 export default function ArtworkPage({
   catalogue,
   selection,
@@ -29,6 +32,9 @@ export default function ArtworkPage({
 }) {
   const t = useTranslations("FlyersConfigurator");
   const { commerceEnabled } = state;
+  const [previewBlocked, setPreviewBlocked] = useState(false); // ArtworkChecks: an Error Finding remains
+  const front = state.slots.front;
+  const continueReason = !front ? "continueNeedsArtwork" : dialog ? "continueHasOpenDialog" : !canContinue || previewBlocked ? "continueHasError" : null;
 
   return (
     <div className="flex flex-col gap-[20px] w-full" dir={locale === "ar" ? "rtl" : "ltr"}>
@@ -69,6 +75,20 @@ export default function ArtworkPage({
             onBackRemoved={() => actions.removeArtwork("back")}
           />
 
+          {front?.id && (
+            <ArtworkChecks
+              key={`${front.id}:${state.slots.back?.id ?? ""}:${state.slots.sameBack}`}
+              frontId={front.id}
+              backId={state.slots.back?.id}
+              sameAsFront={state.slots.sameBack}
+              sizeCode={selection.size}
+              sizeChoice={state.sizeChoice}
+              canChoosePages={actions.canChoosePages}
+              onChoosePages={actions.openChoosePages}
+              onBlockedChange={setPreviewBlocked}
+            />
+          )}
+
           <ArtworkTemplatesPanel />
 
           {reopenPicker}
@@ -102,11 +122,16 @@ export default function ArtworkPage({
         commerceEnabled={commerceEnabled}
       />
 
+      {continueReason && (
+        <p id="continue-disabled-reason" className="text-[#b0001d] text-[13px] font-semibold text-end">
+          <span aria-hidden="true">⛔</span> {t(continueReason)}
+        </p>
+      )}
       <div className="flex items-center justify-end">
         <button
           type="button"
-          disabled={!canContinue}
-          title={!state.slots.front ? t("continueNeedsArtwork") : dialog ? t("continueHasOpenDialog") : ""}
+          disabled={Boolean(continueReason)}
+          aria-describedby={continueReason ? "continue-disabled-reason" : undefined}
           onClick={actions.onContinue}
           className="h-[44px] px-[24px] rounded-[8px] text-[14px] font-semibold bg-[#e51937] text-white disabled:opacity-40 disabled:cursor-not-allowed"
         >

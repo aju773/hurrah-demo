@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { F1_NAME, frontLowPpiRow, goToStep2, storedDraft, trackUploads, uploadF1AndMatchOrder } from "./helpers";
 
-test("switching to Arabic on step 2 flips to RTL, translates findings and keeps the draft", async ({ page }) => {
+test("switching to Arabic on the Artwork page flips to RTL, translates findings and keeps the draft", async ({ page }) => {
   const uploads = trackUploads(page);
   await page.goto("/en/flyers");
   await uploadF1AndMatchOrder(page);
@@ -19,7 +19,7 @@ test("switching to Arabic on step 2 flips to RTL, translates findings and keeps 
   await expect(page.getByText("إحدى الصور منخفضة الدقة، لذا قد تبدو غير حادة قليلًا.").first()).toBeVisible();
   await expect(page.getByText("An image is low resolution")).toHaveCount(0);
 
-  // Same Artwork, still on step 2, nothing uploaded again.
+  // Same Artwork, still on the Artwork page, nothing uploaded again.
   const after = await storedDraft(page);
   expect(after.slots.front.id).toBe(before.slots.front.id);
   expect(after.slots.back.id).toBe(before.slots.back.id);

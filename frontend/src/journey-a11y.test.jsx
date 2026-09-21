@@ -7,7 +7,7 @@ import { useState } from "react";
 import { NextIntlClientProvider } from "next-intl";
 import en from "../messages/en.json";
 import ar from "../messages/ar.json";
-import CheckAndPreviewStep from "@/components/CheckAndPreviewStep";
+import ArtworkChecks from "@/components/ArtworkChecks";
 import DesignHelpDrawer from "@/components/DesignHelpDrawer";
 import PagePicker from "@/components/PagePicker";
 import SyncDialog from "@/components/SyncDialog";
@@ -50,7 +50,7 @@ const PREVIEW = {
 
 function renderStep2(locale = "en") {
   vi.mocked(fetchPreview).mockResolvedValue(PREVIEW);
-  return render(intl(<CheckAndPreviewStep frontId={1} backId={null} sameAsFront sizeCode="a5" sizeChoice={null} onBack={vi.fn()} onNext={vi.fn()} />, locale));
+  return render(intl(<ArtworkChecks frontId={1} backId={null} sameAsFront sizeCode="a5" sizeChoice={null} />, locale));
 }
 
 describe("Findings: Severity is never carried by colour alone", () => {
@@ -61,16 +61,9 @@ describe("Findings: Severity is never carried by colour alone", () => {
       expect(rows.map((row) => row.textContent.split(" · ")[0].replace(/^\S+\s/, ""))).toEqual(words);
     });
   }
-
-  it("says why Next is unavailable in text, and ties it to the button", async () => {
-    renderStep2();
-    const next = await screen.findByRole("button", { name: /Next: approve/ });
-    expect(next).toBeDisabled();
-    expect(next).toHaveAccessibleDescription(/Fix every Error above/);
-  });
 });
 
-describe("Step 2 announcements and previews", () => {
+describe("Artwork page announcements and previews", () => {
   it("announces the result of the check in a polite status region", async () => {
     renderStep2();
     await waitFor(() => {
@@ -81,7 +74,7 @@ describe("Step 2 announcements and previews", () => {
 
   it("announces the loading state, and an alert when the preview cannot load", async () => {
     vi.mocked(fetchPreview).mockResolvedValue(null);
-    render(intl(<CheckAndPreviewStep frontId={1} backId={null} sameAsFront sizeCode="a5" sizeChoice={null} onBack={vi.fn()} onNext={vi.fn()} />));
+    render(intl(<ArtworkChecks frontId={1} backId={null} sameAsFront sizeCode="a5" sizeChoice={null} />));
     expect(screen.getByRole("status")).toHaveTextContent("Loading your preview");
     expect(await screen.findByRole("alert")).toHaveTextContent("Something went wrong");
   });

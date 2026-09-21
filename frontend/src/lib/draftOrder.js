@@ -15,6 +15,28 @@ export const SIDES_OPTION = "sides";
 export const SIDES_SINGLE = "single";
 export const SIDES_DOUBLE = "double";
 
+// The pages of the journey, in order. "check" is the old Check & preview page; it
+// stays behind the Artwork page until it is merged into it.
+export const PAGE_OPTIONS = "options";
+export const PAGE_ARTWORK = "artwork";
+export const PAGE_CHECK = "check";
+export const PAGE_APPROVE = "approve";
+export const PAGES = [PAGE_OPTIONS, PAGE_ARTWORK, PAGE_CHECK, PAGE_APPROVE];
+
+/** Each page's address under the locale (the Options page keeps the flyers address). */
+export const PAGE_PATHS = {
+  [PAGE_OPTIONS]: "/flyers",
+  [PAGE_ARTWORK]: "/flyers/artwork",
+  [PAGE_CHECK]: "/flyers/check",
+  [PAGE_APPROVE]: "/flyers/approve",
+};
+
+/** The page an address belongs to, or null for any other address. */
+export function pageForPath(pathname) {
+  const path = (pathname ?? "").replace(/\/+$/, "") || "/";
+  return PAGES.find((page) => PAGE_PATHS[page] === path) ?? null;
+}
+
 const SOURCE_DEFAULT = "default";
 const SOURCE_CUSTOMER = "customer";
 const SOURCE_FILE = "file";
@@ -32,7 +54,7 @@ export function initDraft(defaults) {
     sizeChoice: null,
     previews: {},
     pendingRequote: null,
-    step: 0,
+    page: PAGE_OPTIONS,
     quote: null,
     notices: [],
     blocked: {},
@@ -43,15 +65,15 @@ export function initDraft(defaults) {
     commerceEnabled: false,
     turnarounds: [],
     available: true,
-    // Step 3 approval ticks (spec stories 78-79, 82): cleared whenever the
+    // Approve page ticks (spec stories 78-79, 82): cleared whenever the
     // Configuration or Artwork changes, or the Cut-off countdown expires.
     ticks: { approval: false, warnings: false },
     // Generated once (useDraftOrder) and persisted, so a retried/double Submit
     // reuses the same key (spec story 88).
     idempotencyKey: null,
-    // "Edit options" / "Change file" on Step 3 (spec story 88): while true,
-    // Step 1's Continue returns straight to Step 3. `focus` is where Step 1
-    // should put the cursor ("options" | "front" | "back"); transient, never persisted.
+    // "Edit options" / "Change file" on the Approve page (spec story 88): while true,
+    // the Artwork page's Continue returns straight to Approve. `focus` is where the
+    // page should put the cursor ("options" | "front" | "back"); transient, never persisted.
     returnToApprove: false,
     focus: null,
   };
@@ -115,6 +137,31 @@ function noSlotHasPreflightError(slots) {
 
 export function canContinue(state) {
   return Boolean(state.slots.front) && noSlotHasPreflightError(state.slots) && openDialogs(state).length === 0;
+}
+
+/** Whether the Approve and Check pages may open: a Front that Preflight has not
+ * rejected and no open dialog. Same rule as the Artwork page's Continue. */
+export function hasAcceptedFront(state) {
+  return canContinue(state);
+}
+
+/** Whether a saved draft holds a Configuration worth reopening a later page for:
+ * the customer chose something, already moved past the Options page, or has Artwork.
+ * A draft that only holds the untouched defaults (someone merely looked at the
+ * Options page) does not count. */
+export function isRestorableDraft(saved) {
+  if (!saved) return false;
+  return Boolean(saved.touched || (saved.page && saved.page !== PAGE_OPTIONS) || saved.slots?.front?.id);
+}
+
+/** Where a customer asking for `requested` may actually land. Opening the Artwork
+ * or a later page with no restorable Configuration goes to the Options page; opening
+ * Check or Approve without accepted Front Artwork goes to the Artwork page. */
+export function guardPage(state, requested, { restorable }) {
+  if (!PAGES.includes(requested) || requested === PAGE_OPTIONS) return PAGE_OPTIONS;
+  if (!restorable) return PAGE_OPTIONS;
+  if (requested !== PAGE_ARTWORK && !hasAcceptedFront(state)) return PAGE_ARTWORK;
+  return requested;
 }
 
 /** The next side effect the caller (a hook, in the real app) should perform,
@@ -357,19 +404,23 @@ export function reduce(state, action) {
       return clearTicks({ ...state, resolvedChoices: { ...state.resolvedChoices, [action.key]: action.how } });
     }
 
-    case "GO_TO_STEP":
-      return { ...state, step: action.step, returnToApprove: false };
+    case "GO_TO_PAGE": {
+      // Options -> Artwork keeps "return to approval" (Edit options from Approve
+      // runs through the Artwork page); landing on Check or Approve ends it.
+      const keepReturn = action.page === PAGE_OPTIONS || action.page === PAGE_ARTWORK;
+      return { ...state, page: action.page, returnToApprove: keepReturn ? state.returnToApprove : false };
+    }
 
     case "EDIT_FROM_APPROVE":
       // Only navigation: the draft (Configuration, Artwork, choices) is left as is.
-      return { ...state, step: 0, returnToApprove: true, focus: action.focus };
+      return { ...state, page: action.focus === "options" ? PAGE_OPTIONS : PAGE_ARTWORK, returnToApprove: true, focus: action.focus };
 
     case "CLEAR_FOCUS":
       return { ...state, focus: null };
 
     case "RETURN_TO_APPROVE":
       // The customer fixed something: whatever they approved before no longer counts.
-      return clearTicks({ ...state, step: 2, returnToApprove: false, focus: null });
+      return clearTicks({ ...state, page: PAGE_APPROVE, returnToApprove: false, focus: null });
 
     case "SET_TICK":
       return { ...state, ticks: { ...state.ticks, [action.name]: action.value } };
@@ -393,9 +444,11 @@ export function reduce(state, action) {
 
     case "RESTORE": {
       const restored = { ...initDraft(action.defaults), ...action.saved };
-      // Steps 2 and 3 draw the Front's preview; without a stored Front there is
-      // nothing to draw, so a stale draft reopens on the artwork step.
-      if (restored.step > 0 && !restored.slots?.front?.id) restored.step = 0;
+      delete restored.step; // drafts saved before the journey had pages
+      if (!PAGES.includes(restored.page)) restored.page = PAGE_OPTIONS;
+      // Check and Approve draw the Front's preview; without a stored Front there is
+      // nothing to draw, so a stale draft reopens on the Artwork page.
+      if ((restored.page === PAGE_CHECK || restored.page === PAGE_APPROVE) && !restored.slots?.front?.id) restored.page = PAGE_ARTWORK;
       return restored;
     }
 
@@ -406,7 +459,7 @@ export function reduce(state, action) {
 
 // ---- persistence ------------------------------------------------------
 
-const PERSISTED_KEYS = ["config", "source", "touched", "slots", "resolvedChoices", "sizeChoice", "step", "ticks", "idempotencyKey", "returnToApprove"];
+const PERSISTED_KEYS = ["config", "source", "touched", "slots", "resolvedChoices", "sizeChoice", "page", "ticks", "idempotencyKey", "returnToApprove"];
 
 /** A JSON-safe snapshot for sessionStorage / the URL. Dialogs and previews are
  * derived, not persisted. */

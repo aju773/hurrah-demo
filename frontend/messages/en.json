@@ -44,7 +44,9 @@
     "unavailableCard": "Not available",
     "returnToApproval": "Return to approval",
     "syncError": "We couldn't update your options and prices. Your choices are kept, so you can try again.",
-    "retry": "Retry"
+    "retry": "Retry",
+    "startOrdering": "Start ordering",
+    "editOptions": "Edit options"
   },
   "CheckAndPreviewStep": {
     "loading": "Loading your preview…",
@@ -360,7 +362,7 @@
     "retryThumbnail": "Retry loading page {page}"
   },
   "Hints": {
-    "options": "Start here: choose your size, paper, sides, quantity and turnaround, then drop your PDF in the Front slot.",
+    "options": "Start here: choose your size, paper, sides, quantity and turnaround, then press Start ordering.",
     "findings": "These are the checks on your file. Fix anything marked Must fix, then look over the previews beside them.",
     "approval": "Check your proof, add your name and mobile number, then tick the box to approve it and send your order.",
     "gotIt": "Got it",

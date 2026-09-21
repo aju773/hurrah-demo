@@ -5,7 +5,10 @@ import { API_BASE_URL, FLYERS_SLUG } from "@/lib/api";
 import { fetchWithTimeout } from "@/lib/network";
 import {
   canContinue as computeCanContinue,
+  guardPage,
   initDraft,
+  isRestorableDraft,
+  PAGE_OPTIONS,
   openDialogs as computeOpenDialogs,
   pendingEffect,
   reduce,
@@ -100,7 +103,7 @@ function toSlotArtwork(data) {
 /** Wires the pure draftOrder reducer to the Configuration API, sessionStorage
  * and the URL. The reducer never fetches; this hook is the only place that
  * turns a `pendingEffect` into a network call. */
-export default function useDraftOrder({ defaults, locale, initialConfiguration }) {
+export default function useDraftOrder({ defaults, locale, initialConfiguration, initialPage = null }) {
   const [state, setState] = useState(() => {
     const base = initDraft(defaults);
     // Every draft needs an idempotency key before Submit can be enabled — one
@@ -129,6 +132,9 @@ export default function useDraftOrder({ defaults, locale, initialConfiguration }
   const [syncFailed, setSyncFailed] = useState(false); // the last Configuration request didn't come back
   const [retryTick, setRetryTick] = useState(0); // bumped by retrySync to run the pending request again
   const dispatch = useCallback((action) => setState((s) => reduce(s, action)), []);
+  // True once the customer has a Configuration worth opening a later page for:
+  // a restorable saved draft, or a move past the Options page in this visit.
+  const startedRef = useRef(false);
 
   // Rehydrate once on mount: sessionStorage/URL hold Option picks, slot
   // Artwork ids and resolved choices — never file bytes — so a refresh
@@ -137,6 +143,7 @@ export default function useDraftOrder({ defaults, locale, initialConfiguration }
     let cancelled = false;
     (async () => {
       const saved = readStoredDraft();
+      startedRef.current = isRestorableDraft(saved);
       if (!saved) {
         setRehydrating(false);
         return;
@@ -157,6 +164,10 @@ export default function useDraftOrder({ defaults, locale, initialConfiguration }
       // A draft saved before this key existed carries none — keep the one
       // generated at mount above rather than leaving it null.
       if (!restored.idempotencyKey) restored = { ...restored, idempotencyKey: newIdempotencyKey() };
+      // The address the customer opened wins over the page the draft was last on.
+      if (initialPage) {
+        restored = { ...restored, page: guardPage(restored, initialPage, { restorable: startedRef.current }) };
+      }
       setState(restored);
       setRehydrating(false);
     })();
@@ -238,9 +249,16 @@ export default function useDraftOrder({ defaults, locale, initialConfiguration }
     // trim mm, computed by the caller so this hook and the reducer stay pure.
     resolveDialog: (key, how, extra) => dispatch({ type: "RESOLVE_DIALOG", key, how, ...extra }),
     refresh: () => dispatch({ type: "REQUEST_REQUOTE" }),
-    goToStep: (step) => dispatch({ type: "GO_TO_STEP", step }),
-    // Step 3's "Edit options" / "Change file": `focus` is "options" | "front" | "back".
-    editFromApprove: (focus) => dispatch({ type: "EDIT_FROM_APPROVE", focus }),
+    goToPage: (page) => {
+      if (page !== PAGE_OPTIONS) startedRef.current = true;
+      dispatch({ type: "GO_TO_PAGE", page });
+    },
+    isRestorable: () => startedRef.current,
+    // The Approve page's "Edit options" / "Change file": `focus` is "options" | "front" | "back".
+    editFromApprove: (focus) => {
+      startedRef.current = true;
+      dispatch({ type: "EDIT_FROM_APPROVE", focus });
+    },
     clearFocus: () => dispatch({ type: "CLEAR_FOCUS" }),
     returnToApprove: () => dispatch({ type: "RETURN_TO_APPROVE" }),
     setTick: (name, value) => dispatch({ type: "SET_TICK", name, value }),

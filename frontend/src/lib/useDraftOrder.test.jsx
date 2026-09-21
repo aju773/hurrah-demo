@@ -25,7 +25,10 @@ const FRONT = { id: 5, matchedSizeCode: "a5", mm: { width: 148, height: 210 }, b
 const isConfiguration = (url) => String(url).includes("/configuration/");
 const ok = (json) => Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(json) });
 
-beforeEach(() => window.sessionStorage.clear());
+beforeEach(() => {
+  window.sessionStorage.clear();
+  window.history.replaceState(null, "", "/"); // the hook mirrors the draft into the address
+});
 afterEach(() => vi.unstubAllGlobals());
 
 describe("useDraftOrder when the network fails", () => {
@@ -69,5 +72,44 @@ describe("useDraftOrder when the network fails", () => {
     } finally {
       process.off("unhandledRejection", unhandled);
     }
+  });
+});
+
+describe("useDraftOrder opened at a page's address", () => {
+  const stub = () => vi.stubGlobal("fetch", vi.fn((url) => (isConfiguration(url) ? ok(CONFIGURATION) : ok({ id: 5 }))));
+
+  it("puts a saved draft on the page whose address was opened", async () => {
+    saveDraft({ page: "options", touched: true, slots: { front: FRONT, back: null, sameBack: false } });
+    stub();
+    const { result } = renderHook(() => useDraftOrder({ defaults: DEFAULTS, locale: "en", initialConfiguration: CONFIGURATION, initialPage: "artwork" }));
+    await waitFor(() => expect(result.current.rehydrating).toBe(false));
+    expect(result.current.state.page).toBe("artwork");
+    expect(result.current.isRestorable()).toBe(true);
+  });
+
+  it("with nothing saved stays on the Options page and does not count as restorable", async () => {
+    stub();
+    const { result } = renderHook(() => useDraftOrder({ defaults: DEFAULTS, locale: "en", initialConfiguration: CONFIGURATION, initialPage: "artwork" }));
+    await waitFor(() => expect(result.current.rehydrating).toBe(false));
+    expect(result.current.state.page).toBe("options");
+    expect(result.current.isRestorable()).toBe(false);
+  });
+
+  it("does not count a draft of untouched defaults as restorable, and Approve without a Front lands on Artwork", async () => {
+    saveDraft({ page: "options" });
+    stub();
+    const { result } = renderHook(() => useDraftOrder({ defaults: DEFAULTS, locale: "en", initialConfiguration: CONFIGURATION, initialPage: "approve" }));
+    await waitFor(() => expect(result.current.rehydrating).toBe(false));
+    expect(result.current.isRestorable()).toBe(false);
+    expect(result.current.state.page).toBe("options");
+  });
+
+  it("moving past the Options page makes the Configuration restorable", async () => {
+    stub();
+    const { result } = renderHook(() => useDraftOrder({ defaults: DEFAULTS, locale: "en", initialConfiguration: CONFIGURATION }));
+    await waitFor(() => expect(result.current.rehydrating).toBe(false));
+    act(() => result.current.goToPage("artwork"));
+    expect(result.current.state.page).toBe("artwork");
+    expect(result.current.isRestorable()).toBe(true);
   });
 });

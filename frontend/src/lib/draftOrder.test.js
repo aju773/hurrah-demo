@@ -1,8 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
   canContinue,
+  guardPage,
   initDraft,
+  isRestorableDraft,
   openDialogs,
+  pageForPath,
+  PAGE_PATHS,
   pendingEffect,
   reduce,
   restoreDraft,
@@ -323,7 +327,7 @@ describe("persistence and rehydrate", () => {
     s = uploadFront(s, F5_A5_SINGLE);
     const [dialog] = openDialogs(s);
     s = reduce(s, { type: "RESOLVE_DIALOG", key: dialog.key, how: "same" });
-    s = { ...s, step: 1 };
+    s = { ...s, page: "check" };
 
     const saved = serializeDraft(s);
     expect(saved).not.toHaveProperty("previews");
@@ -332,15 +336,25 @@ describe("persistence and rehydrate", () => {
     const rehydrated = restoreDraft(JSON.parse(JSON.stringify(saved)), DEFAULTS);
     expect(rehydrated.config).toEqual(s.config);
     expect(rehydrated.slots).toEqual(s.slots);
-    expect(rehydrated.step).toBe(1);
+    expect(rehydrated.page).toBe("check");
     expect(openDialogs(rehydrated)).toEqual([]);
     expect(canContinue(rehydrated)).toBe(true);
   });
 
-  it("reopens on the artwork step when the saved draft is past it but has no Front", () => {
-    const s = { ...initDraft(DEFAULTS), step: 1 };
-    const rehydrated = restoreDraft(JSON.parse(JSON.stringify(serializeDraft(s))), DEFAULTS);
-    expect(rehydrated.step).toBe(0);
+  it("reopens on the Artwork page when the saved draft is past it but has no Front", () => {
+    for (const page of ["check", "approve"]) {
+      const s = { ...initDraft(DEFAULTS), page };
+      const rehydrated = restoreDraft(JSON.parse(JSON.stringify(serializeDraft(s))), DEFAULTS);
+      expect(rehydrated.page).toBe("artwork");
+    }
+  });
+
+  it("keeps a draft parked on the Artwork page there, and starts a draft with no page on the Options page", () => {
+    const parked = restoreDraft(JSON.parse(JSON.stringify(serializeDraft({ ...initDraft(DEFAULTS), page: "artwork" }))), DEFAULTS);
+    expect(parked.page).toBe("artwork");
+    const { page, ...withoutPage } = serializeDraft(initDraft(DEFAULTS));
+    expect(restoreDraft({ ...withoutPage, step: 2 }, DEFAULTS)).toMatchObject({ page: "options" });
+    expect(restoreDraft({ ...withoutPage, step: 2 }, DEFAULTS)).not.toHaveProperty("step");
   });
 
   it("uses the Back slot for sync, not the front-filled-both flag, once B1 replaces a real second page", () => {
@@ -351,7 +365,7 @@ describe("persistence and rehydrate", () => {
   });
 });
 
-describe("step 3 approval ticks (ticket 10)", () => {
+describe("Approve page ticks (ticket 10)", () => {
   it("start unticked and can be set independently", () => {
     let s = initDraft(DEFAULTS);
     expect(s.ticks).toEqual({ approval: false, warnings: false });
@@ -398,10 +412,10 @@ describe("step 3 approval ticks (ticket 10)", () => {
     expect({ ...s, ticks: undefined }).toEqual(before);
   });
 
-  it("survive step navigation (GO_TO_STEP doesn't clear them)", () => {
+  it("survive page navigation (GO_TO_PAGE doesn't clear them)", () => {
     let s = initDraft(DEFAULTS);
     s = reduce(s, { type: "SET_TICK", name: "approval", value: true });
-    s = reduce(s, { type: "GO_TO_STEP", step: 2 });
+    s = reduce(s, { type: "GO_TO_PAGE", page: "approve" });
     expect(s.ticks.approval).toBe(true);
   });
 });
@@ -458,20 +472,31 @@ describe("idempotency key (spec story 88)", () => {
   });
 });
 
-describe("Edit options / Change file from Step 3 (ticket 06)", () => {
+describe("Edit options / Change file from the Approve page (ticket 06)", () => {
   function onApprove() {
     let s = uploadFront(initDraft(DEFAULTS), F5_A5_SINGLE);
-    s = reduce(s, { type: "GO_TO_STEP", step: 2 });
+    s = reduce(s, { type: "GO_TO_PAGE", page: "approve" });
     return reduce(s, { type: "SET_TICK", name: "approval", value: true });
   }
 
-  it("EDIT_FROM_APPROVE opens Step 1 with a focus target and changes nothing else", () => {
+  it("EDIT_FROM_APPROVE opens the page that holds the choice, with a focus target, and changes nothing else", () => {
     const before = onApprove();
     const s = reduce(before, { type: "EDIT_FROM_APPROVE", focus: "options" });
-    expect(s.step).toBe(0);
+    expect(s.page).toBe("options");
     expect(s.returnToApprove).toBe(true);
     expect(s.focus).toBe("options");
-    expect({ ...s, step: 0, returnToApprove: false, focus: null }).toEqual({ ...before, step: 0, returnToApprove: false, focus: null });
+    expect({ ...s, page: "x", returnToApprove: false, focus: null }).toEqual({ ...before, page: "x", returnToApprove: false, focus: null });
+    for (const focus of ["front", "back"]) {
+      expect(reduce(before, { type: "EDIT_FROM_APPROVE", focus }).page).toBe("artwork");
+    }
+  });
+
+  it("Options -> Artwork keeps the return trip; landing on Check or Approve ends it", () => {
+    let s = reduce(onApprove(), { type: "EDIT_FROM_APPROVE", focus: "options" });
+    s = reduce(s, { type: "GO_TO_PAGE", page: "artwork" });
+    expect(s).toMatchObject({ page: "artwork", returnToApprove: true });
+    expect(reduce(s, { type: "GO_TO_PAGE", page: "options" }).returnToApprove).toBe(true);
+    expect(reduce(s, { type: "GO_TO_PAGE", page: "check" }).returnToApprove).toBe(false);
   });
 
   it("CLEAR_FOCUS drops the focus target once handled", () => {
@@ -481,11 +506,11 @@ describe("Edit options / Change file from Step 3 (ticket 06)", () => {
     expect(s.returnToApprove).toBe(true);
   });
 
-  it("RETURN_TO_APPROVE goes back to Step 3 with the ticks cleared", () => {
+  it("RETURN_TO_APPROVE goes back to the Approve page with the ticks cleared", () => {
     let s = reduce(onApprove(), { type: "EDIT_FROM_APPROVE", focus: "options" });
     s = reduce(s, { type: "SET_TICK", name: "approval", value: true });
     s = reduce(s, { type: "RETURN_TO_APPROVE" });
-    expect(s.step).toBe(2);
+    expect(s.page).toBe("approve");
     expect(s.returnToApprove).toBe(false);
     expect(s.ticks).toEqual({ approval: false, warnings: false });
   });
@@ -502,14 +527,14 @@ describe("Edit options / Change file from Step 3 (ticket 06)", () => {
   it("returnToApprove survives a refresh; the focus target does not", () => {
     const s = reduce(onApprove(), { type: "EDIT_FROM_APPROVE", focus: "back" });
     const rehydrated = restoreDraft(JSON.parse(JSON.stringify(serializeDraft(s))), DEFAULTS);
-    expect(rehydrated.step).toBe(0);
+    expect(rehydrated.page).toBe("artwork");
     expect(rehydrated.returnToApprove).toBe(true);
     expect(rehydrated.focus).toBeNull();
   });
 
-  it("a plain GO_TO_STEP forgets the return trip", () => {
+  it("a plain GO_TO_PAGE to Check forgets the return trip", () => {
     let s = reduce(onApprove(), { type: "EDIT_FROM_APPROVE", focus: "options" });
-    s = reduce(s, { type: "GO_TO_STEP", step: 1 });
+    s = reduce(s, { type: "GO_TO_PAGE", page: "check" });
     expect(s.returnToApprove).toBe(false);
   });
 });
@@ -542,3 +567,66 @@ describe("page picker choices in the draft", () => {
   });
 });
 
+
+describe("journey pages and the redirect guard", () => {
+  const withFront = (patch = {}) => uploadFront({ ...initDraft(DEFAULTS), ...patch }, F5_A5_SINGLE);
+
+  it("starts on the Options page", () => {
+    expect(initDraft(DEFAULTS).page).toBe("options");
+  });
+
+  it("GO_TO_PAGE moves between pages without touching the Configuration or Artwork", () => {
+    const before = withFront();
+    const s = reduce(before, { type: "GO_TO_PAGE", page: "artwork" });
+    expect(s.page).toBe("artwork");
+    expect({ ...s, page: "x" }).toEqual({ ...before, page: "x" });
+  });
+
+  it("each page has its own address, and only those addresses map back to a page", () => {
+    expect(PAGE_PATHS.options).toBe("/flyers");
+    expect(new Set(Object.values(PAGE_PATHS)).size).toBe(4);
+    for (const [page, path] of Object.entries(PAGE_PATHS)) {
+      expect(pageForPath(path)).toBe(page);
+      expect(pageForPath(`${path}/`)).toBe(page);
+    }
+    expect(pageForPath("/flyers/nope")).toBeNull();
+    expect(pageForPath("/order/abc")).toBeNull();
+  });
+
+  it("the Options page always opens", () => {
+    expect(guardPage(initDraft(DEFAULTS), "options", { restorable: false })).toBe("options");
+  });
+
+  it("Artwork, Check and Approve with no restorable Configuration go to the Options page", () => {
+    for (const page of ["artwork", "check", "approve"]) {
+      expect(guardPage(withFront(), page, { restorable: false })).toBe("options");
+    }
+  });
+
+  it("the Artwork page opens for a restorable Configuration even with no Artwork yet", () => {
+    expect(guardPage(initDraft(DEFAULTS), "artwork", { restorable: true })).toBe("artwork");
+  });
+
+  it("Check and Approve without accepted Front Artwork go to the Artwork page", () => {
+    const noFront = initDraft(DEFAULTS);
+    const errored = settle(reduce(noFront, { type: "UPLOAD_FRONT", artwork: { ...F5_A5_SINGLE, hasError: true } }));
+    for (const page of ["check", "approve"]) {
+      expect(guardPage(noFront, page, { restorable: true })).toBe("artwork");
+      expect(guardPage(errored, page, { restorable: true })).toBe("artwork");
+      expect(guardPage(withFront(), page, { restorable: true })).toBe(page);
+    }
+  });
+
+  it("an unknown page goes to the Options page", () => {
+    expect(guardPage(withFront(), "nowhere", { restorable: true })).toBe("options");
+  });
+
+  it("a saved draft is restorable once the customer chose something, moved on, or has Artwork", () => {
+    const fresh = serializeDraft(initDraft(DEFAULTS));
+    expect(isRestorableDraft(null)).toBe(false);
+    expect(isRestorableDraft(fresh)).toBe(false); // only the untouched defaults
+    expect(isRestorableDraft({ ...fresh, touched: true })).toBe(true);
+    expect(isRestorableDraft({ ...fresh, page: "artwork" })).toBe(true);
+    expect(isRestorableDraft(serializeDraft(withFront()))).toBe(true);
+  });
+});

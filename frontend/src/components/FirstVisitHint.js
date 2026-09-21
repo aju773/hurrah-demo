@@ -15,7 +15,7 @@ function useHintSeen(step) {
 }
 
 /**
- * One small, non-modal hint for a step of the Flyers journey (Hints, in
+ * One small, non-modal hint for a page of the Flyers journey (Hints, in
  * CONTEXT.md). It sits in the page flow beside the control it explains, never
  * takes focus and never covers anything. "Got it" dismisses this one, "Dismiss
  * all" dismisses every hint, and Escape dismisses it unless a dialog is open

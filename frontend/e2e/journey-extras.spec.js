@@ -118,19 +118,22 @@ for (const locale of LOCALES) {
       await checkPage(page, "desktop");
 
       // Not modal: the page underneath still works while the hint is up.
-      await uploadFront(page, DEMO_FILES.printReady);
-      await expect(page.getByRole("button", { name: t("FlyersConfigurator", "continue") })).toBeEnabled();
+      const start = page.getByRole("button", { name: t("FlyersConfigurator", "startOrdering") });
+      await expect(start).toBeEnabled();
 
       await page.keyboard.press("Escape");
       await expect(hint).toHaveCount(0);
 
       await page.reload();
       await page.waitForLoadState("networkidle");
-      await expect(page.getByRole("button", { name: t("FlyersConfigurator", "continue") })).toBeVisible();
+      await expect(start).toBeVisible();
       await expect(page.locator('[data-hint="options"]')).toHaveCount(0);
 
-      // The customer's file is still there; the rest of the journey carries on with the other hints in view.
-      await expect(page.locator('[data-hint="findings"]')).toBeVisible();
+      // One hint per page: the Artwork page shows its own, then the approval page.
+      await start.click();
+      await expect(page.locator('[data-hint="artwork"]')).toBeVisible();
+      await uploadFront(page, DEMO_FILES.printReady);
+      await expect(page.locator('[data-hint="artwork"]')).toBeVisible();
       await continueToApproval(page, t);
       await expect(page.locator('[data-hint="approval"]')).toBeVisible();
       const number = await approveAndSubmit(page, t, locale);

@@ -11,7 +11,7 @@ function ui({ locale = "en", messages = en, onClick = () => {} } = {}) {
   return (
     <NextIntlClientProvider locale={locale} messages={messages}>
       <FirstVisitHint step="options" />
-      <FirstVisitHint step="findings" />
+      <FirstVisitHint step="artwork" />
       <ShowHintsLink />
       <button type="button" onClick={onClick}>
         Underneath
@@ -44,7 +44,7 @@ describe("FirstVisitHint", () => {
     expect(hints).toHaveLength(2);
     expect(hints[0]).toHaveAttribute("aria-live", "polite");
     expect(hints[0]).toHaveTextContent(en.Hints.options);
-    expect(hints[1]).toHaveTextContent(en.Hints.findings);
+    expect(hints[1]).toHaveTextContent(en.Hints.artwork);
   });
 
   it("never blocks the page: no modal, no focus taken, clicks and typing still work", async () => {
@@ -63,7 +63,7 @@ describe("FirstVisitHint", () => {
     fireEvent.click(screen.getAllByRole("button", { name: en.Hints.gotIt })[0]);
     const hints = screen.getAllByRole("status");
     expect(hints).toHaveLength(1);
-    expect(hints[0]).toHaveTextContent(en.Hints.findings);
+    expect(hints[0]).toHaveTextContent(en.Hints.artwork);
   });
 
   it("dismisses all hints with Dismiss all", async () => {

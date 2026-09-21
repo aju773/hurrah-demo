@@ -1,4 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import en from "../../messages/en.json";
+import ar from "../../messages/ar.json";
 import { HINT_STEPS, dismissAllHints, dismissHint, hintsEnabled, isHintSeen, resetHints } from "./hints";
 
 beforeEach(() => {
@@ -18,7 +20,7 @@ describe("hints seen state", () => {
   it("remembers a dismissed hint in the browser, and only that one", () => {
     dismissHint("options");
     expect(isHintSeen("options")).toBe(true);
-    expect(isHintSeen("findings")).toBe(false);
+    expect(isHintSeen("artwork")).toBe(false);
     expect(JSON.parse(localStorage.getItem("hurrah.hints.seen"))).toEqual(["options"]);
   });
 
@@ -31,6 +33,16 @@ describe("hints seen state", () => {
     dismissAllHints();
     resetHints();
     for (const step of HINT_STEPS) expect(isHintSeen(step)).toBe(false);
+  });
+});
+
+describe("hint copy", () => {
+  it("is one hint per journey page, in English and Arabic", () => {
+    expect(HINT_STEPS).toEqual(["options", "artwork", "approval"]);
+    for (const step of HINT_STEPS) {
+      expect(en.Hints[step]).toBeTruthy();
+      expect(ar.Hints[step]).toBeTruthy();
+    }
   });
 });
 

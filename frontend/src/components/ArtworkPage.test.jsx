@@ -6,6 +6,7 @@ import en from "../../messages/en.json";
 import ar from "../../messages/ar.json";
 import ArtworkPage from "./ArtworkPage";
 import { fetchPreview } from "@/lib/preview";
+import { resetHints } from "@/lib/hints";
 
 vi.mock("@/lib/preview", () => ({ fetchPreview: vi.fn() }));
 vi.mock("./ArtworkPreview", () => ({ default: () => <div data-testid="proof" /> }));
@@ -18,8 +19,14 @@ vi.mock("next/navigation", () => ({ useSearchParams: () => new URLSearchParams()
 
 window.matchMedia = (query) => ({ matches: false, media: query, addEventListener() {}, removeEventListener() {} });
 
+beforeEach(() => {
+  localStorage.clear();
+  resetHints();
+});
+
 afterEach(() => {
   cleanup();
+  delete window.__HURRAH_HINTS__;
   vi.mocked(fetchPreview).mockReset();
 });
 
@@ -32,9 +39,13 @@ const preview = (findings) => ({
   back: { same_as_front: true },
 });
 
+function render_(locale, front) {
+  return show({ locale, front });
+}
+
 function show({ rotate = { front: false, back: false }, rotateAction = vi.fn(), front = { id: 1 }, canContinue = Boolean(front), dialog = null, locale = "en", onContinue = vi.fn(), backDropped = false, quote = null, editOptions = vi.fn(), back = null, sameBack = !back, swap = false, swapAction = vi.fn(), canChoosePages = {}, openChoosePages = vi.fn(), clock = undefined, clockNotice = false, clockExpire = vi.fn() } = {}) {
   const state = { commerceEnabled: Boolean(quote), quote, clock, notices: [], backDropped, previews: {}, sizeChoice: null, rotate, swap, slots: { front, back, sameBack } };
-  render(
+  const { unmount } = render(
     <NextIntlClientProvider locale={locale} messages={locale === "ar" ? ar : en}>
       <ArtworkPage
         catalogue={{ product_id: 1, options: [{ code: "turnaround", name: "Turnaround", values: [{ code: "same-day", label: "Same-day" }] }] }}
@@ -53,7 +64,7 @@ function show({ rotate = { front: false, back: false }, rotateAction = vi.fn(), 
       />
     </NextIntlClientProvider>
   );
-  return { clockExpire, onContinue, editOptions, rotateAction, swapAction, openChoosePages };
+  return { unmount, clockExpire, onContinue, editOptions, rotateAction, swapAction, openChoosePages };
 }
 
 describe("the Artwork page's findings, preview and Continue", () => {
@@ -238,5 +249,44 @@ describe("the Cut-off clock on the Artwork page", () => {
   it("shows no Cut-off line before the clock has loaded", () => {
     show({});
     expect(screen.queryByText(/order by/)).toBeNull();
+  });
+});
+
+describe("the Artwork page's Hint", () => {
+  for (const locale of ["en", "ar"]) {
+    it(`shows one Hint for the whole page, before and after a Front is uploaded (${locale})`, async () => {
+      const m = locale === "ar" ? ar : en;
+      const { unmount } = render_(locale, null);
+      expect(document.querySelectorAll("[data-hint]")).toHaveLength(1);
+      expect(screen.getByText(m.Hints.artwork)).toBeInTheDocument();
+      unmount();
+      vi.mocked(fetchPreview).mockResolvedValue(preview([finding({ severity: "warning", code: "low_ppi" })]));
+      render_(locale, { id: 1 });
+      await screen.findAllByTestId("proof");
+      expect(document.querySelectorAll("[data-hint]")).toHaveLength(1);
+      expect(document.querySelector('[data-hint="artwork"]')).toBeInTheDocument();
+    });
+  }
+
+  it("does not block the page: Continue still works with the Hint up, and dismissing is remembered", async () => {
+    vi.mocked(fetchPreview).mockResolvedValue(preview([]));
+    const { onContinue } = show();
+    await screen.findAllByTestId("proof");
+    expect(screen.queryByRole("dialog")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+    expect(onContinue).toHaveBeenCalledTimes(1);
+    fireEvent.click(screen.getByRole("button", { name: en.Hints.gotIt }));
+    expect(document.querySelector("[data-hint]")).toBeNull();
+    cleanup();
+    show();
+    expect(document.querySelector("[data-hint]")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: en.Hints.show }));
+    expect(document.querySelector('[data-hint="artwork"]')).toBeInTheDocument();
+  });
+
+  it("shows no Hint when the runtime flag is off", () => {
+    window.__HURRAH_HINTS__ = false;
+    show({ front: null });
+    expect(document.querySelector("[data-hint]")).toBeNull();
   });
 });

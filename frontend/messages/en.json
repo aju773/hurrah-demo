@@ -370,7 +370,7 @@
   },
   "Hints": {
     "options": "Start here: choose your size, paper, sides, quantity and turnaround, then press Start ordering.",
-    "findings": "These are the checks on your file. Fix anything marked Must fix, then look over the previews beside them.",
+    "artwork": "Upload your Front (and Back), or use a template. Then fix anything marked Must fix and look over the previews before you continue.",
     "approval": "Check your proof, add your name and mobile number, then tick the box to approve it and send your order.",
     "gotIt": "Got it",
     "dismissAll": "Dismiss all hints",

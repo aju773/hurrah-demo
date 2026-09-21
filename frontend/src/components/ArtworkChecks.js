@@ -8,7 +8,6 @@ import ArtworkPreview from "./ArtworkPreview";
 import PreviewLoupe from "./PreviewLoupe";
 import EnlargedPreview from "./EnlargedPreview";
 import { Legend, ToggleButton } from "./PreviewControls";
-import FirstVisitHint from "./FirstVisitHint";
 import LoadFailure from "./LoadFailure";
 
 // A group is "located" (ticket 08) when it has a place to jump to on the
@@ -127,7 +126,6 @@ export default function ArtworkChecks({ frontId, backId, sameAsFront, sizeCode, 
 
       <div className="flex flex-col gap-[16px] w-full">
         <div className="min-w-0 flex flex-col gap-[8px]">
-          <FirstVisitHint step="findings" />
           {groups.length === 0 ? (
             <p className="text-[#575c64] text-[13px]">{t("noFindings")}</p>
           ) : (

@@ -10,7 +10,7 @@ import ArtworkTemplatesPanel from "./ArtworkTemplatesPanel";
 import DesignHelpDrawer from "./DesignHelpDrawer";
 import CutoffLine from "./CutoffLine";
 import SyncDialog from "./SyncDialog";
-import { ShowHintsLink } from "./FirstVisitHint";
+import FirstVisitHint, { ShowHintsLink } from "./FirstVisitHint";
 import { rotatedSides, swappedSides } from "@/lib/draftOrder";
 import { toBackPayload, toFrontPayload } from "@/lib/reopenPicker";
 
@@ -67,6 +67,7 @@ export default function ArtworkPage({
 
       <div className="grid grid-cols-12 gap-[20px] w-full items-start">
         <div className="col-span-12 lg:col-span-7 min-w-0 flex flex-col gap-[20px]">
+          <FirstVisitHint step="artwork" />
           <ArtworkSlots
             key={artworkResetKey}
             productId={catalogue.product_id}

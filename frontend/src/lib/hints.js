@@ -1,6 +1,6 @@
-// First-visit hints: which ones this visitor has dismissed, remembered in the
+// First-visit hints, one per page of the journey: which ones this visitor has dismissed, remembered in the
 // browser (per visitor, not per Order), and the flag that switches them off.
-export const HINT_STEPS = ["options", "findings", "approval"];
+export const HINT_STEPS = ["options", "artwork", "approval"];
 
 const STORAGE_KEY = "hurrah.hints.seen";
 const listeners = new Set();

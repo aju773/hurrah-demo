@@ -52,6 +52,9 @@ export function initDraft(defaults) {
     sizeChoice: null,
     previews: {},
     pendingRequote: null,
+    // True after choosing single-sided dropped an uploaded Back; the Artwork page
+    // says so until a Back is added again or double-sided is chosen.
+    backDropped: false,
     page: PAGE_OPTIONS,
     quote: null,
     notices: [],
@@ -240,16 +243,25 @@ export function reduce(state, action) {
       for (const key of Object.keys(resolvedChoices)) {
         if (key.startsWith(`${option}:`)) delete resolvedChoices[key];
       }
+      // Choosing single-sided after upload keeps the Front and drops the Back,
+      // rather than opening a dialog about a difference the customer just chose.
+      const dropsBack = option === SIDES_OPTION && value === SIDES_SINGLE && state.config[SIDES_OPTION] !== SIDES_SINGLE && Boolean(state.slots.back || state.slots.sameBack);
+      const slots = dropsBack ? { ...state.slots, back: null, sameBack: false, frontFilledBoth: false } : state.slots;
+      let sizeChoice = option === SIZE_OPTION ? null : state.sizeChoice;
+      if (dropsBack && sizeChoice) sizeChoice = { ...sizeChoice, applies_to: ["front"] };
       return clearTicks({
         ...state,
         config,
         source,
         touched: true,
         resolvedChoices,
+        slots,
+        backDropped: dropsBack || (option === SIDES_OPTION && value !== SIDES_SINGLE ? false : state.backDropped),
         // A later Size change from Edit spec reopens the mismatch dialog and
         // makes any earlier Fit/Fill instruction stale (spec: "resets when
         // the file or Size changes").
-        sizeChoice: option === SIZE_OPTION ? null : state.sizeChoice,
+        sizeChoice,
+        previews: dropsBack ? {} : state.previews,
         pendingRequote: { selection: config, primaryOption: option },
       });
     }
@@ -305,7 +317,7 @@ export function reduce(state, action) {
         sourceId: action.artwork.sourceId ?? null,
         page: action.artwork.page ?? null,
       };
-      return withSlots(state, { ...state.slots, back, sameBack: false });
+      return { ...withSlots(state, { ...state.slots, back, sameBack: false }), backDropped: false };
     }
 
     case "REMOVE_ARTWORK": {
@@ -322,7 +334,7 @@ export function reduce(state, action) {
       // applies_to to cover the Back slot it now also governs.
       const sameBack = !state.slots.sameBack;
       const slots = { ...state.slots, sameBack, back: sameBack ? state.slots.back : null };
-      const next = withSlots(state, slots, { resetSizeChoice: false });
+      const next = { ...withSlots(state, slots, { resetSizeChoice: false }), backDropped: sameBack ? false : state.backDropped };
       if (!next.sizeChoice) return next;
       const appliesToBack = sameBack || Boolean(next.slots.back);
       return { ...next, sizeChoice: { ...next.sizeChoice, applies_to: appliesToBack ? ["front", "back"] : ["front"] } };
@@ -458,7 +470,7 @@ export function reduce(state, action) {
 
 // ---- persistence ------------------------------------------------------
 
-const PERSISTED_KEYS = ["config", "source", "touched", "slots", "resolvedChoices", "sizeChoice", "page", "ticks", "idempotencyKey", "returnToApprove"];
+const PERSISTED_KEYS = ["config", "source", "touched", "slots", "resolvedChoices", "sizeChoice", "backDropped", "page", "ticks", "idempotencyKey", "returnToApprove"];
 
 /** A JSON-safe snapshot for sessionStorage / the URL. Dialogs and previews are
  * derived, not persisted. */

@@ -33,6 +33,7 @@ export default function ArtworkPage({
   const t = useTranslations("FlyersConfigurator");
   const { commerceEnabled } = state;
   const [previewBlocked, setPreviewBlocked] = useState(false); // ArtworkChecks: an Error Finding remains
+  const [summaryOpen, setSummaryOpen] = useState(false); // the Summary bar at narrow widths
   const front = state.slots.front;
   const continueReason = !front ? "continueNeedsArtwork" : dialog ? "continueHasOpenDialog" : !canContinue || previewBlocked ? "continueHasError" : null;
 
@@ -55,6 +56,7 @@ export default function ArtworkPage({
       {syncBanner}
 
       {state.notices?.length > 0 && <Notices notices={state.notices} />}
+      {state.backDropped && <Notices notices={[{ reason: t("backDroppedNotice") }]} />}
 
       <div className="grid grid-cols-12 gap-[20px] w-full items-start">
         <div className="col-span-12 lg:col-span-7 min-w-0 flex flex-col gap-[20px]">
@@ -94,9 +96,27 @@ export default function ArtworkPage({
           {reopenPicker}
         </div>
 
-        {/* Summary panel */}
-        <div className="col-span-12 lg:col-span-5 min-w-0 flex flex-col gap-[12px] lg:sticky lg:top-[16px]">
-          <SummaryPanel catalogue={catalogue} selection={selection} state={state} locale={locale} onExpire={actions.refresh} />
+        {/* Summary: a side panel on desktop, a bar above the upload that expands at narrow widths */}
+        <div className="order-first lg:order-none col-span-12 lg:col-span-5 min-w-0 flex flex-col gap-[12px] lg:sticky lg:top-[16px]">
+          <button
+            type="button"
+            aria-expanded={summaryOpen}
+            aria-controls="summary-panel"
+            onClick={() => setSummaryOpen((open) => !open)}
+            className="lg:hidden flex items-center justify-between gap-[12px] min-h-[44px] px-[16px] py-[8px] rounded-[12px] bg-[#2a313d] text-[#ebf1ff] text-start"
+          >
+            <span className="flex flex-col min-w-0">
+              <span className="text-[14px] font-semibold">
+                {t("summary")}
+                {commerceEnabled && state.quote && <> · {t("aed", { amount: state.quote.total_aed })}</>}
+              </span>
+              <span className="text-[12px] truncate">{configurationLine}</span>
+            </span>
+            <span className="shrink-0 text-[12px] font-semibold">{t(summaryOpen ? "summaryHide" : "summaryShow")}</span>
+          </button>
+          <div id="summary-panel" className={`${summaryOpen ? "block" : "hidden"} lg:block`}>
+            <SummaryPanel catalogue={catalogue} selection={selection} state={state} locale={locale} onExpire={actions.refresh} />
+          </div>
           <button
             type="button"
             onClick={actions.editOptions}

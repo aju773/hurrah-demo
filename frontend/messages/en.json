@@ -47,7 +47,10 @@
     "retry": "Retry",
     "startOrdering": "Start ordering",
     "editOptions": "Edit options",
-    "continueHasError": "Fix every Error above before continuing."
+    "continueHasError": "Fix every Error above before continuing.",
+    "backDroppedNotice": "You chose single-sided, so the Back artwork was removed. Your Front is kept.",
+    "summaryShow": "Show details",
+    "summaryHide": "Hide details"
   },
   "ArtworkChecks": {
     "loading": "Loading your preview…",

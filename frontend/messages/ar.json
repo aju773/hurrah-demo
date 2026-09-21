@@ -47,7 +47,10 @@
     "retry": "إعادة المحاولة",
     "startOrdering": "ابدأ الطلب",
     "editOptions": "تعديل الخيارات",
-    "continueHasError": "أصلح كل خطأ أعلاه للمتابعة."
+    "continueHasError": "أصلح كل خطأ أعلاه للمتابعة.",
+    "backDroppedNotice": "اخترت الطباعة على وجه واحد، لذلك تمت إزالة تصميم الوجه الخلفي. تم الاحتفاظ بالوجه الأمامي.",
+    "summaryShow": "عرض التفاصيل",
+    "summaryHide": "إخفاء التفاصيل"
   },
   "ArtworkChecks": {
     "loading": "جارٍ تحميل المعاينة…",

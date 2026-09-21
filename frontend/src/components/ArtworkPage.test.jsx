@@ -1,5 +1,5 @@
 import "@testing-library/jest-dom/vitest";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import en from "../../messages/en.json";
@@ -32,8 +32,8 @@ const preview = (findings) => ({
   back: { same_as_front: true },
 });
 
-function show({ front = { id: 1 }, canContinue = Boolean(front), dialog = null, locale = "en", onContinue = vi.fn() } = {}) {
-  const state = { commerceEnabled: false, notices: [], previews: {}, sizeChoice: null, slots: { front, back: null, sameBack: true } };
+function show({ front = { id: 1 }, canContinue = Boolean(front), dialog = null, locale = "en", onContinue = vi.fn(), backDropped = false, quote = null, editOptions = vi.fn() } = {}) {
+  const state = { commerceEnabled: Boolean(quote), quote, notices: [], backDropped, previews: {}, sizeChoice: null, slots: { front, back: null, sameBack: true } };
   render(
     <NextIntlClientProvider locale={locale} messages={locale === "ar" ? ar : en}>
       <ArtworkPage
@@ -45,14 +45,14 @@ function show({ front = { id: 1 }, canContinue = Boolean(front), dialog = null, 
         canContinue={canContinue}
         artworkResetKey={0}
         designHelpOpen={false}
-        configurationLine=""
+        configurationLine="A5 · 500 · Standard"
         syncBanner={null}
         reopenPicker={null}
-        actions={{ canChoosePages: {}, onContinue }}
+        actions={{ canChoosePages: {}, onContinue, editOptions }}
       />
     </NextIntlClientProvider>
   );
-  return onContinue;
+  return { onContinue, editOptions };
 }
 
 describe("the Artwork page's findings, preview and Continue", () => {
@@ -68,7 +68,7 @@ describe("the Artwork page's findings, preview and Continue", () => {
     it(`shows Findings and the preview once a Front is uploaded, and Continue is enabled when none is an Error (${locale})`, async () => {
       const m = locale === "ar" ? ar : en;
       vi.mocked(fetchPreview).mockResolvedValue(preview([finding({ severity: "warning", code: "low_ppi" })]));
-      const onContinue = show({ locale });
+      const { onContinue } = show({ locale });
       expect((await screen.findAllByTestId("proof")).length).toBeGreaterThan(0);
       expect(screen.getByText(new RegExp(`^${m.ArtworkChecks.severityWarning} · `))).toBeInTheDocument();
       const next = screen.getByRole("button", { name: m.FlyersConfigurator.continue });
@@ -92,5 +92,44 @@ describe("the Artwork page's findings, preview and Continue", () => {
     const next = screen.getByRole("button", { name: "Continue" });
     expect(next).toBeDisabled();
     expect(next).toHaveAccessibleDescription(en.FlyersConfigurator.continueHasOpenDialog);
+  });
+});
+
+describe("the Artwork page's Summary and Options-change notices", () => {
+  beforeEach(() => vi.mocked(fetchPreview).mockResolvedValue(preview([])));
+
+  it("shows a Summary bar at narrow widths that expands and collapses", () => {
+    show();
+    const bar = screen.getByRole("button", { name: new RegExp(en.FlyersConfigurator.summary) });
+    expect(bar).toHaveAttribute("aria-expanded", "false");
+    expect(bar).toHaveTextContent("A5 · 500 · Standard");
+    fireEvent.click(bar);
+    expect(bar).toHaveAttribute("aria-expanded", "true");
+    fireEvent.click(bar);
+    expect(bar).toHaveAttribute("aria-expanded", "false");
+  });
+
+  it("puts the Quote total on the bar when the Commerce switch is on", () => {
+    show({ quote: { total_aed: "1234.00" } });
+    expect(screen.getByRole("button", { name: new RegExp(en.FlyersConfigurator.summary) })).toHaveTextContent("AED 1234.00");
+  });
+
+  it("Edit options goes back to the Options page", () => {
+    const { editOptions } = show();
+    fireEvent.click(screen.getByRole("button", { name: "Edit options" }));
+    expect(editOptions).toHaveBeenCalledTimes(1);
+  });
+
+  for (const locale of ["en", "ar"]) {
+    it(`says why the Back slot went after single-sided was chosen (${locale})`, () => {
+      const m = locale === "ar" ? ar : en;
+      show({ backDropped: true, locale });
+      expect(screen.getByText(m.FlyersConfigurator.backDroppedNotice)).toBeInTheDocument();
+    });
+  }
+
+  it("says nothing when no Back was dropped", () => {
+    show();
+    expect(screen.queryByText(en.FlyersConfigurator.backDroppedNotice)).not.toBeInTheDocument();
   });
 });

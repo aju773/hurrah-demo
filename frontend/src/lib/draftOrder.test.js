@@ -638,3 +638,72 @@ describe("journey pages and the redirect guard", () => {
     expect(isRestorableDraft(serializeDraft(withFront()))).toBe(true);
   });
 });
+
+describe("Options change after upload (Edit options)", () => {
+  const DOUBLE = { ...DEFAULTS, sides: "double" };
+  const withBoth = () => {
+    const s = uploadFront({ ...initDraft(DOUBLE), touched: true }, { id: 1, matchedSizeCode: "a5", pages: 1 });
+    return reduce(s, { type: "UPLOAD_BACK", artwork: { id: 2, matchedSizeCode: "a5" } });
+  };
+
+  it("changing Size keeps the uploaded Artwork", () => {
+    const s = pick(withBoth(), "size", "a4");
+    expect(s.slots.front.id).toBe(1);
+    expect(s.slots.back.id).toBe(2);
+    expect(s.backDropped).toBe(false);
+  });
+
+  it("changing Sides to single drops the Back and records why", () => {
+    const s = pick(withBoth(), "sides", "single");
+    expect(s.slots.back).toBeNull();
+    expect(s.slots.sameBack).toBe(false);
+    expect(s.slots.front.id).toBe(1);
+    expect(s.backDropped).toBe(true);
+    expect(openDialogs(s)).toEqual([]);
+    expect(canContinue(s)).toBe(true);
+  });
+
+  it("drops a 'same as front' Back too", () => {
+    let s = withBoth();
+    s = reduce(s, { type: "REMOVE_ARTWORK", slot: "back" });
+    s = reduce(s, { type: "TOGGLE_SAME_BACK" });
+    s = pick(s, "sides", "single");
+    expect(s.slots.sameBack).toBe(false);
+    expect(s.backDropped).toBe(true);
+  });
+
+  it("a Back that came from the Page picker is dropped and the Front stays", () => {
+    const s = pick(uploadFront({ ...initDraft(DOUBLE), touched: true }, { id: 31, matchedSizeCode: "a5", pages: 2, backId: 32, sourceId: 7, page: 3, backPage: 4 }), "sides", "single");
+    expect(s.slots).toMatchObject({ back: null, frontFilledBoth: false });
+    expect(s.slots.front).toMatchObject({ id: 31, sourceId: 7, page: 3 });
+  });
+
+  it("a Fit/Fill instruction stops covering the dropped Back", () => {
+    let s = withBoth();
+    s = { ...s, sizeChoice: { choice: "keep_size_scale", mode: "fit", applies_to: ["front", "back"] } };
+    s = pick(s, "sides", "single");
+    expect(s.sizeChoice.applies_to).toEqual(["front"]);
+  });
+
+  it("nothing is dropped when there is no Back", () => {
+    const s = pick(uploadFront({ ...initDraft(DEFAULTS), touched: true }, { id: 1, matchedSizeCode: "a5", pages: 1 }), "sides", "single");
+    expect(s.backDropped).toBe(false);
+  });
+
+  it("choosing double-sided again clears the notice, and uploading a Back does too", () => {
+    let s = pick(withBoth(), "sides", "single");
+    expect(pick(s, "sides", "double").backDropped).toBe(false);
+    s = pick(s, "sides", "double");
+    s = pick(withBoth(), "sides", "single");
+    s = reduce(s, { type: "UPLOAD_BACK", artwork: { id: 9, matchedSizeCode: "a5" } });
+    expect(s.backDropped).toBe(false);
+  });
+
+  it("the notice and the Artwork survive going back and forward (persist then restore)", () => {
+    const s = pick(withBoth(), "sides", "single");
+    const restored = restoreDraft(JSON.parse(JSON.stringify(serializeDraft(s))), DEFAULTS);
+    expect(restored.backDropped).toBe(true);
+    expect(restored.slots.front.id).toBe(1);
+    expect(reduce(restored, { type: "GO_TO_PAGE", page: "options" }).slots.front.id).toBe(1);
+  });
+});

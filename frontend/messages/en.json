@@ -76,6 +76,8 @@
     "zoomFit": "Fit",
     "previewOnlyNote": "Preview only — your file prints at its full quality.",
     "previewLabel": "{side} preview",
+    "rotateSide": "Rotate {side}",
+    "undoRotateSide": "Undo rotate {side}",
     "choosePages": "Choose pages",
     "enlargedView": "Enlarged preview",
     "scrollArea": "Enlarged preview, scrollable",

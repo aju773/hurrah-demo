@@ -41,9 +41,11 @@ const HEADLINE_CLASS = {
  * and legend. `onBlockedChange(true)` tells the page while any Error remains, so
  * its Continue stays disabled. A side whose file was picked from a stored PDF offers
  * "Choose pages" (`canChoosePages.front/back`, answered by `onChoosePages(side)`),
- * so pages can be re-chosen without uploading again.
+ * so pages can be re-chosen without uploading again. Each side has a Rotate button
+ * (`rotate`: {front, back} says which are turned, `onRotate(side)` turns or un-turns
+ * one); the preview and Findings arrive already turned.
  */
-export default function ArtworkChecks({ frontId, backId, sameAsFront, sizeCode, sizeChoice, canChoosePages = {}, onChoosePages, onBlockedChange }) {
+export default function ArtworkChecks({ frontId, backId, sameAsFront, sizeCode, sizeChoice, rotate, onRotate, canChoosePages = {}, onChoosePages, onBlockedChange }) {
   const t = useTranslations("ArtworkChecks");
   const tPreflight = useTranslations("Preflight");
   const tFindings = useTranslations("Findings");
@@ -64,7 +66,7 @@ export default function ArtworkChecks({ frontId, backId, sameAsFront, sizeCode, 
 
   useEffect(() => {
     let cancelled = false;
-    fetchPreview({ frontId, backId, sameAsFront, sizeCode, sizeChoice }).then((data) => {
+    fetchPreview({ frontId, backId, sameAsFront, sizeCode, sizeChoice, rotate }).then((data) => {
       if (cancelled) return;
       if (!data) setError(true);
       else {
@@ -76,7 +78,7 @@ export default function ArtworkChecks({ frontId, backId, sameAsFront, sizeCode, 
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [frontId, backId, sameAsFront, sizeCode, sizeChoice?.mode, sizeChoice?.choice, sizeChoice?.applies_to?.join(","), attempt]);
+  }, [frontId, backId, sameAsFront, sizeCode, sizeChoice?.mode, sizeChoice?.choice, sizeChoice?.applies_to?.join(","), rotate?.front, rotate?.back, attempt]);
 
   const blocked = preview ? !canGoNext(combineFindings({
     front: { findings: preview.front?.findings ?? [] },
@@ -168,6 +170,8 @@ export default function ArtworkChecks({ frontId, backId, sameAsFront, sizeCode, 
               onSelectFinding={(group) => openEnlarged("front", group.key)}
               choosePagesLabel={canChoosePages.front && onChoosePages ? t("choosePages") : null}
               onChoosePages={() => onChoosePages("front")}
+              rotateLabel={onRotate ? t(rotate?.front ? "undoRotateSide" : "rotateSide", { side: t("front") }) : null}
+              onRotate={() => onRotate("front")}
             />
             {preview.back?.same_as_front ? (
               <button
@@ -194,6 +198,8 @@ export default function ArtworkChecks({ frontId, backId, sameAsFront, sizeCode, 
                 onSelectFinding={(group) => openEnlarged("back", group.key)}
                 choosePagesLabel={canChoosePages.back && onChoosePages ? t("choosePages") : null}
                 onChoosePages={() => onChoosePages("back")}
+                rotateLabel={onRotate ? t(rotate?.back ? "undoRotateSide" : "rotateSide", { side: t("back") }) : null}
+                onRotate={() => onRotate("back")}
               />
             ) : null}
           </div>
@@ -254,7 +260,7 @@ function FindingRow({ group, slotLabel, severityLabel, message, countText, locat
   );
 }
 
-function PreviewCell({ slot, label, headline, ariaLabel, enlargeLabel, image, orderedTrimMm, productBleedMm, productSafeMm, groups, withGuides, onOpen, onSelectFinding, choosePagesLabel, onChoosePages }) {
+function PreviewCell({ slot, label, headline, ariaLabel, enlargeLabel, image, orderedTrimMm, productBleedMm, productSafeMm, groups, withGuides, onOpen, onSelectFinding, choosePagesLabel, onChoosePages, rotateLabel, onRotate }) {
   return (
     <div className="bg-[#f0f3ff] rounded-[12px] p-[10px] flex flex-col gap-[6px]">
       <PreviewLoupe onClick={onOpen} label={enlargeLabel}>
@@ -273,10 +279,19 @@ function PreviewCell({ slot, label, headline, ariaLabel, enlargeLabel, image, or
       <span className="text-[#575c64] text-[11px] text-center">
         {label} · {headline}
       </span>
-      {choosePagesLabel && (
-        <button type="button" onClick={onChoosePages} className="tap inline-flex items-center justify-center self-center text-[#bb0027] text-[11px] font-bold underline">
-          {choosePagesLabel}
-        </button>
+      {(rotateLabel || choosePagesLabel) && (
+        <div className="flex flex-wrap items-center justify-center gap-x-[12px]">
+          {rotateLabel && (
+            <button type="button" onClick={onRotate} className="tap inline-flex items-center justify-center text-[#bb0027] text-[11px] font-bold underline">
+              {rotateLabel}
+            </button>
+          )}
+          {choosePagesLabel && (
+            <button type="button" onClick={onChoosePages} className="tap inline-flex items-center justify-center text-[#bb0027] text-[11px] font-bold underline">
+              {choosePagesLabel}
+            </button>
+          )}
+        </div>
       )}
     </div>
   );

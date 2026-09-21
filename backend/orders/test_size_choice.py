@@ -4,7 +4,7 @@
 
 from django.test import TestCase
 
-from .size_choice import FILL, FIT, compute_size_choice
+from .size_choice import FILL, FIT, clean_rotate, compute_size_choice, rotate_bbox_mm, rotated_mm
 
 
 class ComputeSizeChoiceTests(TestCase):
@@ -49,3 +49,40 @@ class ComputeSizeChoiceTests(TestCase):
     def test_invalid_mode_raises(self):
         with self.assertRaises(ValueError):
             compute_size_choice("stretch", [148.0, 210.0], [148.0, 210.0], 0.0, 3.0)
+
+
+class RotateTests(TestCase):
+    """Rotate: a clockwise quarter turn stored beside the size choice (ticket
+    05 of .scratch/flyer-two-page-journey). Geometry only; the file is never
+    rewritten."""
+
+    def test_rotated_mm_swaps_width_and_height(self):
+        self.assertEqual(rotated_mm([210.0, 148.0], True), [148.0, 210.0])
+
+    def test_rotated_mm_is_unchanged_when_not_rotated(self):
+        self.assertEqual(rotated_mm([210.0, 148.0], False), [210.0, 148.0])
+
+    def test_rotated_mm_passes_an_unknown_size_through(self):
+        self.assertEqual(rotated_mm([None, None], True), [None, None])
+
+    def test_rotate_bbox_turns_a_box_clockwise_within_the_trim(self):
+        # Trim 100 wide x 200 tall. A box in the top-left corner lands in the
+        # top-right corner of the 200 x 100 turned page.
+        self.assertEqual(rotate_bbox_mm([0.0, 0.0, 10.0, 20.0], [100.0, 200.0]), [180.0, 0.0, 200.0, 10.0])
+
+    def test_rotate_bbox_leaves_no_bbox_alone(self):
+        self.assertIsNone(rotate_bbox_mm(None, [100.0, 200.0]))
+
+    def test_clean_rotate_keeps_two_booleans(self):
+        self.assertEqual(clean_rotate({"front": 1, "back": 0}, same_as_front=False, has_back=True), {"front": True, "back": False})
+
+    def test_clean_rotate_makes_a_same_as_front_back_follow_the_front(self):
+        self.assertEqual(clean_rotate({"front": True, "back": False}, same_as_front=True, has_back=False), {"front": True, "back": True})
+
+    def test_clean_rotate_cannot_rotate_a_missing_back(self):
+        self.assertEqual(clean_rotate({"front": False, "back": True}, same_as_front=False, has_back=False), None)
+
+    def test_clean_rotate_is_none_when_nothing_is_rotated_or_it_is_junk(self):
+        self.assertIsNone(clean_rotate({"front": False, "back": False}, same_as_front=False, has_back=True))
+        self.assertIsNone(clean_rotate("sideways", same_as_front=False, has_back=True))
+        self.assertIsNone(clean_rotate(None, same_as_front=False, has_back=True))

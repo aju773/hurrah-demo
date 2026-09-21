@@ -184,3 +184,91 @@ class ResizeFitFillPreviewTests(TestCase):
         data = res.json()
         self.assertIsNotNone(data["front"]["transform"])
         self.assertIsNone(data["back"]["transform"])
+
+
+@override_settings(MEDIA_ROOT=tempfile.mkdtemp())
+class RotatePreviewTests(TestCase):
+    """Rotate (ticket 05 of .scratch/flyer-two-page-journey): `rotate` on the
+    preview endpoint turns a side a quarter turn: geometry, the page image's
+    rotation and the Findings' boxes all follow, and the file is untouched."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls._media_root = tempfile.mkdtemp()
+
+    @classmethod
+    def tearDownClass(cls):
+        shutil.rmtree(cls._media_root, ignore_errors=True)
+        super().tearDownClass()
+
+    def setUp(self):
+        self.override = override_settings(MEDIA_ROOT=self._media_root)
+        self.override.enable()
+        self.client = APIClient()
+        self.product = make_product()
+        res = self.client.post(
+            "/api/artworks/",
+            {"file": as_upload(build_f1()), "slot": "front", "product": self.product.id},
+            format="multipart",
+        )
+        assert res.status_code == 201, res.content
+        self.upload = res.json()  # F1: A4 portrait, two pages
+
+    def tearDown(self):
+        self.override.disable()
+
+    def preview(self, **params):
+        params.setdefault("front", self.upload["front"]["id"])
+        return self.client.get(f"/api/products/{self.product.slug}/preview/", params)
+
+    def test_without_rotate_nothing_is_turned(self):
+        data = self.preview(size="a4").json()
+        self.assertEqual(data["front"]["rotation"], 0)
+        self.assertEqual(data["front"]["file_trim_mm"], [210.0, 297.0])
+
+    def test_rotate_front_swaps_the_geometry_and_flags_the_rotation(self):
+        data = self.preview(size="a4", rotate="front").json()
+        self.assertEqual(data["front"]["rotation"], 90)
+        self.assertEqual(data["front"]["file_trim_mm"], [297.0, 210.0])
+        self.assertEqual(data["front"]["page_box_mm"], [297.0, 210.0])
+
+    def test_rotate_turns_each_finding_box_clockwise(self):
+        plain = self.preview(size="a4").json()["front"]["findings"]
+        turned = self.preview(size="a4", rotate="front").json()["front"]["findings"]
+        before = next(f for f in plain if f["code"] == "low_ppi")["bbox"]
+        after = next(f for f in turned if f["code"] == "low_ppi")["bbox"]
+        x0, y0, x1, y1 = before
+        self.assertEqual(after, [round(297.0 - y1, 2), x0, round(297.0 - y0, 2), x1])
+
+    def test_rotate_keeps_the_other_findings(self):
+        plain = self.preview(size="a4").json()["front"]["findings"]
+        turned = self.preview(size="a4", rotate="front").json()["front"]["findings"]
+        self.assertEqual([f["code"] for f in turned], [f["code"] for f in plain])
+
+    def test_rotate_scopes_to_one_side(self):
+        data = self.preview(back=self.upload["back"]["id"], size="a4", rotate="back").json()
+        self.assertEqual(data["front"]["rotation"], 0)
+        self.assertEqual(data["back"]["rotation"], 90)
+        self.assertEqual(data["back"]["file_trim_mm"], [297.0, 210.0])
+
+    def test_rotate_leaves_the_stored_artwork_and_report_unchanged(self):
+        artwork_url = f"/api/artworks/{self.upload['front']['id']}/"
+        before = self.client.get(artwork_url).json()
+        self.preview(size="a4", rotate="front")
+        self.assertEqual(self.client.get(artwork_url).json(), before)
+
+    def test_rotate_combines_with_fit(self):
+        data = self.preview(size="a5", resize_mode="fit", rotate="front").json()
+        self.assertEqual(data["front"]["rotation"], 90)
+        self.assertEqual(data["front"]["transform"]["mode"], "fit")
+        self.assertAlmostEqual(data["front"]["transform"]["scale"] * 100, 70.5, delta=0.1)
+        self.assertNotIn("bleed_missing", {f["code"] for f in data["front"]["findings"]})
+
+    def test_rotate_ignores_unknown_values(self):
+        data = self.preview(size="a4", rotate="sideways,").json()
+        self.assertEqual(data["front"]["rotation"], 0)
+
+    def test_same_as_front_back_has_no_rotation_of_its_own(self):
+        data = self.preview(same_as_front="true", rotate="front,back").json()
+        self.assertEqual(data["back"], {"same_as_front": True})

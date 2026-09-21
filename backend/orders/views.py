@@ -368,32 +368,39 @@ def _image_url(request, image_field):
     return request.build_absolute_uri(image_field.url) if image_field else None
 
 
-def _slot_resize(mode, ordered_trim_mm, artwork, product_bleed_mm):
+def _slot_resize(mode, ordered_trim_mm, artwork, product_bleed_mm, rotate=False):
     """The Fit/Fill instruction for one slot (orders/size_choice), or None
-    when no resize mode was requested."""
+    when no resize mode was requested. `rotate` measures the file as turned."""
     if mode not in (size_choice.FIT, size_choice.FILL):
         return None
     file_trim_mm = [artwork.trim_width_mm, artwork.trim_height_mm]
     if None in file_trim_mm:
         return None
+    file_trim_mm = size_choice.rotated_mm(file_trim_mm, rotate)
     return size_choice.compute_size_choice(mode, ordered_trim_mm, file_trim_mm, artwork.bleed_mm, product_bleed_mm)
 
 
-def _slot_preview(request, artwork, resize=None, product_bleed_mm=0.0):
-    findings = artwork.preflight_report.get("findings", [])
+def _slot_preview(request, artwork, resize=None, product_bleed_mm=0.0, rotate=False):
+    """One slot's preview payload. `rotate` (Rotate: a clockwise quarter turn) turns
+    the geometry and the Findings' boxes and reports `rotation: 90` so the browser
+    draws the page image turned; the stored file and report are never changed."""
+    report = artwork.preflight_report
+    file_trim_mm = [artwork.trim_width_mm, artwork.trim_height_mm]
+    if rotate and None not in file_trim_mm:
+        report = preflight.rotate_report(report, file_trim_mm)
+    findings = report.get("findings", [])
     transform = None
     if resize is not None:
         transform = {"mode": resize["mode"], "scale": resize["scale"]}
-        findings = preflight.rescale_report(
-            artwork.preflight_report, resize, product_bleed_mm, artwork.slot, artwork.page_index
-        )["findings"]
+        findings = preflight.rescale_report(report, resize, product_bleed_mm, artwork.slot, artwork.page_index)["findings"]
     return {
         "artwork_id": artwork.id,
         "image_url": _image_url(request, artwork.page_image),
         "thumbnail_url": _image_url(request, artwork.thumbnail_image),
-        "page_box_mm": [artwork.media_width_mm, artwork.media_height_mm],
-        "file_trim_mm": [artwork.trim_width_mm, artwork.trim_height_mm],
+        "page_box_mm": size_choice.rotated_mm([artwork.media_width_mm, artwork.media_height_mm], rotate),
+        "file_trim_mm": size_choice.rotated_mm(file_trim_mm, rotate),
         "file_bleed_mm": artwork.bleed_mm,
+        "rotation": size_choice.ROTATION_DEGREES if rotate else 0,
         "transform": transform,
         "findings": findings,
     }
@@ -411,7 +418,9 @@ class ArtworkPreviewView(APIView):
     (comma-separated "front,back", default both) carry the customer's "Keep
     {Size} and resize" choice (ticket 09): the slots it applies to get a
     `transform` and a Preflight report re-run on the scaled result — the file
-    itself is never re-rendered.
+    itself is never re-rendered. rotate=front,back (default none) turns the
+    named sides a quarter turn clockwise (Rotate): the geometry, the page
+    image's `rotation` and each Finding's box follow.
     """
 
     def get(self, request, slug):
@@ -444,15 +453,19 @@ class ArtworkPreviewView(APIView):
         resize_mode = request.query_params.get("resize_mode")
         resize_applies_to = set((request.query_params.get("resize_applies_to") or "front,back").split(","))
 
-        front_resize = _slot_resize(resize_mode, ordered_trim_mm, front, product.bleed_mm) if "front" in resize_applies_to else None
+        rotate_sides = set((request.query_params.get("rotate") or "").split(","))
+        rotate_front = SLOT_FRONT in rotate_sides
+        rotate_back = SLOT_BACK in rotate_sides
+
+        front_resize = _slot_resize(resize_mode, ordered_trim_mm, front, product.bleed_mm, rotate_front) if "front" in resize_applies_to else None
 
         if same_as_front:
             back_payload = {"same_as_front": True}
         elif back is not None:
-            back_resize = _slot_resize(resize_mode, ordered_trim_mm, back, product.bleed_mm) if "back" in resize_applies_to else None
+            back_resize = _slot_resize(resize_mode, ordered_trim_mm, back, product.bleed_mm, rotate_back) if "back" in resize_applies_to else None
             back_payload = {
                 "same_as_front": False,
-                **_slot_preview(request, back, resize=back_resize, product_bleed_mm=product.bleed_mm),
+                **_slot_preview(request, back, resize=back_resize, product_bleed_mm=product.bleed_mm, rotate=rotate_back),
             }
         else:
             back_payload = None
@@ -463,7 +476,7 @@ class ArtworkPreviewView(APIView):
             "product_safe_mm": product.safe_mm,
             "front": {
                 "same_as_front": False,
-                **_slot_preview(request, front, resize=front_resize, product_bleed_mm=product.bleed_mm),
+                **_slot_preview(request, front, resize=front_resize, product_bleed_mm=product.bleed_mm, rotate=rotate_front),
             },
             "back": back_payload,
         })

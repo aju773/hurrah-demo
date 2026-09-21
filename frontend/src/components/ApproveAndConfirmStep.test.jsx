@@ -5,6 +5,7 @@ import { NextIntlClientProvider } from "next-intl";
 import en from "../../messages/en.json";
 import ar from "../../messages/ar.json";
 import ApproveAndConfirmStep from "./ApproveAndConfirmStep";
+import { fetchPreview } from "@/lib/preview";
 
 vi.mock("@/lib/preview", () => ({
   fetchPreview: vi.fn(async () => ({
@@ -105,6 +106,33 @@ describe("ApproveAndConfirmStep with the Commerce switch off", () => {
     expect(body).not.toHaveProperty("expected_total_fils");
     expect(body.expected_promised_date).toBe("2026-09-22");
     expect(body.idempotency_key).toBe("key-1");
+  });
+
+  it("records Rotate on the Order line beside the size choice, and asks for the turned proof", async () => {
+    const fetchMock = vi.fn(async () => ({ status: 201, json: async () => ({ token: "tok", number: "HUR-10001" }) }));
+    vi.stubGlobal("fetch", fetchMock);
+    const { container } = renderStep({ extra: { rotate: { front: true, back: true } } });
+    await screen.findByTestId("proof");
+    expect(vi.mocked(fetchPreview)).toHaveBeenCalledWith(expect.objectContaining({ rotate: { front: true, back: true } }));
+    const [name, mobile] = container.querySelectorAll("input[type=text]");
+    fireEvent.change(name, { target: { value: "Layla" } });
+    fireEvent.change(mobile, { target: { value: "+971 50 123 4567" } });
+    fireEvent.click(screen.getByRole("button", { name: en.ApproveAndConfirmStep.submit }));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalled());
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body).size_choice).toEqual({ rotate: { front: true, back: true } });
+  });
+
+  it("sends no size choice when nothing is turned or resized", async () => {
+    const fetchMock = vi.fn(async () => ({ status: 201, json: async () => ({ token: "tok", number: "HUR-10001" }) }));
+    vi.stubGlobal("fetch", fetchMock);
+    const { container } = renderStep({ extra: { rotate: { front: false, back: false } } });
+    await screen.findByTestId("proof");
+    const [name, mobile] = container.querySelectorAll("input[type=text]");
+    fireEvent.change(name, { target: { value: "Layla" } });
+    fireEvent.change(mobile, { target: { value: "+971 50 123 4567" } });
+    fireEvent.click(screen.getByRole("button", { name: en.ApproveAndConfirmStep.submit }));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalled());
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body).size_choice).toBeNull();
   });
 
   it("on a 409 refreshes, clears the ticks and shows a notice", async () => {

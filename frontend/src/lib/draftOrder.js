@@ -50,6 +50,10 @@ export function initDraft(defaults) {
     slots: { front: null, back: null, sameBack: false, frontFilledBoth: false },
     resolvedChoices: {},
     sizeChoice: null,
+    // Rotate: a side printed turned a quarter turn (90° clockwise). An instruction only,
+    // kept with the size choice; the uploaded file is never changed. `back` is the
+    // Back file's own turn (a same-as-front Back turns with the Front: see rotatedSides).
+    rotate: { front: false, back: false },
     previews: {},
     pendingRequote: null,
     // True after choosing single-sided dropped an uploaded Back; the Artwork page
@@ -165,6 +169,26 @@ export function guardPage(state, requested, { restorable }) {
   return requested;
 }
 
+/** The turns Preview and Approve apply, per side: a same-as-front Back turns with the
+ * Front, and a side with no file is never turned. */
+export function rotatedSides(state) {
+  const front = Boolean(state.slots.front && state.rotate?.front);
+  if (state.slots.sameBack) return { front, back: front };
+  return { front, back: Boolean(state.slots.back && state.rotate?.back) };
+}
+
+/** The `size_choice` an Order is sent with: the Fit/Fill choice (if the customer made
+ * one) with Rotate beside it, or null when there is neither. */
+export function sizeChoiceWithRotate(sizeChoice, rotate) {
+  const resize = sizeChoice?.choice === "keep_size_scale" ? sizeChoice : null;
+  if (!rotate?.front && !rotate?.back) return resize;
+  return { ...(resize ?? {}), rotate: { front: Boolean(rotate.front), back: Boolean(rotate.back) } };
+}
+
+export function sizeChoiceForOrder(state) {
+  return sizeChoiceWithRotate(state.sizeChoice, rotatedSides(state));
+}
+
 /** The next side effect the caller (a hook, in the real app) should perform,
  * or null. This module never calls fetch itself. */
 export function pendingEffect(state) {
@@ -223,6 +247,13 @@ function fileSync(state) {
   return { ...state, config: next, source, pendingRequote: { selection: next, primaryOption: null } };
 }
 
+// A turn belongs to the file it was chosen for: `sides` lose theirs when that file goes.
+function withoutRotation(rotate, ...sides) {
+  const next = { front: false, back: false, ...rotate };
+  for (const side of sides) next[side] = false;
+  return next;
+}
+
 function withSlots(state, slots, { resetSizeChoice = true } = {}) {
   return fileSync(clearTicks({
     ...state,
@@ -256,6 +287,7 @@ export function reduce(state, action) {
         touched: true,
         resolvedChoices,
         slots,
+        rotate: dropsBack ? withoutRotation(state.rotate, "back") : state.rotate,
         backDropped: dropsBack || (option === SIDES_OPTION && value !== SIDES_SINGLE ? false : state.backDropped),
         // A later Size change from Edit spec reopens the mismatch dialog and
         // makes any earlier Fit/Fill instruction stale (spec: "resets when
@@ -303,7 +335,8 @@ export function reduce(state, action) {
         };
         frontFilledBoth = true;
       }
-      return withSlots(state, { ...state.slots, front, back, sameBack: frontFilledBoth ? false : state.slots.sameBack, frontFilledBoth });
+      const rotate = withoutRotation(state.rotate, "front", ...(frontFilledBoth ? ["back"] : []));
+      return { ...withSlots(state, { ...state.slots, front, back, sameBack: frontFilledBoth ? false : state.slots.sameBack, frontFilledBoth }), rotate };
     }
 
     case "UPLOAD_BACK": {
@@ -317,15 +350,27 @@ export function reduce(state, action) {
         sourceId: action.artwork.sourceId ?? null,
         page: action.artwork.page ?? null,
       };
-      return { ...withSlots(state, { ...state.slots, back, sameBack: false }), backDropped: false };
+      return { ...withSlots(state, { ...state.slots, back, sameBack: false }), rotate: withoutRotation(state.rotate, "back"), backDropped: false };
     }
 
     case "REMOVE_ARTWORK": {
       if (action.slot === "back") {
-        return withSlots(state, { ...state.slots, back: null, sameBack: false });
+        return { ...withSlots(state, { ...state.slots, back: null, sameBack: false }), rotate: withoutRotation(state.rotate, "back") };
       }
       const clearBack = state.slots.frontFilledBoth;
-      return withSlots(state, { front: null, back: clearBack ? null : state.slots.back, sameBack: clearBack ? false : state.slots.sameBack, frontFilledBoth: false });
+      return {
+        ...withSlots(state, { front: null, back: clearBack ? null : state.slots.back, sameBack: clearBack ? false : state.slots.sameBack, frontFilledBoth: false }),
+        rotate: withoutRotation(state.rotate, "front", ...(clearBack ? ["back"] : [])),
+      };
+    }
+
+    case "TOGGLE_ROTATE": {
+      // Turns (or un-turns) one side. Only the instruction changes; what the customer
+      // approved was a different Proof, so the ticks go.
+      if (action.slot !== "front" && action.slot !== "back") return state;
+      const rotate = { front: false, back: false, ...state.rotate };
+      rotate[action.slot] = !rotate[action.slot];
+      return clearTicks({ ...state, rotate });
     }
 
     case "TOGGLE_SAME_BACK": {
@@ -470,7 +515,7 @@ export function reduce(state, action) {
 
 // ---- persistence ------------------------------------------------------
 
-const PERSISTED_KEYS = ["config", "source", "touched", "slots", "resolvedChoices", "sizeChoice", "backDropped", "page", "ticks", "idempotencyKey", "returnToApprove"];
+const PERSISTED_KEYS = ["config", "source", "touched", "slots", "resolvedChoices", "sizeChoice", "rotate", "backDropped", "page", "ticks", "idempotencyKey", "returnToApprove"];
 
 /** A JSON-safe snapshot for sessionStorage / the URL. Dialogs and previews are
  * derived, not persisted. */

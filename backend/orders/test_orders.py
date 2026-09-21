@@ -123,6 +123,45 @@ class OrderSubmitApiTests(TestCase):
         self.assertEqual(Order.objects.count(), 1)
         self.assertEqual(OrderStatusChange.objects.get(order__number="HUR-10001").to_status, "staff_check")
 
+    def test_rotate_is_recorded_on_the_order_line_artwork(self):
+        self.set_now(dubai(2026, 9, 16, 9, 0))
+        upload_data = self.upload(build_f2())
+        front, back = upload_data["front"], upload_data["back"]
+        config = self.get_config(paper="350gsm-matt", sides="double", quantity="500", turnaround="same-day")
+        payload = self.submit_payload(config, front, back, "rotate-key")
+        payload["size_choice"] = {"rotate": {"front": True, "back": False}}
+
+        res = self.client.post(SUBMIT_URL, payload, format="json")
+        self.assertEqual(res.status_code, 201, res.content)
+        self.assertEqual(res.json()["line"]["size_choice"], {"rotate": {"front": True, "back": False}})
+        self.assertEqual(Order.objects.get().line.size_choice, {"rotate": {"front": True, "back": False}})
+
+    def test_rotate_is_kept_beside_a_fit_choice(self):
+        self.set_now(dubai(2026, 9, 16, 9, 0))
+        upload_data = self.upload(build_f2())
+        front, back = upload_data["front"], upload_data["back"]
+        config = self.get_config(paper="350gsm-matt", sides="double", quantity="500", turnaround="same-day")
+        payload = self.submit_payload(config, front, back, "rotate-fit-key")
+        payload["size_choice"] = {"choice": "keep_size_scale", "mode": "fit", "scale_pct": 70.5, "rotate": {"front": True, "back": True}}
+
+        res = self.client.post(SUBMIT_URL, payload, format="json")
+        self.assertEqual(res.status_code, 201, res.content)
+        line = Order.objects.get().line
+        self.assertEqual(line.size_choice["mode"], "fit")
+        self.assertEqual(line.size_choice["rotate"], {"front": True, "back": True})
+
+    def test_no_rotate_leaves_the_size_choice_empty(self):
+        self.set_now(dubai(2026, 9, 16, 9, 0))
+        upload_data = self.upload(build_f2())
+        front, back = upload_data["front"], upload_data["back"]
+        config = self.get_config(paper="350gsm-matt", sides="double", quantity="500", turnaround="same-day")
+        payload = self.submit_payload(config, front, back, "no-rotate-key")
+        payload["size_choice"] = {"rotate": {"front": False, "back": False}}
+
+        res = self.client.post(SUBMIT_URL, payload, format="json")
+        self.assertEqual(res.status_code, 201, res.content)
+        self.assertEqual(Order.objects.get().line.size_choice, {})
+
     # ---- F2 (Omar, all green, Same-day) -> In production, 838.95 --------
 
     def test_f2_all_green_same_day_creates_in_production_order_at_838_95(self):

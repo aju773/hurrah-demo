@@ -32,8 +32,8 @@ const preview = (findings) => ({
   back: { same_as_front: true },
 });
 
-function show({ front = { id: 1 }, canContinue = Boolean(front), dialog = null, locale = "en", onContinue = vi.fn(), backDropped = false, quote = null, editOptions = vi.fn() } = {}) {
-  const state = { commerceEnabled: Boolean(quote), quote, notices: [], backDropped, previews: {}, sizeChoice: null, slots: { front, back: null, sameBack: true } };
+function show({ rotate = { front: false, back: false }, rotateAction = vi.fn(), front = { id: 1 }, canContinue = Boolean(front), dialog = null, locale = "en", onContinue = vi.fn(), backDropped = false, quote = null, editOptions = vi.fn() } = {}) {
+  const state = { commerceEnabled: Boolean(quote), quote, notices: [], backDropped, previews: {}, sizeChoice: null, rotate, slots: { front, back: null, sameBack: true } };
   render(
     <NextIntlClientProvider locale={locale} messages={locale === "ar" ? ar : en}>
       <ArtworkPage
@@ -48,11 +48,11 @@ function show({ front = { id: 1 }, canContinue = Boolean(front), dialog = null, 
         configurationLine="A5 · 500 · Standard"
         syncBanner={null}
         reopenPicker={null}
-        actions={{ canChoosePages: {}, onContinue, editOptions }}
+        actions={{ canChoosePages: {}, onContinue, editOptions, rotate: rotateAction }}
       />
     </NextIntlClientProvider>
   );
-  return { onContinue, editOptions };
+  return { onContinue, editOptions, rotateAction };
 }
 
 describe("the Artwork page's findings, preview and Continue", () => {
@@ -92,6 +92,23 @@ describe("the Artwork page's findings, preview and Continue", () => {
     const next = screen.getByRole("button", { name: "Continue" });
     expect(next).toBeDisabled();
     expect(next).toHaveAccessibleDescription(en.FlyersConfigurator.continueHasOpenDialog);
+  });
+});
+
+describe("the Artwork page's Rotate control", () => {
+  it("offers Rotate for the Front, hands the turn to the page's action, and previews with it applied", async () => {
+    vi.mocked(fetchPreview).mockResolvedValue(preview([]));
+    const { rotateAction } = show({ rotate: { front: true, back: true } });
+    fireEvent.click(await screen.findByRole("button", { name: "Undo rotate Front" }));
+    expect(rotateAction).toHaveBeenCalledWith("front");
+    // the Back is the Front again here, so it turns with the Front (draftOrder.rotatedSides)
+    expect(fetchPreview).toHaveBeenCalledWith(expect.objectContaining({ rotate: { front: true, back: true } }));
+  });
+
+  it("keeps Continue available after a turn: rotating is not an Error", async () => {
+    vi.mocked(fetchPreview).mockResolvedValue(preview([]));
+    show({ rotate: { front: true, back: false } });
+    expect(await screen.findByRole("button", { name: "Continue" })).toBeEnabled();
   });
 });
 

@@ -390,7 +390,8 @@ class OrderLine(models.Model):
     # can filter the Order list by it.
     turnaround = models.CharField(max_length=50, blank=True, db_index=True)
 
-    # orders/size_choice.compute_size_choice()'s shape, or {} when the
+    # The customer's Fit/Fill choice (compute_size_choice()'s shape) and/or their
+    # Rotate instruction ({"rotate": {"front", "back"}}), or {} when the
     # customer kept the file at its own matched Size (no resize).
     size_choice = models.JSONField(default=dict, blank=True)
 

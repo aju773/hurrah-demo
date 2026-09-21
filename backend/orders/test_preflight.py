@@ -369,3 +369,29 @@ class RescaleReportTests(TestCase):
         )
         self.assertEqual({f["code"] for f in report["findings"]}, {"font_not_embedded", "rgb_colour"})
         self.assertEqual(report["headline_severity"], "error")
+
+
+class RotateReportTests(TestCase):
+    """orders/preflight.rotate_report: Findings re-made for a quarter turn."""
+
+    def test_bbox_is_turned_clockwise_within_the_trim(self):
+        base = preflight.build_report(
+            [preflight.finding("low_ppi", preflight.WARNING, value=200, slot="front", page=1, bbox=[0.0, 0.0, 10.0, 20.0])], THRESHOLDS
+        )
+        report = preflight.rotate_report(base, [100.0, 200.0])
+        self.assertEqual(report["findings"][0]["bbox"], [180.0, 0.0, 200.0, 10.0])
+        self.assertEqual(report["rotation"], 90)
+
+    def test_findings_without_a_bbox_and_the_headline_are_kept(self):
+        base = preflight.build_report([preflight.finding("bleed_missing", preflight.WARNING, value=0.0, slot="front", page=1)], THRESHOLDS)
+        report = preflight.rotate_report(base, [100.0, 200.0])
+        self.assertEqual(report["findings"], base["findings"])
+        self.assertEqual(report["headline_severity"], "warning")
+
+    def test_the_stored_report_is_not_changed(self):
+        base = preflight.build_report(
+            [preflight.finding("low_ppi", preflight.WARNING, value=200, slot="front", page=1, bbox=[0.0, 0.0, 10.0, 20.0])], THRESHOLDS
+        )
+        preflight.rotate_report(base, [100.0, 200.0])
+        self.assertEqual(base["findings"][0]["bbox"], [0.0, 0.0, 10.0, 20.0])
+        self.assertNotIn("rotation", base)

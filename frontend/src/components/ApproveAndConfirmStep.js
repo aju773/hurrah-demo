@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { API_BASE_URL, FLYERS_SLUG } from "@/lib/api";
 import Countdown from "./Countdown";
 import { combineFindings, warningShortName } from "@/lib/findings";
+import { sizeChoiceWithRotate } from "@/lib/draftOrder";
 import { fetchPreview } from "@/lib/preview";
 import ArtworkPreview from "./ArtworkPreview";
 import { fetchWithTimeout } from "@/lib/network";
@@ -41,6 +42,7 @@ export default function ApproveAndConfirmStep({
   sameAsFront,
   sizeCode,
   sizeChoice,
+  rotate,
   ticks,
   onSetTick,
   onClockExpire,
@@ -63,7 +65,7 @@ export default function ApproveAndConfirmStep({
 
   useEffect(() => {
     let cancelled = false;
-    fetchPreview({ frontId, backId, sameAsFront, sizeCode, sizeChoice }).then((data) => {
+    fetchPreview({ frontId, backId, sameAsFront, sizeCode, sizeChoice, rotate }).then((data) => {
       if (cancelled) return;
       if (!data) setPreviewError(true);
       else {
@@ -75,7 +77,7 @@ export default function ApproveAndConfirmStep({
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [frontId, backId, sameAsFront, sizeCode, sizeChoice?.mode, sizeChoice?.choice, sizeChoice?.applies_to?.join(","), attempt]);
+  }, [frontId, backId, sameAsFront, sizeCode, sizeChoice?.mode, sizeChoice?.choice, sizeChoice?.applies_to?.join(","), rotate?.front, rotate?.back, attempt]);
 
   if (previewError) {
     return (
@@ -139,7 +141,8 @@ export default function ApproveAndConfirmStep({
         front_artwork: frontId,
         back_artwork: sameAsFront ? null : backId,
         same_as_front: sameAsFront,
-        size_choice: sizeChoice?.choice === "keep_size_scale" ? sizeChoice : null,
+        // The Fit/Fill choice with Rotate recorded beside it (null when neither).
+        size_choice: sizeChoiceWithRotate(sizeChoice, rotate),
         // With the Commerce switch off there is no total to send or check.
         ...(commerceEnabled && quote ? { expected_total_fils: Math.round(Number(quote.total_aed) * 100) } : {}),
         expected_turnaround: selection.turnaround,

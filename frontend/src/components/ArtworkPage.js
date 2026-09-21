@@ -10,6 +10,7 @@ import ArtworkTemplatesPanel from "./ArtworkTemplatesPanel";
 import DesignHelpDrawer from "./DesignHelpDrawer";
 import SyncDialog from "./SyncDialog";
 import { ShowHintsLink } from "./FirstVisitHint";
+import { rotatedSides } from "@/lib/draftOrder";
 import { toBackPayload, toFrontPayload } from "@/lib/reopenPicker";
 
 /** The Artwork page: upload slots with the Findings and Proof preview under them
@@ -85,6 +86,8 @@ export default function ArtworkPage({
               sameAsFront={state.slots.sameBack}
               sizeCode={selection.size}
               sizeChoice={state.sizeChoice}
+              rotate={rotatedSides(state)}
+              onRotate={actions.rotate}
               canChoosePages={actions.canChoosePages}
               onChoosePages={actions.openChoosePages}
               onBlockedChange={setPreviewBlocked}

@@ -15,7 +15,7 @@ from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from . import preflight
+from . import preflight, size_choice
 from .catalogue import load_catalogue, option_by_code, value_by_code
 from .catalogue_views import (
     _serialize_blocked,
@@ -66,6 +66,19 @@ def _warning_codes(report):
 
 def _has_error(report):
     return bool(report) and report.get("headline_severity") == preflight.ERROR
+
+
+def _size_choice_record(value, same_as_front, has_back):
+    """The size choice as the Order line stores it: the customer's Fit/Fill choice
+    with Rotate cleaned up beside it ({"rotate": {"front", "back"}}, left out when
+    nothing is rotated). {} when there is neither."""
+    if not isinstance(value, dict):
+        return {}
+    record = {key: item for key, item in value.items() if key != "rotate"}
+    rotate = size_choice.clean_rotate(value.get("rotate"), same_as_front, has_back)
+    if rotate:
+        record["rotate"] = rotate
+    return record
 
 
 def _configuration_snapshot(catalogue, resolved):
@@ -250,7 +263,7 @@ class OrderSubmitView(APIView):
                         front_artwork=front,
                         back_artwork=back,
                         same_as_front=same_as_front,
-                        size_choice=data.get("size_choice") or {},
+                        size_choice=_size_choice_record(data.get("size_choice"), same_as_front, back is not None),
                         preflight_report_snapshot={
                             "front": front.preflight_report,
                             "back": None if (same_as_front or back is None) else back.preflight_report,

@@ -91,6 +91,21 @@ def build_report(findings, thresholds):
     }
 
 
+# ---- Rotate re-check ----------------------------------------------------
+
+def rotate_report(base_report, trim_mm):
+    """Re-makes a stored report for a clockwise quarter turn of the page (Rotate,
+    .scratch/flyer-two-page-journey/issues/05-rotate-artwork.md): each Finding's
+    box is turned within the file's trim `trim_mm` [width, height] so it sits
+    where the customer now sees it. Nothing else depends on which way up the page
+    is, so the Findings and headline are otherwise the same. Returns a new report
+    (the stored one is left alone) flagged `rotation: 90`."""
+    from .size_choice import ROTATION_DEGREES, rotate_bbox_mm
+
+    findings = [{**f, "bbox": rotate_bbox_mm(f.get("bbox"), trim_mm)} for f in base_report.get("findings", [])]
+    return {**build_report(findings, base_report.get("thresholds", {})), "rotation": ROTATION_DEGREES}
+
+
 # ---- Fit/Fill re-check (ticket 09) --------------------------------------
 
 def rescale_report(base_report, size_choice, product_bleed_mm, slot, page):

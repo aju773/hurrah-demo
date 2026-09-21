@@ -3,11 +3,12 @@ import { fetchWithTimeout } from "@/lib/network";
 
 /** GET the step 2/3 preview payload (orders/views.ArtworkPreviewView): Front/
  * Back image URLs, geometry and Findings for the current slots/Size/size
- * choice. Shared by ArtworkChecks (ticket 07) and ApproveAndConfirmStep
- * (ticket 10), which both draw the same server-rendered pages. Resolves null
+ * choice, with Rotate (`rotate`: {front, back} booleans) applied. Shared by
+ * ArtworkChecks (ticket 07) and ApproveAndConfirmStep (ticket 10), which both
+ * draw the same server-rendered pages. Resolves null
  * when the payload can't be had (offline, server error, too slow): the steps
  * offer Retry. */
-export async function fetchPreview({ frontId, backId, sameAsFront, sizeCode, sizeChoice }) {
+export async function fetchPreview({ frontId, backId, sameAsFront, sizeCode, sizeChoice, rotate }) {
   if (!frontId) return null;
   const params = new URLSearchParams({ front: frontId });
   if (sameAsFront) params.set("same_as_front", "true");
@@ -17,6 +18,8 @@ export async function fetchPreview({ frontId, backId, sameAsFront, sizeCode, siz
     params.set("resize_mode", sizeChoice.mode);
     params.set("resize_applies_to", sizeChoice.applies_to.join(","));
   }
+  const turned = ["front", "back"].filter((side) => rotate?.[side]);
+  if (turned.length) params.set("rotate", turned.join(","));
   try {
     const res = await fetchWithTimeout(`${API_BASE_URL}/api/products/${FLYERS_SLUG}/preview/?${params}`, { cache: "no-store" });
     if (!res.ok) return null;

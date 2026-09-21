@@ -46,7 +46,8 @@ export function findingCenterMm(group, geom) {
 // orientation, see .scratch/flyer-demo/issues/08-size-detection-rules.md)
 // aren't rotated in the drawing, only in the backend's scale maths
 // (orders/size_choice._target_trim_mm) — a documented simplification for the
-// demo. The rendered page image is drawn stretched to exactly the scaled
+// demo, unless the customer turns the side with Rotate (`image.rotation`),
+// which is drawn. The rendered page image is drawn stretched to exactly the scaled
 // [trim + 2*file_bleed_mm]; this only matches the image's real aspect ratio
 // when the file's bleed is uniform on every side, true for every fixture
 // this demo builds (F1: no bleed; F2: uniform 3mm) but not guaranteed for a
@@ -90,6 +91,19 @@ export default function ArtworkPreview({
   const fileY = offsetY - scaledBleed;
   const fileW = fileTrimW * scale + 2 * scaledBleed;
   const fileH = fileTrimH * scale + 2 * scaledBleed;
+  // Rotate: the server has already swapped the geometry above to the turned page, and
+  // says `rotation: 90` so the raster (still the unturned page) is drawn at its own
+  // shape and turned a quarter turn, clockwise, about the middle of that box.
+  const turned = image?.rotation === 90;
+  const drawn = turned
+    ? {
+        x: fileX + fileW / 2 - fileH / 2,
+        y: fileY + fileH / 2 - fileW / 2,
+        width: fileH,
+        height: fileW,
+        transform: `rotate(90 ${fileX + fileW / 2} ${fileY + fileH / 2})`,
+      }
+    : { x: fileX, y: fileY, width: fileW, height: fileH };
   const missingBleed = withGuides && !transform && fileBleed < bleed;
 
   const slotGroups = (groups ?? []).filter((g) => g.slot === slot);
@@ -127,21 +141,14 @@ export default function ArtworkPreview({
 
       <g clipPath={`url(#${clipId})`}>
         {image.image_url && (
-          <image
-            href={image.image_url}
-            x={fileX}
-            y={fileY}
-            width={fileW}
-            height={fileH}
-            preserveAspectRatio="none"
-          />
+          <image href={image.image_url} {...drawn} preserveAspectRatio="none" />
         )}
       </g>
 
       {transform?.mode === "fill" && image.image_url && (
         <g clipPath={`url(#${outsideClipId})`}>
           <rect x={vx} y={vy} width={vw} height={vh} fill="#151c27" opacity="0.55" />
-          <image href={image.image_url} x={fileX} y={fileY} width={fileW} height={fileH} preserveAspectRatio="none" opacity="0.45" />
+          <image href={image.image_url} {...drawn} preserveAspectRatio="none" opacity="0.45" />
         </g>
       )}
 

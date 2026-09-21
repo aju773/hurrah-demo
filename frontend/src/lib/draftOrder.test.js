@@ -10,7 +10,9 @@ import {
   pendingEffect,
   reduce,
   restoreDraft,
+  rotatedSides,
   serializeDraft,
+  sizeChoiceForOrder,
 } from "./draftOrder";
 
 const DEFAULTS = { size: "a5", paper: "170gsm-gloss", sides: "single", quantity: "500", turnaround: "standard" };
@@ -705,5 +707,101 @@ describe("Options change after upload (Edit options)", () => {
     expect(restored.backDropped).toBe(true);
     expect(restored.slots.front.id).toBe(1);
     expect(reduce(restored, { type: "GO_TO_PAGE", page: "options" }).slots.front.id).toBe(1);
+  });
+});
+
+describe("Rotate (ticket 05 of the two-page journey)", () => {
+  const uploaded = (upload = F5_A5_SINGLE) => uploadFront(pick(initDraft(DEFAULTS), "sides", "single"), upload);
+
+  it("starts with nothing rotated", () => {
+    expect(initDraft(DEFAULTS).rotate).toEqual({ front: false, back: false });
+    expect(sizeChoiceForOrder(initDraft(DEFAULTS))).toBeNull();
+  });
+
+  it("turns a side and turns it back (undo), leaving the file and the Configuration alone", () => {
+    let s = uploaded();
+    const before = { config: s.config, front: s.slots.front };
+    s = reduce(s, { type: "TOGGLE_ROTATE", slot: "front" });
+    expect(s.rotate).toEqual({ front: true, back: false });
+    expect(s.config).toEqual(before.config);
+    expect(s.slots.front).toEqual(before.front);
+    s = reduce(s, { type: "TOGGLE_ROTATE", slot: "front" });
+    expect(s.rotate).toEqual({ front: false, back: false });
+  });
+
+  it("clears the Approve ticks, because the Proof changed", () => {
+    let s = reduce(uploaded(), { type: "SET_TICK", name: "approval", value: true });
+    s = reduce(s, { type: "TOGGLE_ROTATE", slot: "front" });
+    expect(s.ticks).toEqual({ approval: false, warnings: false });
+  });
+
+  it("is kept across a Size or other pick, and across going back to the Options page and returning", () => {
+    let s = reduce(uploaded(), { type: "TOGGLE_ROTATE", slot: "front" });
+    s = pick(s, "paper", "350gsm-matt");
+    s = reduce(s, { type: "GO_TO_PAGE", page: "options" });
+    s = reduce(s, { type: "GO_TO_PAGE", page: "artwork" });
+    expect(s.rotate.front).toBe(true);
+    s = pick(s, "size", "a4");
+    expect(s.rotate.front).toBe(true);
+  });
+
+  it("survives a saved draft", () => {
+    const s = reduce(uploaded(), { type: "TOGGLE_ROTATE", slot: "front" });
+    const restored = restoreDraft(JSON.parse(JSON.stringify(serializeDraft(s))), DEFAULTS);
+    expect(restored.rotate).toEqual({ front: true, back: false });
+  });
+
+  it("a draft saved before Rotate existed opens with nothing rotated", () => {
+    const saved = JSON.parse(JSON.stringify(serializeDraft(uploaded())));
+    delete saved.rotate;
+    expect(restoreDraft(saved, DEFAULTS).rotate).toEqual({ front: false, back: false });
+  });
+
+  it("is dropped for a side whose file is replaced or removed", () => {
+    let s = pick(initDraft(DEFAULTS), "sides", "double");
+    s = uploadFront(s, F2_A5_DOUBLE);
+    s = reduce(reduce(s, { type: "TOGGLE_ROTATE", slot: "front" }), { type: "TOGGLE_ROTATE", slot: "back" });
+    s = reduce(s, { type: "UPLOAD_BACK", artwork: BACK_A5 });
+    expect(s.rotate).toEqual({ front: true, back: false });
+    s = reduce(s, { type: "TOGGLE_ROTATE", slot: "back" });
+    s = reduce(s, { type: "REMOVE_ARTWORK", slot: "back" });
+    expect(s.rotate).toEqual({ front: true, back: false });
+    s = reduce(s, { type: "UPLOAD_FRONT", artwork: F5_A5_SINGLE });
+    expect(s.rotate).toEqual({ front: false, back: false });
+  });
+
+  it("is dropped for a Front removed together with the Back it filled", () => {
+    let s = pick(initDraft(DEFAULTS), "sides", "double");
+    s = uploadFront(s, F2_A5_DOUBLE);
+    s = reduce(reduce(s, { type: "TOGGLE_ROTATE", slot: "front" }), { type: "TOGGLE_ROTATE", slot: "back" });
+    s = reduce(s, { type: "REMOVE_ARTWORK", slot: "front" });
+    expect(s.rotate).toEqual({ front: false, back: false });
+  });
+
+  it("drops the Back's turn when single-sided drops the Back", () => {
+    let s = pick(initDraft(DEFAULTS), "sides", "double");
+    s = uploadFront(s, F2_A5_DOUBLE);
+    s = reduce(reduce(s, { type: "TOGGLE_ROTATE", slot: "front" }), { type: "TOGGLE_ROTATE", slot: "back" });
+    s = pick(s, "sides", "single");
+    expect(s.rotate).toEqual({ front: true, back: false });
+  });
+
+  it("rotatedSides: a same-as-front Back turns with the Front, and a missing Back is never turned", () => {
+    let s = uploaded();
+    s = reduce(s, { type: "TOGGLE_ROTATE", slot: "front" });
+    expect(rotatedSides(s)).toEqual({ front: true, back: false });
+    s = reduce(s, { type: "TOGGLE_SAME_BACK" });
+    expect(rotatedSides(s)).toEqual({ front: true, back: true });
+  });
+
+  it("sizeChoiceForOrder: Rotate alone, beside a Fit/Fill choice, or nothing", () => {
+    let s = uploaded();
+    expect(sizeChoiceForOrder(s)).toBeNull();
+    s = reduce(s, { type: "TOGGLE_ROTATE", slot: "front" });
+    expect(sizeChoiceForOrder(s)).toEqual({ rotate: { front: true, back: false } });
+    s = { ...s, sizeChoice: { choice: "keep_size_scale", mode: "fit", scale_pct: 70.5, applies_to: ["front"] } };
+    expect(sizeChoiceForOrder(s)).toEqual({ ...s.sizeChoice, rotate: { front: true, back: false } });
+    s = reduce(s, { type: "TOGGLE_ROTATE", slot: "front" });
+    expect(sizeChoiceForOrder(s)).toEqual(s.sizeChoice);
   });
 });

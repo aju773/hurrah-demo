@@ -261,16 +261,20 @@ class OrderLineInline(admin.StackedInline):
 
     @admin.display(description="Size choice")
     def size_choice_summary(self, line):
-        choice = line.size_choice
-        if not choice:
-            return "Kept at the file's own size"
+        choice = line.size_choice or {}
+        rotate = choice.get("rotate") or {}
+        turned = [label for label, side in (("Front", "front"), ("Back", "back")) if rotate.get(side)]
+        rotate_text = f"Rotated 90° clockwise: {' and '.join(turned)}" if turned else ""
+        if not choice.get("mode"):
+            return rotate_text or "Kept at the file's own size"
         mode = str(choice.get("mode", "")).title()
         bits = [f"scale {choice['scale']:.3f}"] if choice.get("scale") is not None else []
         if choice.get("white_border_mm"):
             bits.append(f"white border {choice['white_border_mm']} mm")
         if choice.get("crop_mm"):
             bits.append(f"crop {choice['crop_mm']} mm")
-        return f"{mode}: " + ", ".join(bits) if bits else mode
+        text = f"{mode}: " + ", ".join(bits) if bits else mode
+        return f"{text}. {rotate_text}" if rotate_text else text
 
     def _artworks(self, line):
         artworks = [("Front", line.front_artwork)]

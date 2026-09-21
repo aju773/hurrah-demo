@@ -22,6 +22,42 @@ the driving axis lands exactly on target) and which pair of edges it's on.
 FIT = "fit"
 FILL = "fill"
 
+# Rotate: a clockwise quarter turn (90°), stored beside the size choice as
+# {"rotate": {"front": bool, "back": bool}}. It is separate from Orientation
+# (which only records which way round the page already is). Like Fit/Fill it is
+# an instruction — the preview and Preflight apply it, the file is never rewritten.
+ROTATION_DEGREES = 90
+
+
+def rotated_mm(size_mm, rotated):
+    """A [width, height] pair as it lies after the quarter turn (unknown sizes pass through)."""
+    return [size_mm[1], size_mm[0]] if rotated else list(size_mm)
+
+
+def rotate_bbox_mm(bbox, trim_mm):
+    """A Finding's [x0, y0, x1, y1] box (trim-mm, origin top-left, y down) after a
+    clockwise quarter turn of the page whose trim is `trim_mm` [width, height]:
+    (x, y) lands at (height - y, x). None stays None."""
+    if bbox is None:
+        return None
+    x0, y0, x1, y1 = bbox
+    height = trim_mm[1]
+    return [round(height - y1, 2), x0, round(height - y0, 2), x1]
+
+
+def clean_rotate(value, same_as_front, has_back):
+    """The Rotate instruction as an Order line records it — {"front", "back"}
+    booleans — or None when nothing is rotated or `value` is not one. A Back that
+    is the Front again turns with it; a missing Back cannot be turned."""
+    if not isinstance(value, dict):
+        return None
+    front = bool(value.get("front"))
+    if same_as_front:
+        back = front
+    else:
+        back = bool(value.get("back")) and has_back
+    return {"front": front, "back": back} if front or back else None
+
 
 def _target_trim_mm(ordered_trim_mm, file_trim_mm):
     ordered_w, ordered_h = ordered_trim_mm

@@ -76,6 +76,8 @@
     "zoomFit": "احتواء",
     "previewOnlyNote": "معاينة فقط — يُطبع ملفك بجودته الكاملة.",
     "previewLabel": "معاينة {side}",
+    "rotateSide": "تدوير {side}",
+    "undoRotateSide": "إلغاء تدوير {side}",
     "choosePages": "اختيار الصفحات",
     "enlargedView": "معاينة مكبّرة",
     "scrollArea": "معاينة مكبّرة، قابلة للتمرير",

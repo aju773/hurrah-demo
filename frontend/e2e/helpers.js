@@ -19,10 +19,13 @@ export function trackUploads(page) {
   return uploads;
 }
 
-/** Drops F1 into Front (a 2-page PDF fills Back too) and answers the option–file
- * dialogs it raises (A4 file on an A5 order, 2 pages on a single-sided order) by
- * switching the order to match the file, whatever order they come in. */
+/** From the Options page: Start ordering, then drop F1 into Front (a 2-page PDF
+ * fills Back too) on the Artwork page and answer the option–file dialogs it raises
+ * (A4 file on an A5 order, 2 pages on a single-sided order) by switching the order
+ * to match the file, whatever order they come in. */
 export async function uploadF1AndMatchOrder(page) {
+  await page.getByRole("button", { name: "Start ordering", exact: true }).click();
+  await expect(page).toHaveURL(/\/flyers\/artwork/);
   await page.locator('input[type="file"]').first().setInputFiles(FIXTURES.f1);
 
   const dialog = page.locator("div.fixed.inset-0.z-50");
@@ -39,13 +42,13 @@ export async function uploadF1AndMatchOrder(page) {
   await expect(continueButton).toBeEnabled();
 }
 
-/** F1's Front low-resolution row in the Artwork page's findings list. */
+/** F1's Front low-resolution row in the Artwork page's Findings list. */
 export function frontLowPpiRow(page) {
   return page.getByRole("button", { name: /Front.*low resolution/ });
 }
 
 /** The Findings for the uploaded file show on the Artwork page itself. */
-export async function goToStep2(page) {
+export async function expectFindingsShown(page) {
   await expect(frontLowPpiRow(page)).toBeVisible();
 }
 

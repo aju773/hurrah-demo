@@ -1,18 +1,21 @@
 import { test, expect } from "@playwright/test";
-import { F1_NAME, frontLowPpiRow, goToStep2, storedDraft, trackUploads, uploadF1AndMatchOrder } from "./helpers";
+import { F1_NAME, frontLowPpiRow, expectFindingsShown, storedDraft, trackUploads, uploadF1AndMatchOrder } from "./helpers";
+
+// The Artwork page's "Edit options" in Arabic (message file: FlyersConfigurator.editOptions).
+const AR_EDIT_OPTIONS = "تعديل الخيارات";
 
 test("switching to Arabic on the Artwork page flips to RTL, translates findings and keeps the draft", async ({ page }) => {
   const uploads = trackUploads(page);
   await page.goto("/en/flyers");
   await uploadF1AndMatchOrder(page);
-  await goToStep2(page);
+  await expectFindingsShown(page);
 
   const before = await storedDraft(page);
   expect(before.slots.front.id).toBeTruthy();
   expect(uploads).toHaveLength(1);
 
   await page.getByRole("link", { name: "Switch to Arabic" }).click();
-  await expect(page).toHaveURL(/\/ar\/flyers/);
+  await expect(page).toHaveURL(/\/ar\/flyers\/artwork/);
   await expect(page.locator("html")).toHaveAttribute("dir", "rtl");
 
   // Findings read in Arabic (the English sentence from the server is gone).
@@ -23,7 +26,8 @@ test("switching to Arabic on the Artwork page flips to RTL, translates findings 
   const after = await storedDraft(page);
   expect(after.slots.front.id).toBe(before.slots.front.id);
   expect(after.slots.back.id).toBe(before.slots.back.id);
-  expect(after.step).toBe(before.step);
+  expect(after.page).toBe(before.page);
+  expect(after.page).toBe("artwork");
   expect(uploads).toHaveLength(1);
 
   // The preview is not mirrored: it stays left-to-right with no flip transform.
@@ -40,7 +44,7 @@ test("switching to Arabic on the Artwork page flips to RTL, translates findings 
 
   // And back: same draft again, still nothing re-uploaded.
   await page.getByRole("link", { name: "التبديل إلى الإنجليزية" }).click();
-  await expect(page).toHaveURL(/\/en\/flyers/);
+  await expect(page).toHaveURL(/\/en\/flyers\/artwork/);
   await expect(page.locator("html")).toHaveAttribute("dir", "ltr");
   await expect(frontLowPpiRow(page)).toBeVisible();
   expect((await storedDraft(page)).slots.front.id).toBe(before.slots.front.id);
@@ -48,18 +52,21 @@ test("switching to Arabic on the Artwork page flips to RTL, translates findings 
   await expect(page.getByText("مسودة ترجمة")).toHaveCount(0);
 });
 
-test("the uploaded file's cards and options survive a language switch on step 1", async ({ page }) => {
+test("the uploaded file's cards and the chosen options survive a language switch on the Artwork page", async ({ page }) => {
   const uploads = trackUploads(page);
   await page.goto("/en/flyers");
   await uploadF1AndMatchOrder(page);
 
   await page.getByRole("link", { name: "Switch to Arabic" }).click();
-  await expect(page).toHaveURL(/\/ar\/flyers/);
+  await expect(page).toHaveURL(/\/ar\/flyers\/artwork/);
 
   await expect(page.getByText(F1_NAME).first()).toBeVisible(); // the Front card, not an empty drop zone
   await expect(page.getByText("اسحب ملف PDF وأفلته هنا")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "متابعة" })).toBeEnabled();
-  // Option names and labels come from the catalogue in Arabic.
+
+  // Option names and labels come from the catalogue in Arabic, on the Options page.
+  await page.getByRole("button", { name: AR_EDIT_OPTIONS, exact: true }).click();
+  await expect(page).toHaveURL(/\/ar\/flyers(\?|$)/);
   await expect(page.getByText("المقاس", { exact: true }).first()).toBeVisible();
   expect(uploads).toHaveLength(1);
 });

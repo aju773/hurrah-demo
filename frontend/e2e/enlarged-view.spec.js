@@ -1,10 +1,10 @@
 import { test, expect } from "@playwright/test";
-import { frontLowPpiRow, goToStep2, uploadF1AndMatchOrder } from "./helpers";
+import { frontLowPpiRow, expectFindingsShown, uploadF1AndMatchOrder } from "./helpers";
 
 test("opening F1's low-resolution finding shows the enlarged view with the finding highlighted", async ({ page }) => {
   await page.goto("/en/flyers");
   await uploadF1AndMatchOrder(page);
-  await goToStep2(page);
+  await expectFindingsShown(page);
 
   await frontLowPpiRow(page).click();
 
@@ -23,7 +23,7 @@ test("opening F1's low-resolution finding shows the enlarged view with the findi
 test("the enlarged view switches sides and zoom levels and closes with Escape", async ({ page }) => {
   await page.goto("/en/flyers");
   await uploadF1AndMatchOrder(page);
-  await goToStep2(page);
+  await expectFindingsShown(page);
 
   await frontLowPpiRow(page).click();
   const dialog = page.getByRole("dialog");

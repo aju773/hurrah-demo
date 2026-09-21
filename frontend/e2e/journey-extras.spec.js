@@ -1,8 +1,8 @@
 // Scripted demo runs for the three extras, money-free like journey.spec.js and
 // reset the same way: the Page picker on a 5-page file, an Artwork template
 // downloaded and uploaded again, and the first-visit hints (on for that run only;
-// every other run keeps them off). Each run continues to the Order confirmation
-// page, in English and Arabic.
+// every other run keeps them off). Each run goes from the Options page through the
+// Artwork page to the Order confirmation page, in English and Arabic.
 import {
   test,
   expect,
@@ -13,6 +13,7 @@ import {
   continueToApproval,
   copyFor,
   resetDemo,
+  startOrdering,
   uploadFront,
 } from "./journey-helpers";
 
@@ -27,6 +28,7 @@ for (const locale of LOCALES) {
 
     test("page picker: pages 3 and 4 become Front and Back, previews follow, confirmation", async ({ page }) => {
       await page.goto(`/${locale}/flyers`);
+      await startOrdering(page, t);
       await uploadFront(page, DEMO_FILES.fivePages);
 
       // Five pages: nothing is Artwork until the customer says which pages.
@@ -68,6 +70,9 @@ for (const locale of LOCALES) {
 
     test("artwork template: download A5, upload it unchanged, Ready to print, confirmation", async ({ page }, testInfo) => {
       await page.goto(`/${locale}/flyers`);
+      // The templates are on the Artwork page, not the Options page.
+      await expect(page.getByRole("list", { name: t("ArtworkTemplates", "listLabel") })).toHaveCount(0);
+      await startOrdering(page, t);
       const templates = page.getByRole("list", { name: t("ArtworkTemplates", "listLabel") });
       await expect(templates).toBeVisible();
       await expect(page.locator("[data-hint]")).toHaveCount(0);
@@ -86,13 +91,13 @@ for (const locale of LOCALES) {
       await checkPage(page, "desktop");
 
       await expect(page.getByRole("status").filter({ hasText: t("Preflight", "headlineOk").replace(/^\S+\s/, "") })).toBeVisible();
-      await continueToConfirmationFromStep2(page, t, locale);
+      await continueToConfirmationFromArtworkPage(page, t, locale);
     });
   });
 }
 
-/** From a step 2 that is already showing "Ready to print" to the confirmation page. */
-async function continueToConfirmationFromStep2(page, t, locale) {
+/** From an Artwork page that is already showing "Ready to print" to the confirmation page. */
+async function continueToConfirmationFromArtworkPage(page, t, locale) {
   await expect(page.getByText(t("ArtworkChecks", "noFindings"))).toBeVisible();
   await checkPage(page, "desktop");
   await continueToApproval(page, t);

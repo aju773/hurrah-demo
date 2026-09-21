@@ -124,6 +124,58 @@ export async function uploadFront(page, file) {
   await page.locator('input[type="file"]').first().setInputFiles(file);
 }
 
+/** The catalogue's option and value names in this language (they come from the
+ * server, not from the message files). */
+export async function catalogueNames(request, testInfo, locale) {
+  const { apiUrl } = testInfo.project.metadata;
+  const response = await request.get(`${apiUrl}/api/products/flyers/catalogue/?locale=${locale}`);
+  const catalogue = await response.json();
+  return {
+    optionName: (code) => catalogue.options.find((option) => option.code === code).name,
+    valueLabel: (code, value) => catalogue.options.find((option) => option.code === code).values.find((v) => v.code === value).label,
+  };
+}
+
+/** The Options page's button for one value. Choosing one counts as the customer's
+ * own choice, so a file that differs from it raises the size/sides dialogs instead
+ * of auto-filling. (Quantity is a radio group, not a button group.) */
+export function optionButton(page, names, code, value) {
+  return page.getByRole("group", { name: names.optionName(code), exact: true }).getByRole("button", { name: names.valueLabel(code, value), exact: true });
+}
+
+export async function chooseOption(page, names, code, value) {
+  await optionButton(page, names, code, value).click();
+}
+
+/** The Options page's "Start ordering": lands on the Artwork page with its heading in view. */
+export async function startOrdering(page, t) {
+  await page.getByRole("button", { name: t("FlyersConfigurator", "startOrdering"), exact: true }).click();
+  await expect(page).toHaveURL(/\/flyers\/artwork/);
+  await expect(page.getByRole("heading", { name: t("FlyersConfigurator", "pageArtwork") })).toBeVisible();
+}
+
+/** The Artwork page's "Edit options": back on the Options page with its heading in view. */
+export async function editOptions(page, t) {
+  await page.getByRole("button", { name: t("FlyersConfigurator", "editOptions"), exact: true }).click();
+  await expect(page).toHaveURL(/\/flyers(\?|$)/);
+  await expect(page.getByRole("heading", { name: t("FlyersConfigurator", "pageOptions") })).toBeVisible();
+}
+
+/** The draft the page keeps in sessionStorage: page, slots, rotate, swap… */
+export async function storedDraft(page) {
+  return page.evaluate(() => JSON.parse(window.sessionStorage.getItem("flyers-draft-order")));
+}
+
+/** Counts every POST to the artwork upload endpoint, so a run can prove that moving
+ * between pages, Rotate, Swap or a reload never uploads a file again. */
+export function trackUploads(page) {
+  const uploads = [];
+  page.on("request", (request) => {
+    if (request.method() === "POST" && new URL(request.url()).pathname === "/api/artworks/") uploads.push(request.url());
+  });
+  return uploads;
+}
+
 /** Every step is checked the same way: no money on the page, and on a phone no
  * sideways scroll. */
 export async function checkPage(page, size) {

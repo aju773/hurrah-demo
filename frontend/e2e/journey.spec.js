@@ -1,21 +1,28 @@
 // Scripted demo runs: the core journey, money-free, against the real backend and
 // frontend (playwright.config.js starts both with the Commerce switch off). Each
 // run resets the demo first (`reset_demo`, the presenter's own command), so it
-// passes again and again with no manual steps. Two personas, each ending on the
-// Order confirmation page after a short staff moment, in English and Arabic, at
-// desktop width and at 390px.
+// passes again and again with no manual steps. Two personas, each going Options
+// page, Artwork page, approval and ending on the Order confirmation page after a
+// short staff moment, in English and Arabic, at desktop width and at 390px. The
+// page-by-page behaviour (redirects, Rotate, Swap, Edit options) is in
+// journey-pages.spec.js.
 import {
   test,
   expect,
   DEMO_FILES,
   VIEWPORTS,
   approveAndSubmit,
+  catalogueNames,
   checkPage,
+  chooseOption,
   continueToApproval,
   copyFor,
+  editOptions,
   expectNoMoney,
+  optionButton,
   resetDemo,
   staffMovesOrder,
+  startOrdering,
   uploadFront,
 } from "./journey-helpers";
 
@@ -30,24 +37,6 @@ const RUNS = [
 const IN_PRODUCTION = { en: /^In production\./, ar: /^قيد الإنتاج/ };
 const READY = { en: /^Ready /, ar: /^جاهز / };
 const STAFF_CHECK = { en: /^Our team is checking your file/, ar: /^فريقنا يتحقق من ملفك/ };
-
-/** The catalogue's option and value names in this language (they come from the
- * server, not from the message files). */
-async function catalogueNames(request, testInfo, locale) {
-  const { apiUrl } = testInfo.project.metadata;
-  const response = await request.get(`${apiUrl}/api/products/flyers/catalogue/?locale=${locale}`);
-  const catalogue = await response.json();
-  return {
-    optionName: (code) => catalogue.options.find((option) => option.code === code).name,
-    valueLabel: (code, value) => catalogue.options.find((option) => option.code === code).values.find((v) => v.code === value).label,
-  };
-}
-
-/** Step 1's option buttons; choosing one counts as the customer's own choice, so a
- * file that differs from it raises the size/sides dialogs instead of auto-filling. */
-async function chooseOption(page, names, code, value) {
-  await page.getByRole("group", { name: names.optionName(code), exact: true }).getByRole("button", { name: names.valueLabel(code, value), exact: true }).click();
-}
 
 async function expectStatus(page, pattern) {
   // The confirmation page checks for staff changes every 10 seconds.
@@ -64,20 +53,28 @@ for (const { locale, size } of RUNS) {
     test("print-ready file: auto-fill, approve, confirmation, staff moment", async ({ page, browser, request }, testInfo) => {
       await page.goto(`/${locale}/flyers`);
       await checkPage(page, size);
+      await startOrdering(page, t);
+      await checkPage(page, size);
 
       // Nothing chosen yet, so the file fills the options in: A5, double-sided.
       await uploadFront(page, DEMO_FILES.printReady);
       await expect(page.getByText(t("ArtworkSlot", "checking"))).toHaveCount(0);
       await expect(page.getByRole("dialog")).toHaveCount(0);
-      const names = await catalogueNames(request, testInfo, locale);
-      const sizeGroup = page.getByRole("group", { name: names.optionName("size"), exact: true });
-      await expect(sizeGroup.getByRole("button", { name: names.valueLabel("size", "a5"), exact: true })).toContainText("✓");
-      await expect(page.getByRole("group", { name: names.optionName("sides"), exact: true }).getByRole("button", { name: names.valueLabel("sides", "double"), exact: true })).toContainText("✓");
       await checkPage(page, size);
 
+      // The Findings and the preview are on the same page as the upload.
       await expect(page.getByText(t("ArtworkChecks", "noFindings"))).toBeVisible();
       await expect(page.getByRole("img", { name: t.startsWith("ArtworkChecks", "previewLabel") }).first()).toBeVisible();
       await checkPage(page, size);
+
+      // "Edit options" shows what the file filled in and keeps the file.
+      const names = await catalogueNames(request, testInfo, locale);
+      await editOptions(page, t);
+      await expect(optionButton(page, names, "size", "a5")).toContainText("✓");
+      await expect(optionButton(page, names, "sides", "double")).toContainText("✓");
+      await checkPage(page, size);
+      await startOrdering(page, t);
+      await expect(page.getByText(t("ArtworkChecks", "noFindings"))).toBeVisible();
 
       await continueToApproval(page, t);
       await checkPage(page, size);
@@ -98,6 +95,7 @@ for (const { locale, size } of RUNS) {
 
       // Layla has chosen A5 already, and her file is A4 with two pages.
       await chooseOption(page, names, "size", "a5");
+      await startOrdering(page, t);
       await uploadFront(page, DEMO_FILES.needsFixing);
 
       const dialog = page.getByRole("dialog");
@@ -162,6 +160,12 @@ test.describe("keyboard only", () => {
     const t = copyFor("en");
     await page.goto("/en/flyers");
 
+    // Options page: Start ordering by keyboard; focus lands on the Artwork page's heading.
+    await tabTo(page, page.getByRole("button", { name: t("FlyersConfigurator", "startOrdering"), exact: true }));
+    await page.keyboard.press("Enter");
+    await expect(page).toHaveURL(/\/en\/flyers\/artwork/);
+    await expect(page.getByRole("heading", { name: t("FlyersConfigurator", "pageArtwork") })).toBeFocused();
+
     // Browse for the file: the button opens the file chooser from the keyboard.
     await tabTo(page, page.getByRole("button", { name: /browse from your computer/ }).first());
     const chooser = page.waitForEvent("filechooser");
@@ -198,6 +202,10 @@ test.describe("off-script files", () => {
     test(`a JPG is refused with a clean message, ${locale}, and the page still works`, async ({ page }) => {
       const t = copyFor(locale);
       await page.goto(`/${locale}/flyers`);
+      await startOrdering(page, t);
+      // No Front yet: Continue waits, and says why next to the button.
+      await expect(page.getByRole("button", { name: t("FlyersConfigurator", "continue") })).toBeDisabled();
+      await expect(page.getByText(t("FlyersConfigurator", "continueNeedsArtwork"))).toBeVisible();
       const jpg = { name: "logo.jpg", mimeType: "image/jpeg", buffer: Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0, 16, 74, 70, 73, 70, 0, 1]) };
       await page.locator('input[type="file"]').first().setInputFiles(jpg);
       await expect(page.getByText(t("ArtworkErrors", "not_a_pdf"))).toBeVisible();
@@ -215,6 +223,7 @@ test.describe("off-script files", () => {
   test("a password-protected file is refused with the file-unreadable message", async ({ page }) => {
     const t = copyFor("en");
     await page.goto("/en/flyers");
+    await startOrdering(page, t);
     await page.locator('input[type="file"]').first().setInputFiles(DEMO_FILES.protected);
     await expect(page.getByText(t("ArtworkErrors", "file_unreadable"))).toBeVisible();
     await expect(page.getByRole("button", { name: t("FlyersConfigurator", "continue") })).toBeDisabled();
@@ -229,6 +238,7 @@ test.describe("damaged file", () => {
   test("a repairable file is accepted with a Warning to check", async ({ page }) => {
     const t = copyFor("en");
     await page.goto("/en/flyers");
+    await startOrdering(page, t);
     await page.locator('input[type="file"]').first().setInputFiles(DEMO_FILES.damaged);
     await expect(page.getByText(t("Findings", "file_repaired_warning")).first()).toBeVisible();
     await expectNoMoney(page);

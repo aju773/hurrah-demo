@@ -8,6 +8,7 @@ import ArtworkSlots from "./ArtworkSlots";
 import ArtworkChecks from "./ArtworkChecks";
 import ArtworkTemplatesPanel from "./ArtworkTemplatesPanel";
 import DesignHelpDrawer from "./DesignHelpDrawer";
+import CutoffLine from "./CutoffLine";
 import SyncDialog from "./SyncDialog";
 import { ShowHintsLink } from "./FirstVisitHint";
 import { rotatedSides, swappedSides } from "@/lib/draftOrder";
@@ -28,6 +29,7 @@ export default function ArtworkPage({
   designHelpOpen,
   configurationLine,
   syncBanner,
+  clockNotice,
   reopenPicker,
   actions,
 }) {
@@ -36,6 +38,8 @@ export default function ArtworkPage({
   const [previewBlocked, setPreviewBlocked] = useState(false); // ArtworkChecks: an Error Finding remains
   const [summaryOpen, setSummaryOpen] = useState(false); // the Summary bar at narrow widths
   const front = state.slots.front;
+  const turnaroundValues = catalogue.options.find((o) => o.code === "turnaround")?.values ?? [];
+  const turnaroundLabel = turnaroundValues.find((v) => v.code === selection.turnaround)?.label ?? selection.turnaround;
   const swapped = swappedSides(state); // Front and Back trade places; the cells below name the sides as printed
   const continueReason = !front ? "continueNeedsArtwork" : dialog ? "continueHasOpenDialog" : !canContinue || previewBlocked ? "continueHasError" : null;
 
@@ -57,6 +61,7 @@ export default function ArtworkPage({
 
       {syncBanner}
 
+      {clockNotice && <Notices notices={[{ reason: t("clockMovedNotice") }]} />}
       {state.notices?.length > 0 && <Notices notices={state.notices} />}
       {state.backDropped && <Notices notices={[{ reason: t("backDroppedNotice") }]} />}
 
@@ -121,8 +126,12 @@ export default function ArtworkPage({
             <span className="shrink-0 text-[12px] font-semibold">{t(summaryOpen ? "summaryHide" : "summaryShow")}</span>
           </button>
           <div id="summary-panel" className={`${summaryOpen ? "block" : "hidden"} lg:block`}>
-            <SummaryPanel catalogue={catalogue} selection={selection} state={state} locale={locale} onExpire={actions.refresh} />
+            <SummaryPanel catalogue={catalogue} selection={selection} state={state} locale={locale} showCountdown={false} />
           </div>
+          {state.clock && (
+            // Keyed on clock.now like the countdowns elsewhere: a fresh clock remounts it.
+            <CutoffLine key={state.clock.now} clock={state.clock} turnaroundLabel={turnaroundLabel} onExpire={actions.onClockExpire} />
+          )}
           <button
             type="button"
             onClick={actions.editOptions}

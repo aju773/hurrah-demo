@@ -47,6 +47,7 @@
     "retry": "Retry",
     "startOrdering": "Start ordering",
     "editOptions": "Edit options",
+    "clockMovedNotice": "The cut-off has passed, so your ready date has been updated. Check the new date before you continue.",
     "continueHasError": "Fix every Error above before continuing.",
     "backDroppedNotice": "You chose single-sided, so the Back artwork was removed. Your Front is kept.",
     "summaryShow": "Show details",
@@ -285,7 +286,8 @@
   "Clock": {
     "by": "by",
     "deliveryLine": "Approve in <ltr>{countdown}</ltr> for delivery {date}, <ltr>{window}</ltr> (Dubai)",
-    "readyLine": "Approve in <ltr>{countdown}</ltr> for ready {date}, <ltr>{window}</ltr> (Dubai)"
+    "readyLine": "Approve in <ltr>{countdown}</ltr> for ready {date}, <ltr>{window}</ltr> (Dubai)",
+    "cutoffLine": "{turnaround}: order by <ltr>{time}</ltr>"
   },
   "DesignHelp": {
     "title": "Need a design?",

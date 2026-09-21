@@ -27,6 +27,7 @@ export default function FlyersConfigurator({ initialCatalogue, initialConfigurat
   const [artworkResetKey, setArtworkResetKey] = useState(0);
   const [reopenTarget, setReopenTarget] = useState(null); // the Page picker reopened on the Artwork page
   const mountedLocale = useRef(locale);
+  const [clockNotice, setClockNotice] = useState(false); // the Cut-off passed on the Options or Artwork page
   const [openedPage] = useState(() => pageForPath(pathname)); // the address the customer arrived at
   const draft = useDraftOrder({
     defaults: initialConfiguration?.selection ?? initialCatalogue?.defaults ?? {},
@@ -187,10 +188,18 @@ export default function FlyersConfigurator({ initialCatalogue, initialConfigurat
     resetIdempotencyKey();
   }
 
+  // The Cut-off passing on the Options or Artwork page: same re-check, and a notice that
+  // the promised date moved. The customer stays where they are; only Approve blocks.
+  function handlePageClockExpire() {
+    handleClockExpire();
+    setClockNotice(true);
+  }
+
   // After "Edit options" / "Change file" the customer goes straight back to
   // Approve; the Order is different now, so it gets a fresh idempotency key too
   // (returnToApprove already clears the ticks).
   function handleContinue() {
+    setClockNotice(false); // Approve has its own notice
     if (!state.returnToApprove) {
       go(PAGE_APPROVE);
       return;
@@ -258,6 +267,7 @@ export default function FlyersConfigurator({ initialCatalogue, initialConfigurat
         designHelpOpen={designHelpOpen}
         configurationLine={configurationLine}
         syncBanner={syncBanner}
+        clockNotice={clockNotice}
         reopenPicker={reopenPicker}
         actions={{
           setDesignHelpOpen,
@@ -272,6 +282,7 @@ export default function FlyersConfigurator({ initialCatalogue, initialConfigurat
           previewSwitch,
           resolveDialog,
           refresh,
+          onClockExpire: handlePageClockExpire,
           editOptions: () => go(PAGE_OPTIONS),
           onContinue: handleContinue,
         }}
@@ -286,8 +297,9 @@ export default function FlyersConfigurator({ initialCatalogue, initialConfigurat
       state={state}
       locale={locale}
       syncBanner={syncBanner}
+      clockNotice={clockNotice}
       onPick={pick}
-      onRefresh={refresh}
+      onClockExpire={handlePageClockExpire}
       onStart={() => go(PAGE_ARTWORK)}
     />
   );

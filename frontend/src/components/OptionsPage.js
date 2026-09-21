@@ -7,7 +7,7 @@ import FirstVisitHint, { ShowHintsLink } from "./FirstVisitHint";
 
 /** The Options page: every Option, the Summary (Quote and Price grid when the
  * Commerce switch is on), Restriction reasons and "Start ordering". No Artwork. */
-export default function OptionsPage({ catalogue, selection, state, locale, syncBanner, onPick, onRefresh, onStart }) {
+export default function OptionsPage({ catalogue, selection, state, locale, syncBanner, clockNotice, onPick, onClockExpire, onStart }) {
   const t = useTranslations("FlyersConfigurator");
   const { commerceEnabled } = state;
   const blocked = state.blocked ?? {};
@@ -18,6 +18,7 @@ export default function OptionsPage({ catalogue, selection, state, locale, syncB
     <div className="flex flex-col gap-[20px] w-full" dir={locale === "ar" ? "rtl" : "ltr"}>
       {syncBanner}
 
+      {clockNotice && <Notices notices={[{ reason: t("clockMovedNotice") }]} />}
       {state.notices?.length > 0 && <Notices notices={state.notices} />}
 
       <div className="grid grid-cols-12 gap-[20px] w-full items-start">
@@ -36,7 +37,7 @@ export default function OptionsPage({ catalogue, selection, state, locale, syncB
                   clock={state.clock}
                   locale={locale}
                   onPick={(code) => onPick("turnaround", code)}
-                  onExpire={onRefresh}
+                  onExpire={onClockExpire}
                 />
               ) : (
                 <div className="flex flex-wrap gap-[8px]" {...(option.code === "quantity" ? { role: "radiogroup", "aria-label": option.name } : { role: "group", "aria-label": option.name })}>
@@ -73,7 +74,7 @@ export default function OptionsPage({ catalogue, selection, state, locale, syncB
 
         {/* Summary panel */}
         <div className="col-span-12 lg:col-span-5 min-w-0">
-          <SummaryPanel catalogue={catalogue} selection={selection} state={state} locale={locale} onExpire={onRefresh} />
+          <SummaryPanel catalogue={catalogue} selection={selection} state={state} locale={locale} onExpire={onClockExpire} />
         </div>
       </div>
 

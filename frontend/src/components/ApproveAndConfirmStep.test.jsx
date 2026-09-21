@@ -272,3 +272,14 @@ describe("Edit options and Change file shortcuts (ticket 06)", () => {
     expect(onEdit).toHaveBeenLastCalledWith("back");
   });
 });
+
+describe("the Cut-off clock on Approve", () => {
+  it("shows the countdown, and on expiry re-checks the Turnaround and says the promised date moved", async () => {
+    const onClockExpire = vi.fn();
+    renderStep({ extra: { onClockExpire, clock: { ...CLOCK, seconds_to_cutoff: 1 } } });
+    await screen.findByTestId("proof");
+    expect(screen.getByText(/Approve in/)).toHaveTextContent("1s");
+    expect(await screen.findByText(en.ApproveAndConfirmStep.expiredNotice, {}, { timeout: 3000 })).toBeTruthy();
+    expect(onClockExpire).toHaveBeenCalled();
+  });
+});

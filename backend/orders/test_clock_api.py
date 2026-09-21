@@ -32,6 +32,13 @@ class DemoClockApiTests(TestCase):
         self.assertEqual(data["clock"]["promised_date"], "2026-09-16")
         self.assertGreater(data["clock"]["seconds_to_cutoff"], 0)
 
+    def test_clock_names_the_cutoff_time_of_the_chosen_turnaround(self):
+        self.set_now(dubai(2026, 9, 16, 10, 0))
+        data = self.client.get(CONFIG_URL, {"turnaround": "same-day"}).json()
+        self.assertEqual(data["clock"]["cutoff_time"], "11:00")
+        card = next(t for t in data["turnarounds"] if t["code"] == "same-day")
+        self.assertEqual(card["cutoff_time"], "11:00")
+
     def test_after_cutoff_same_day_is_blocked_and_falls_back(self):
         self.set_now(dubai(2026, 9, 16, 11, 1))  # Wednesday, after 11:00
         res = self.client.get(CONFIG_URL, {"turnaround": "same-day"})

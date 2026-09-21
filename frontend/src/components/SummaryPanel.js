@@ -6,8 +6,9 @@ import ConfigurationSummary from "./ConfigurationSummary";
 
 /** The Summary of the current Configuration: the Quote when the Commerce switch is
  * on, the plain-words Configuration summary when it is off. Shown on the Options
- * page and beside the Artwork page. */
-export default function SummaryPanel({ catalogue, selection, state, locale, onExpire }) {
+ * page and beside the Artwork page. The Cut-off countdown shows here only when
+ * `showCountdown` is on (the Options page); the Artwork page keeps a small line instead. */
+export default function SummaryPanel({ catalogue, selection, state, locale, onExpire, showCountdown = true }) {
   const t = useTranslations("FlyersConfigurator");
   const { quote, commerceEnabled } = state;
 
@@ -47,7 +48,7 @@ export default function SummaryPanel({ catalogue, selection, state, locale, onEx
               <span className="text-[#bb0027] text-[24px] font-extrabold">{t("aed", { amount: quote.total_aed })}</span>
             </div>
             <span className="text-[#575c64] text-[12px]">{t("perPiece", { amount: quote.per_piece_aed })}</span>
-            {state.clock && (
+            {showCountdown && state.clock && (
               // Keyed on clock.now: a fresh Configuration (new pick, or the
               // countdown expiring below) remounts this with a clean countdown
               // rather than syncing a ticking value in from a changing prop.

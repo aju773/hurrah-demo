@@ -1,6 +1,6 @@
 import "@testing-library/jest-dom/vitest";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import en from "../../messages/en.json";
 import ar from "../../messages/ar.json";
@@ -32,13 +32,13 @@ const preview = (findings) => ({
   back: { same_as_front: true },
 });
 
-function show({ rotate = { front: false, back: false }, rotateAction = vi.fn(), front = { id: 1 }, canContinue = Boolean(front), dialog = null, locale = "en", onContinue = vi.fn(), backDropped = false, quote = null, editOptions = vi.fn(), back = null, sameBack = !back, swap = false, swapAction = vi.fn(), canChoosePages = {}, openChoosePages = vi.fn() } = {}) {
-  const state = { commerceEnabled: Boolean(quote), quote, notices: [], backDropped, previews: {}, sizeChoice: null, rotate, swap, slots: { front, back, sameBack } };
+function show({ rotate = { front: false, back: false }, rotateAction = vi.fn(), front = { id: 1 }, canContinue = Boolean(front), dialog = null, locale = "en", onContinue = vi.fn(), backDropped = false, quote = null, editOptions = vi.fn(), back = null, sameBack = !back, swap = false, swapAction = vi.fn(), canChoosePages = {}, openChoosePages = vi.fn(), clock = undefined, clockNotice = false, clockExpire = vi.fn() } = {}) {
+  const state = { commerceEnabled: Boolean(quote), quote, clock, notices: [], backDropped, previews: {}, sizeChoice: null, rotate, swap, slots: { front, back, sameBack } };
   render(
     <NextIntlClientProvider locale={locale} messages={locale === "ar" ? ar : en}>
       <ArtworkPage
-        catalogue={{ product_id: 1, options: [] }}
-        selection={{ size: "a5" }}
+        catalogue={{ product_id: 1, options: [{ code: "turnaround", name: "Turnaround", values: [{ code: "same-day", label: "Same-day" }] }] }}
+        selection={{ size: "a5", turnaround: "same-day" }}
         state={state}
         locale={locale}
         dialog={dialog}
@@ -48,11 +48,12 @@ function show({ rotate = { front: false, back: false }, rotateAction = vi.fn(), 
         configurationLine="A5 · 500 · Standard"
         syncBanner={null}
         reopenPicker={null}
-        actions={{ canChoosePages, openChoosePages, onContinue, editOptions, rotate: rotateAction, swap: swapAction }}
+        clockNotice={clockNotice}
+        actions={{ onClockExpire: clockExpire, canChoosePages, openChoosePages, onContinue, editOptions, rotate: rotateAction, swap: swapAction }}
       />
     </NextIntlClientProvider>
   );
-  return { onContinue, editOptions, rotateAction, swapAction, openChoosePages };
+  return { clockExpire, onContinue, editOptions, rotateAction, swapAction, openChoosePages };
 }
 
 describe("the Artwork page's findings, preview and Continue", () => {
@@ -199,5 +200,43 @@ describe("the Artwork page's Summary and Options-change notices", () => {
   it("says nothing when no Back was dropped", () => {
     show();
     expect(screen.queryByText(en.FlyersConfigurator.backDroppedNotice)).not.toBeInTheDocument();
+  });
+});
+
+function tick(seconds) {
+  for (let i = 0; i < seconds; i++) act(() => vi.advanceTimersByTime(1000));
+}
+
+describe("the Cut-off clock on the Artwork page", () => {
+  const CLOCK = { now: "n1", seconds_to_cutoff: 2, cutoff_time: "11:00", promised_date: "2026-09-22", window_start: "15:00", window_end: "20:00" };
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.mocked(fetchPreview).mockResolvedValue(preview([]));
+  });
+  afterEach(() => vi.useRealTimers());
+
+  it("shows only a small Cut-off line, not a countdown", () => {
+    show({ clock: CLOCK });
+    expect(document.body.textContent).toContain("Same-day: order by 11:00");
+    expect(screen.queryByText(/Approve in/)).toBeNull();
+  });
+
+  it("re-checks the Turnaround when the Cut-off passes, and keeps the customer on the page", () => {
+    const { clockExpire, editOptions } = show({ clock: CLOCK });
+    tick(2);
+    expect(clockExpire).toHaveBeenCalled();
+    expect(editOptions).not.toHaveBeenCalled();
+    expect(screen.getByTestId("slots")).toBeInTheDocument();
+  });
+
+  it("says the promised date moved after an expiry", () => {
+    show({ clock: CLOCK, clockNotice: true });
+    expect(screen.getByText(en.FlyersConfigurator.clockMovedNotice)).toBeInTheDocument();
+  });
+
+  it("shows no Cut-off line before the clock has loaded", () => {
+    show({});
+    expect(screen.queryByText(/order by/)).toBeNull();
   });
 });

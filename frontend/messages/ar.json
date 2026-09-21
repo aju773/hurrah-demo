@@ -47,6 +47,7 @@
     "retry": "إعادة المحاولة",
     "startOrdering": "ابدأ الطلب",
     "editOptions": "تعديل الخيارات",
+    "clockMovedNotice": "انتهى الموعد النهائي، لذا تم تحديث تاريخ الجاهزية. تحقق من التاريخ الجديد قبل المتابعة.",
     "continueHasError": "أصلح كل خطأ أعلاه للمتابعة.",
     "backDroppedNotice": "اخترت الطباعة على وجه واحد، لذلك تمت إزالة تصميم الوجه الخلفي. تم الاحتفاظ بالوجه الأمامي.",
     "summaryShow": "عرض التفاصيل",
@@ -285,7 +286,8 @@
   "Clock": {
     "by": "بحلول",
     "deliveryLine": "وافق خلال <ltr>{countdown}</ltr> للتسليم {date}، <ltr>{window}</ltr> (دبي)",
-    "readyLine": "وافق خلال <ltr>{countdown}</ltr> ليكون جاهزًا {date}، <ltr>{window}</ltr> (دبي)"
+    "readyLine": "وافق خلال <ltr>{countdown}</ltr> ليكون جاهزًا {date}، <ltr>{window}</ltr> (دبي)",
+    "cutoffLine": "{turnaround}: اطلب قبل <ltr>{time}</ltr>"
   },
   "DesignHelp": {
     "title": "بحاجة إلى تصميم؟",

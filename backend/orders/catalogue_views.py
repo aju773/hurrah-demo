@@ -127,6 +127,7 @@ def _turnaround_clock(value, now):
     )
     return {
         "seconds_to_cutoff": seconds_to_cutoff(now, value["cutoff_time"]),
+        "cutoff_time": value["cutoff_time"].strftime("%H:%M"),
         "promised_date": delivery["date"].isoformat(),
         "window_start": delivery["window_start"].strftime("%H:%M") if delivery["window_start"] else None,
         "window_end": delivery["window_end"].strftime("%H:%M") if delivery["window_end"] else None,

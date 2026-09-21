@@ -10,6 +10,7 @@ import ReopenPagePicker from "./ReopenPagePicker";
 import { pickerTargetFor } from "@/lib/pagePicker";
 import { reopenedActions } from "@/lib/reopenPicker";
 import { guardPage, pageForPath, PAGE_APPROVE, PAGE_ARTWORK, PAGE_OPTIONS, PAGE_PATHS, rotatedSides, swappedSides } from "@/lib/draftOrder";
+import PageHeading from "./PageHeading";
 import OptionsPage from "./OptionsPage";
 import ArtworkPage from "./ArtworkPage";
 import ApproveAndConfirmStep from "./ApproveAndConfirmStep";
@@ -103,16 +104,6 @@ export default function FlyersConfigurator({ initialCatalogue, initialConfigurat
     if (priorFrontId.current && !state.slots.front) setArtworkResetKey((k) => k + 1);
     priorFrontId.current = state.slots.front?.id ?? null;
   }, [state.slots.front]);
-
-  // Moving to another page replaces the whole page content, which would leave keyboard
-  // focus on a control that is gone: park it at the top of the main content instead.
-  const priorPage = useRef(state.page);
-  useEffect(() => {
-    if (rehydrating || priorPage.current === state.page) return;
-    priorPage.current = state.page;
-    document.getElementById("main")?.focus({ preventScroll: true });
-    window.scrollTo?.({ top: 0 });
-  }, [rehydrating, state.page]);
 
   // The Approve page's "Edit options" / "Change file" land here with a focus target:
   // put the cursor on the option area or the Front/Back slot, then forget it.
@@ -220,87 +211,96 @@ export default function FlyersConfigurator({ initialCatalogue, initialConfigurat
     router.push(`/order/${order.token}`);
   }
 
-  if (state.page === PAGE_APPROVE) {
-    return (
-      <div className="flex flex-col gap-[20px] w-full" dir={locale === "ar" ? "rtl" : "ltr"}>
-        {syncBanner}
-        <ApproveAndConfirmStep
+  function renderPage() {
+    if (state.page === PAGE_APPROVE) {
+      return (
+        <div className="flex flex-col gap-[20px] w-full" dir={locale === "ar" ? "rtl" : "ltr"}>
+          {syncBanner}
+          <ApproveAndConfirmStep
+            catalogue={catalogue}
+            selection={selection}
+            quote={state.quote}
+            commerceEnabled={commerceEnabled}
+            clock={state.clock}
+            frontId={state.slots.front?.id}
+            backId={state.slots.back?.id}
+            sameAsFront={state.slots.sameBack}
+            sizeCode={selection.size}
+            sizeChoice={state.sizeChoice}
+            rotate={rotatedSides(state)}
+            swap={swappedSides(state)}
+            ticks={state.ticks}
+            onSetTick={setTick}
+            onClockExpire={handleClockExpire}
+            browsingLanguage={locale}
+            locale={locale}
+            idempotencyKey={state.idempotencyKey}
+            onBack={() => go(PAGE_ARTWORK)}
+            onEdit={handleEditFromApprove}
+            onSubmitted={handleOrderSubmitted}
+          />
+          <div className="flex justify-end">
+            <ShowHintsLink />
+          </div>
+        </div>
+      );
+    }
+
+    if (state.page === PAGE_ARTWORK) {
+      return (
+        <ArtworkPage
           catalogue={catalogue}
           selection={selection}
-          quote={state.quote}
-          commerceEnabled={commerceEnabled}
-          clock={state.clock}
-          frontId={state.slots.front?.id}
-          backId={state.slots.back?.id}
-          sameAsFront={state.slots.sameBack}
-          sizeCode={selection.size}
-          sizeChoice={state.sizeChoice}
-          rotate={rotatedSides(state)}
-          swap={swappedSides(state)}
-          ticks={state.ticks}
-          onSetTick={setTick}
-          onClockExpire={handleClockExpire}
-          browsingLanguage={locale}
+          state={state}
           locale={locale}
-          idempotencyKey={state.idempotencyKey}
-          onBack={() => go(PAGE_ARTWORK)}
-          onEdit={handleEditFromApprove}
-          onSubmitted={handleOrderSubmitted}
+          dialog={dialog}
+          canContinue={draft.canContinue}
+          artworkResetKey={artworkResetKey}
+          designHelpOpen={designHelpOpen}
+          configurationLine={configurationLine}
+          syncBanner={syncBanner}
+          clockNotice={clockNotice}
+          reopenPicker={reopenPicker}
+          actions={{
+            setDesignHelpOpen,
+            toggleSameBack,
+            rotate,
+            swap,
+            uploadFront,
+            uploadBack,
+            removeArtwork,
+            openChoosePages,
+            canChoosePages,
+            previewSwitch,
+            resolveDialog,
+            refresh,
+            onClockExpire: handlePageClockExpire,
+            editOptions: () => go(PAGE_OPTIONS),
+            onContinue: handleContinue,
+          }}
         />
-        <div className="flex justify-end">
-          <ShowHintsLink />
-        </div>
-      </div>
-    );
-  }
+      );
+    }
 
-  if (state.page === PAGE_ARTWORK) {
     return (
-      <ArtworkPage
+      <OptionsPage
         catalogue={catalogue}
         selection={selection}
         state={state}
         locale={locale}
-        dialog={dialog}
-        canContinue={draft.canContinue}
-        artworkResetKey={artworkResetKey}
-        designHelpOpen={designHelpOpen}
-        configurationLine={configurationLine}
         syncBanner={syncBanner}
         clockNotice={clockNotice}
-        reopenPicker={reopenPicker}
-        actions={{
-          setDesignHelpOpen,
-          toggleSameBack,
-          rotate,
-          swap,
-          uploadFront,
-          uploadBack,
-          removeArtwork,
-          openChoosePages,
-          canChoosePages,
-          previewSwitch,
-          resolveDialog,
-          refresh,
-          onClockExpire: handlePageClockExpire,
-          editOptions: () => go(PAGE_OPTIONS),
-          onContinue: handleContinue,
-        }}
+        onPick={pick}
+        onClockExpire={handlePageClockExpire}
+        onStart={() => go(PAGE_ARTWORK)}
       />
     );
   }
 
   return (
-    <OptionsPage
-      catalogue={catalogue}
-      selection={selection}
-      state={state}
-      locale={locale}
-      syncBanner={syncBanner}
-      clockNotice={clockNotice}
-      onPick={pick}
-      onClockExpire={handlePageClockExpire}
-      onStart={() => go(PAGE_ARTWORK)}
-    />
+    <>
+      <PageHeading page={state.page} />
+      {renderPage()}
+    </>
   );
 }

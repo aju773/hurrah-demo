@@ -186,7 +186,7 @@ export default function ArtworkChecks({ frontId, backId, sameAsFront, sizeCode, 
               <button
                 type="button"
                 onClick={() => openEnlarged("back")}
-                className="bg-[#f0f3ff] rounded-[12px] p-[10px] flex items-center justify-center text-[#575c64] text-[12px] cursor-pointer"
+                className="tap bg-[#f0f3ff] rounded-[12px] p-[10px] flex items-center justify-center text-[#575c64] text-[12px] cursor-pointer"
               >
                 {t("sameAsFront")}
               </button>

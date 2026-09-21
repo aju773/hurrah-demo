@@ -28,7 +28,7 @@ export default function TurnaroundCards({ option, selected, blocked, turnarounds
             aria-checked={isSelected}
             disabled={Boolean(reason)}
             onClick={() => onPick(value.code)}
-            className={`flex flex-col gap-[4px] p-[12px] rounded-[10px] text-start border-2 transition-colors ${
+            className={`tap flex flex-col gap-[4px] p-[12px] rounded-[10px] text-start border-2 transition-colors ${
               reason
                 ? "bg-[#e2e8f8] border-transparent text-[#6b7280] cursor-not-allowed"
                 : isSelected

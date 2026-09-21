@@ -53,7 +53,7 @@ export default function ArtworkPage({
         <button
           type="button"
           onClick={() => actions.setDesignHelpOpen(true)}
-          className="shrink-0 h-[40px] px-[16px] rounded-[8px] text-[13px] font-semibold bg-[#e51937] text-white"
+          className="tap shrink-0 h-[40px] px-[16px] rounded-[8px] text-[13px] font-semibold bg-[#e51937] text-white"
         >
           {t("needDesign")}
         </button>
@@ -115,7 +115,7 @@ export default function ArtworkPage({
             aria-expanded={summaryOpen}
             aria-controls="summary-panel"
             onClick={() => setSummaryOpen((open) => !open)}
-            className="lg:hidden flex items-center justify-between gap-[12px] min-h-[44px] px-[16px] py-[8px] rounded-[12px] bg-[#2a313d] text-[#ebf1ff] text-start"
+            className="tap lg:hidden flex items-center justify-between gap-[12px] min-h-[44px] px-[16px] py-[8px] rounded-[12px] bg-[#2a313d] text-[#ebf1ff] text-start"
           >
             <span className="flex flex-col min-w-0">
               <span className="text-[14px] font-semibold">
@@ -136,7 +136,7 @@ export default function ArtworkPage({
           <button
             type="button"
             onClick={actions.editOptions}
-            className="self-start h-[40px] px-[16px] rounded-[8px] text-[13px] font-semibold bg-white text-[#151c27] shadow-[0px_1px_1px_rgba(0,0,0,0.05)]"
+            className="tap self-start h-[40px] px-[16px] rounded-[8px] text-[13px] font-semibold bg-white text-[#151c27] shadow-[0px_1px_1px_rgba(0,0,0,0.05)]"
           >
             {t("editOptions")}
           </button>
@@ -169,7 +169,7 @@ export default function ArtworkPage({
           disabled={Boolean(continueReason)}
           aria-describedby={continueReason ? "continue-disabled-reason" : undefined}
           onClick={actions.onContinue}
-          className="h-[44px] px-[24px] rounded-[8px] text-[14px] font-semibold bg-[#e51937] text-white disabled:opacity-40 disabled:cursor-not-allowed"
+          className="tap h-[44px] px-[24px] rounded-[8px] text-[14px] font-semibold bg-[#e51937] text-white disabled:opacity-40 disabled:cursor-not-allowed"
         >
           {state.returnToApprove ? t("returnToApproval") : t("continue")}
         </button>

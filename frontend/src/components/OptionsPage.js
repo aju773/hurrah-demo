@@ -112,7 +112,7 @@ export default function OptionsPage({ catalogue, selection, state, locale, syncB
                               onPick("quantity", cell.quantity);
                               onPick("turnaround", cell.turnaround);
                             }}
-                            className={`w-full rounded-[8px] px-[8px] py-[6px] ${
+                            className={`tap w-full rounded-[8px] px-[8px] py-[6px] ${
                               cell.blocked
                                 ? "text-[#9aa1ad] cursor-not-allowed"
                                 : isSelected
@@ -147,7 +147,7 @@ export default function OptionsPage({ catalogue, selection, state, locale, syncB
           type="button"
           disabled={!state.available}
           onClick={onStart}
-          className="h-[44px] px-[24px] rounded-[8px] text-[14px] font-semibold bg-[#e51937] text-white disabled:opacity-40 disabled:cursor-not-allowed"
+          className="tap h-[44px] px-[24px] rounded-[8px] text-[14px] font-semibold bg-[#e51937] text-white disabled:opacity-40 disabled:cursor-not-allowed"
         >
           {t("startOrdering")}
         </button>

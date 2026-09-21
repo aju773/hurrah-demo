@@ -2,18 +2,20 @@ import "@testing-library/jest-dom/vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { useState } from "react";
 import { NextIntlClientProvider } from "next-intl";
 import en from "../messages/en.json";
 import ar from "../messages/ar.json";
 import ArtworkChecks from "@/components/ArtworkChecks";
+import ArtworkPage from "@/components/ArtworkPage";
+import OptionsPage from "@/components/OptionsPage";
 import DesignHelpDrawer from "@/components/DesignHelpDrawer";
 import PagePicker from "@/components/PagePicker";
 import SyncDialog from "@/components/SyncDialog";
 import { fetchPreview } from "@/lib/preview";
 
-// Keyboard, focus, announcement and severity behaviour across the journey (ticket 14).
+// Keyboard, focus, announcement and severity behaviour across the journey (tickets 14 and 09).
 vi.mock("@/lib/preview", () => ({ fetchPreview: vi.fn() }));
 vi.mock("@/i18n/navigation", () => ({
   Link: ({ children, locale, ...rest }) => <a href="#top" {...rest}>{children}</a>,
@@ -209,5 +211,44 @@ describe("reduced motion", () => {
     expect(block).toMatch(/animation-duration:\s*0\.01ms\s*!important/);
     expect(block).toMatch(/transition-duration:\s*0\.01ms\s*!important/);
     expect(block).toMatch(/scroll-behavior:\s*auto\s*!important/);
+  });
+});
+
+describe("keyboard-only use of the pages", () => {
+  const CLOCK = { now: "n1", seconds_to_cutoff: 5400, cutoff_time: "11:00", promised_date: "2026-09-22", window_start: "15:00", window_end: "20:00" };
+  const CATALOGUE = { product_id: 1, options: [{ code: "turnaround", name: "Turnaround", values: [{ code: "standard", label: "Standard" }] }] };
+  const state = { commerceEnabled: false, quote: null, notices: [], blocked: {}, priceGrid: [], clock: CLOCK, turnarounds: [{ code: "standard", ...CLOCK }], available: true, previews: {}, sizeChoice: null, rotate: { front: false, back: false }, swap: false, slots: { front: { id: 1 }, back: null, sameBack: true } };
+  // A control a keyboard can use is a real button that is not switched off or taken out of the Tab order, and says what it does in visible words.
+  const usable = (button) => !button.disabled && button.getAttribute("tabindex") !== "-1" && button.textContent.trim().length > 0;
+
+  it.each(["en", "ar"])("Rotate, Edit options, the Summary bar and Continue are reachable buttons with visible labels (%s)", async (locale) => {
+    vi.mocked(fetchPreview).mockResolvedValue({ ...PREVIEW, front: { ...PREVIEW.front, findings: [] } });
+    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ templates: [], guide: {} }) })));
+    const m = locale === "ar" ? ar.FlyersConfigurator : en.FlyersConfigurator;
+    render(
+      intl(
+        <ArtworkPage catalogue={CATALOGUE} selection={{ turnaround: "standard" }} state={state} locale={locale} dialog={null} canContinue artworkResetKey={0} designHelpOpen={false} configurationLine="A5" syncBanner={null} reopenPicker={null} clockNotice={false} actions={{ onClockExpire: vi.fn(), canChoosePages: {}, openChoosePages: vi.fn(), onContinue: vi.fn(), editOptions: vi.fn(), rotate: vi.fn(), swap: vi.fn() }} />,
+        locale
+      )
+    );
+    const rotateWord = (locale === "ar" ? ar : en).ArtworkChecks.rotateSide.split("{side}")[0].trim();
+    const rotate = await screen.findAllByRole("button", { name: new RegExp(rotateWord) });
+    for (const button of rotate) expect(usable(button)).toBe(true);
+    for (const name of [m.editOptions, m.continue, new RegExp(m.summary)]) {
+      const button = screen.getByRole("button", { name });
+      expect(usable(button), button.outerHTML).toBe(true);
+    }
+    expect(screen.getByRole("button", { name: new RegExp(m.summary) })).toHaveAttribute("aria-expanded", "false");
+  });
+
+  it("the Options page's option choices and Start ordering are buttons the keyboard can use", () => {
+    render(
+      intl(
+        <OptionsPage catalogue={{ options: [{ code: "quantity", name: "Quantity", values: [{ code: "500", label: "500" }, { code: "1000", label: "1,000" }] }, ...CATALOGUE.options] }} selection={{ quantity: "500", turnaround: "standard" }} state={state} locale="en" syncBanner={null} clockNotice={false} onPick={vi.fn()} onClockExpire={vi.fn()} onStart={vi.fn()} />
+      )
+    );
+    const group = screen.getByRole("radiogroup", { name: "Quantity" });
+    for (const radio of within(group).getAllByRole("radio")) expect(radio.getAttribute("tabindex")).not.toBe("-1");
+    expect(usable(screen.getByRole("button", { name: "Start ordering" }))).toBe(true);
   });
 });

@@ -51,7 +51,11 @@
     "continueHasError": "Fix every Error above before continuing.",
     "backDroppedNotice": "You chose single-sided, so the Back artwork was removed. Your Front is kept.",
     "summaryShow": "Show details",
-    "summaryHide": "Hide details"
+    "summaryHide": "Hide details",
+    "pageOptions": "Choose your options",
+    "pageArtwork": "Add your artwork",
+    "pageApprove": "Approve your order",
+    "pageAnnouncement": "Page {n} of {total}: {name}"
   },
   "ArtworkChecks": {
     "loading": "Loading your preview…",

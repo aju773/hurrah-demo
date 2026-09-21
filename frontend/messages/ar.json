@@ -51,7 +51,11 @@
     "continueHasError": "أصلح كل خطأ أعلاه للمتابعة.",
     "backDroppedNotice": "اخترت الطباعة على وجه واحد، لذلك تمت إزالة تصميم الوجه الخلفي. تم الاحتفاظ بالوجه الأمامي.",
     "summaryShow": "عرض التفاصيل",
-    "summaryHide": "إخفاء التفاصيل"
+    "summaryHide": "إخفاء التفاصيل",
+    "pageOptions": "اختر خياراتك",
+    "pageArtwork": "أضف ملف التصميم",
+    "pageApprove": "وافق على طلبك",
+    "pageAnnouncement": "الصفحة {n} من {total}: {name}"
   },
   "ArtworkChecks": {
     "loading": "جارٍ تحميل المعاينة…",

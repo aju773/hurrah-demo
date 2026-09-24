@@ -29,7 +29,7 @@ A percentage of the Base price added for a Sides or Turnaround choice (e.g. doub
 _Avoid_: Surcharge, markup, premium
 
 **Price grid**:
-The Quantity × Turnaround view of Quotes a customer sees for their current Size, Paper and Sides.
+The Quantity × Turnaround view of Quotes a customer sees for their current Size, Paper and Sides. Where the Commerce switch is on it is how the customer chooses Quantity and Turnaround, in place of the separate Quantity and Turnaround choices.
 _Avoid_: Price table, matrix
 
 **Quote**:
@@ -78,6 +78,14 @@ _Avoid_: Crop, stretch, scale to fill
 Whether a page is portrait or landscape. Recorded per side; not an Option, so a Size matches either way round.
 _Avoid_: Rotation, layout
 
+**Rotate**:
+Printing Artwork turned a quarter turn (90°) so a landscape design sits on a portrait Size or the reverse. An instruction; the file itself is not changed. Not the same as Orientation, which only records which way round the page is.
+_Avoid_: Flip, turn
+
+**Swap**:
+Exchanging which uploaded page is Front and which is Back on the Artwork page. An instruction; the file itself is not changed.
+_Avoid_: Reverse, flip sides
+
 **Page picker**:
 The dialog that opens after a PDF of more than 2 pages (up to 50) is uploaded, showing a thumbnail of every page so the customer chooses which page is Front and which is Back (or no Back). Only the chosen pages become Artwork and get a Preflight report; the uploaded file is kept as a source file until then and expires after 24 hours if never used. Front and Back must be the same Size.
 _Avoid_: Page selector, page splitter, split PDF
@@ -98,6 +106,20 @@ _Avoid_: Lead, enquiry, design order
 The language the customer was using the site in (English or Arabic). Kept on a Design request so staff reply in it. Not the language of the flyer itself, which the brief states separately.
 _Avoid_: Locale (in customer-facing talk), design language
 
+### Journey
+
+**Options page**:
+The first page of the journey, where the customer makes every Option choice and sees the Summary (and Price grid when the Commerce switch is on). Holds no Artwork. Ends with "Start ordering", which carries the Configuration to the Artwork page. Guests order without signing in.
+_Avoid_: Product page, configurator, Step 0
+
+**Artwork page**:
+The second page of the journey, where the customer supplies Artwork (upload, Artwork template, or a Design request), adjusts it with Page picker, Fit, Fill, Rotate and Swap, and sees Preflight Findings and the Proof preview next to the live Summary. It has its own address and returns the customer to the Options page if there is no Configuration yet.
+_Avoid_: Upload page, file step, editor page
+
+**Single-screen**:
+How each page of the journey (Options page, Artwork page, approval) is laid out on a desktop or laptop viewport of at least 1024×700: everything the customer works with and needs to decide is visible at once and the page itself does not scroll. Only named lists (e.g. Findings) scroll inside their own panel. Below that size the page scrolls normally. Not the same as Fit, which is about Artwork on a Size.
+_Avoid_: Fit viewport, above the fold, no-scroll
+
 ### Site chrome
 
 **Site chrome**:
@@ -107,7 +129,7 @@ _Avoid_: Shell, layout, navigation
 ### Hints
 
 **Hints**:
-Small, dismissible, non-modal tips shown once per step (options and upload, findings and preview, approval) on a visitor's first visit. Never block the page or trap focus; remembered per visitor in the browser, brought back by "Show hints", and switched off by a runtime flag for scripted demo runs.
+Small, dismissible, non-modal tips shown once per page of the journey (Options page, Artwork page, approval) on a visitor's first visit, in a slot reserved under the header so a Hint never covers or moves anything. Never block the page or trap focus; remembered per visitor in the browser, brought back by "Show hints", and switched off by a runtime flag for scripted demo runs.
 _Avoid_: Tour, coach marks, tooltips, onboarding
 
 ### Proof and turnaround

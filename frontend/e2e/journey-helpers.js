@@ -28,6 +28,19 @@ export const VIEWPORTS = {
   phone: { width: 390, height: 844 },
 };
 
+// Single-screen (CONTEXT.md): the floor is 1024x700. These are the common
+// desktop/laptop and monitor sizes the fit check runs at, and one size just
+// below the floor to prove the fallback (the page scrolls, the action bar stays
+// pinned) instead.
+export const SINGLE_SCREEN_VIEWPORTS = [
+  { width: 1024, height: 700 },
+  { width: 1280, height: 720 },
+  { width: 1366, height: 768 },
+  { width: 1440, height: 900 },
+  { width: 1920, height: 1080 },
+];
+export const BELOW_FLOOR_VIEWPORT = { width: 1024, height: 600 };
+
 /** The site's own words in one language: `copy("ApproveAndConfirmStep", "submit")`.
  * Text with {placeholders} comes back as a regular expression that matches its
  * fixed start, so a button such as "Confirm — switch to {file}" can be found. */
@@ -184,6 +197,28 @@ export async function checkPage(page, size) {
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
     expect(overflow, `sideways scroll of ${overflow}px on ${page.url()}`).toBeLessThanOrEqual(0);
   }
+}
+
+/** Single-screen (CONTEXT.md): at or above the 1024x700 floor, asserts the
+ * document is no taller and no wider than the viewport (so the page itself
+ * never scrolls) and that `primary` (and `secondary`, if given — the action
+ * bar's Back / Edit options) are in view without scrolling. Pass `floor: false`
+ * to assert the opposite instead (a size below the floor): the page scrolls,
+ * and `primary` is still reachable. Works for any journey page: the caller
+ * navigates there first and passes its own controls. */
+export async function expectSingleScreen(page, { primary, secondary, floor = true } = {}) {
+  const overflow = await page.evaluate(() => ({
+    width: document.documentElement.scrollWidth - window.innerWidth,
+    height: document.documentElement.scrollHeight - window.innerHeight,
+  }));
+  if (floor) {
+    expect(overflow.width, `sideways scroll of ${overflow.width}px on ${page.url()}`).toBeLessThanOrEqual(0);
+    expect(overflow.height, `the page itself scrolls by ${overflow.height}px on ${page.url()}`).toBeLessThanOrEqual(0);
+  } else {
+    expect(overflow.height, `the page does not scroll below the Single-screen floor on ${page.url()}`).toBeGreaterThan(0);
+  }
+  await expect(primary).toBeInViewport();
+  if (secondary) await expect(secondary).toBeInViewport();
 }
 
 /** The Artwork page's Continue to Approve & confirm. */

@@ -76,3 +76,24 @@ html[dir="rtl"] body {
     min-width: 44px;
   }
 }
+
+/* Single-screen (CONTEXT.md): at a desktop/laptop floor of 1024x700, a journey page
+   fills the viewport and does not itself scroll — its own scrolling container
+   (`.single-screen-scroll`) takes the remaining height instead, and its Site chrome
+   footer is dropped to give the page the room. Below the floor these do nothing, so
+   the page scrolls normally like any other page and Site chrome shows in full. */
+@media (min-width: 1024px) and (min-height: 700px) {
+  .single-screen {
+    height: 100dvh;
+    overflow: hidden;
+  }
+
+  .single-screen-scroll {
+    min-height: 0;
+    overflow-y: auto;
+  }
+
+  .single-screen-hide {
+    display: none;
+  }
+}

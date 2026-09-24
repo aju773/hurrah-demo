@@ -6,10 +6,12 @@ import { PAGES } from "@/lib/draftOrder";
 
 const NAME_KEY = { options: "pageOptions", artwork: "pageArtwork", approve: "pageApprove" };
 
-/** The heading of the journey page on screen. Moving to another page replaces the
- * page content, which would leave keyboard focus on a control that is gone: focus
- * goes to this heading instead, and a polite status line says which page it is.
- * Neither happens on first render, so opening a page never steals focus. */
+/** The heading of the journey page on screen: the page's own h1 (Single-screen, in
+ * CONTEXT.md, merges the site's page title and this subtitle into one one-line
+ * heading rather than two). Moving to another page replaces the page content,
+ * which would leave keyboard focus on a control that is gone: focus goes to this
+ * heading instead, and a polite status line says which page it is. Neither
+ * happens on first render, so opening a page never steals focus. */
 export default function PageHeading({ page }) {
   const t = useTranslations("FlyersConfigurator");
   const headingRef = useRef(null);
@@ -28,9 +30,9 @@ export default function PageHeading({ page }) {
 
   return (
     <>
-      <h2 ref={headingRef} tabIndex={-1} className="outline-none text-[#151c27] text-[20px] font-bold">
+      <h1 ref={headingRef} tabIndex={-1} className="outline-none text-[#151c27] text-[20px] font-bold">
         {name}
-      </h2>
+      </h1>
       <p role="status" className="sr-only">
         {announcement}
       </p>

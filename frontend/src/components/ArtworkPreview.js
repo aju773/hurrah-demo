@@ -52,6 +52,10 @@ export function findingCenterMm(group, geom) {
 // when the file's bleed is uniform on every side, true for every fixture
 // this demo builds (F1: no bleed; F2: uniform 3mm) but not guaranteed for a
 // real TrimBox with asymmetric BleedBox margins.
+//
+// `fill` (ticket 05): the Approve page's Proof is the largest area and fills the
+// height of its column, unlike the width-driven thumbnails elsewhere — the SVG
+// then scales to the height of its (already height-bound) container instead.
 export default function ArtworkPreview({
   slot,
   image,
@@ -63,6 +67,7 @@ export default function ArtworkPreview({
   selectedKey,
   onSelectFinding,
   ariaLabel,
+  fill = false,
 }) {
   const uid = useId().replace(/:/g, "");
   const clipId = `clip-${uid}`;
@@ -113,7 +118,7 @@ export default function ArtworkPreview({
   return (
     <svg
       viewBox={`${vx} ${vy} ${vw} ${vh}`}
-      className="w-full h-auto block"
+      className={fill ? "h-full max-h-full w-auto max-w-full block mx-auto" : "w-full h-auto block"}
       dir="ltr"
       style={{ direction: "ltr" }}
       role="img"

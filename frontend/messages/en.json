@@ -121,6 +121,8 @@
     "approvalTick": "I've checked my proof and approve it as shown.",
     "warningsTick": "I accept how these will print: {list}.",
     "hasErrors": "There's a problem with your artwork — go back and fix it before ordering.",
+    "approveNeedsDetails": "Fill in your details below to continue.",
+    "approveNeedsTicks": "Tick the boxes above to continue.",
     "staleNotice": "Your order details changed — please review and approve again.",
     "invalidDelivery": "Please check your delivery details.",
     "genericError": "Something went wrong. Please try again.",

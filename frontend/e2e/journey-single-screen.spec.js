@@ -4,14 +4,14 @@
 // Below the floor the page scrolls normally instead and the primary action stays
 // pinned. Money-free like journey.spec.js, English and Arabic.
 //
-// PAGES lists one entry per journey page that is Single-screen so far. A later
-// ticket that makes the Artwork or Approve page Single-screen adds its own entry
-// here, the same way it already adds its page to journey-pages.spec.js.
+// PAGES lists one entry per journey page that is Single-screen: Options (ticket
+// 02), Artwork (ticket 04) and Approve (ticket 05).
 import {
   test,
   BELOW_FLOOR_VIEWPORT,
   DEMO_FILES,
   SINGLE_SCREEN_VIEWPORTS,
+  continueToApproval,
   copyFor,
   expectSingleScreen,
   resetDemo,
@@ -41,6 +41,21 @@ const PAGES = [
     },
     primary: (page, t) => page.getByRole("button", { name: t("FlyersConfigurator", "continue"), exact: true }),
     secondary: (page, t) => page.getByRole("button", { name: t("FlyersConfigurator", "editOptions"), exact: true }),
+  },
+  {
+    // With Artwork uploaded and Continue pressed (ticket 05): the fit check with
+    // the Proof, the Configuration, the countdown and the acknowledgements
+    // actually on screen.
+    name: "Approve",
+    open: async (page, locale, t) => {
+      await page.goto(`/${locale}/flyers`);
+      await startOrdering(page, t);
+      await uploadFront(page, DEMO_FILES.printReady);
+      await page.getByText(t("ArtworkChecks", "noFindings")).waitFor();
+      await continueToApproval(page, t);
+    },
+    primary: (page, t) => page.getByRole("button", { name: t("ApproveAndConfirmStep", "submit"), exact: true }),
+    secondary: (page, t) => page.getByRole("button", { name: t("ApproveAndConfirmStep", "backButton"), exact: true }),
   },
 ];
 

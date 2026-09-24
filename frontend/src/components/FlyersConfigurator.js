@@ -214,7 +214,7 @@ export default function FlyersConfigurator({ initialCatalogue, initialConfigurat
   function renderPage() {
     if (state.page === PAGE_APPROVE) {
       return (
-        <div className="flex flex-col gap-[20px] w-full" dir={locale === "ar" ? "rtl" : "ltr"}>
+        <div className="flex flex-col gap-[20px] w-full lg:flex-1 lg:min-h-0" dir={locale === "ar" ? "rtl" : "ltr"}>
           {syncBanner}
           <ApproveAndConfirmStep
             catalogue={catalogue}

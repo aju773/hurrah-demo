@@ -11,6 +11,7 @@ import ArtworkPreview from "./ArtworkPreview";
 import { fetchWithTimeout } from "@/lib/network";
 import FirstVisitHint from "./FirstVisitHint";
 import LoadFailure from "./LoadFailure";
+import JourneyActionBar from "./JourneyActionBar";
 
 // A placed Order takes longer to answer than a page load (it re-checks the Artwork).
 const SUBMIT_TIMEOUT_MS = 30000;
@@ -24,12 +25,21 @@ function warningCodesOf(groups) {
 
 /**
  * Step 3, "Approve & confirm" (ticket 10): a read-only summary of the
- * Configuration and Proof thumbnail, the guest contact form, the Cut-off
+ * Configuration and Proof, the guest contact form, the Cut-off
  * countdown, the approval ticks and a server-checked Submit. With the Commerce
  * switch on it also shows the Quote, the delivery address form and pay on
  * delivery. Configuration/Artwork changes and the countdown reaching zero clear
  * the ticks (spec stories 81-82) — the caller (FlyersConfigurator) owns that
  * shared draft state; this component just renders it and calls back.
+ *
+ * Single-screen (ticket 05): the Proof is the largest area and fills the
+ * height of its column (left); the Configuration/delivery card, the
+ * countdown and the acknowledgements sit beside it (right) and stay visible
+ * without scrolling — only the contact/delivery details form scrolls inside
+ * its own panel, like the Findings list on the Artwork page, if everything
+ * beside the Proof cannot fit at the floor. Approve moves into the pinned
+ * action bar from ticket 02, with the reason it is disabled beside it, and
+ * Back sits on the other side.
  */
 export default function ApproveAndConfirmStep({
   catalogue,
@@ -117,8 +127,11 @@ export default function ApproveAndConfirmStep({
     details.mobile.replace(/\D/g, "").length >= 9 &&
     (!commerceEnabled || (details.area.trim() && details.address_line.trim()));
 
-  const canSubmit =
-    !hasError && !submitting && detailsValid && ticks.approval && (warningGroups.length === 0 || ticks.warnings) && Boolean(idempotencyKey);
+  const ticksComplete = ticks.approval && (warningGroups.length === 0 || ticks.warnings);
+  const canSubmit = !hasError && !submitting && detailsValid && ticksComplete && Boolean(idempotencyKey);
+  // The reason Approve is disabled, shown beside it in the action bar (Single-screen,
+  // ticket 05); null once submitting, since the button's own label says so instead.
+  const approveReason = submitting ? null : hasError ? "hasErrors" : !detailsValid ? "approveNeedsDetails" : !ticksComplete ? "approveNeedsTicks" : null;
 
   function updateDetails(field, value) {
     setDetails((d) => ({ ...d, [field]: value }));
@@ -204,10 +217,19 @@ export default function ApproveAndConfirmStep({
     }
   }
 
+  const hasBack = !preview.back?.same_as_front && preview.back;
+
   return (
-    <div className="flex flex-col gap-[16px] w-full">
-      <div className="grid grid-cols-12 gap-[20px] w-full items-start">
-        <div className="col-span-12 lg:col-span-5 min-w-0 flex flex-col gap-[10px]">
+    <div className="flex flex-col gap-[16px] w-full lg:flex-1 lg:min-h-0">
+      <FirstVisitHint step="approval" />
+
+      {/* Two Single-screen zones (ticket 05): the Proof fills the height on
+         one side; the Configuration/delivery card, the countdown and the
+         acknowledgements stay visible beside it on the other, with only the
+         contact/delivery details form scrolling inside its own panel if
+         everything cannot fit at the floor. */}
+      <div className="grid grid-cols-12 gap-[20px] w-full lg:flex-1 lg:min-h-0 lg:items-stretch">
+        <div className="col-span-12 lg:col-span-6 min-w-0 flex flex-col gap-[10px] lg:min-h-0">
           <ProofThumbnail
             label={t("front")}
             image={preview.front}
@@ -215,8 +237,9 @@ export default function ApproveAndConfirmStep({
             changeText={t("changeFile")}
             changeLabel={t("changeFileFront")}
             onChange={() => onEdit?.("front")}
+            fill
           />
-          {!preview.back?.same_as_front && preview.back && (
+          {hasBack && (
             <ProofThumbnail
               label={t("back")}
               image={preview.back}
@@ -224,133 +247,155 @@ export default function ApproveAndConfirmStep({
               changeText={t("changeFile")}
               changeLabel={t("changeFileBack")}
               onChange={() => onEdit?.("back")}
+              fill
             />
           )}
         </div>
 
-        <div className="col-span-12 lg:col-span-7 min-w-0 flex flex-col gap-[16px]">
-          <div className="bg-white rounded-[16px] shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)] overflow-clip">
-            <div className="bg-[#2a313d] px-[16px] py-[12px] flex items-center justify-between gap-[12px]">
-              <span className="text-[#ebf1ff] text-[16px] font-semibold">{t("summary")}</span>
-              <button
-                type="button"
-                onClick={() => onEdit?.("options")}
-                className="tap inline-flex items-center justify-center text-[#ebf1ff] text-[12px] font-semibold underline"
-              >
-                {t("editOptions")}
-              </button>
+        <div className="col-span-12 lg:col-span-6 min-w-0 flex flex-col gap-[16px] lg:min-h-0">
+          <div className="shrink-0 flex flex-col gap-[16px]">
+            <div className="bg-white rounded-[16px] shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)] overflow-clip">
+              <div className="bg-[#2a313d] px-[16px] py-[12px] flex items-center justify-between gap-[12px]">
+                <span className="text-[#ebf1ff] text-[16px] font-semibold">{t("summary")}</span>
+                <button
+                  type="button"
+                  onClick={() => onEdit?.("options")}
+                  className="tap inline-flex items-center justify-center text-[#ebf1ff] text-[12px] font-semibold underline"
+                >
+                  {t("editOptions")}
+                </button>
+              </div>
+              <div className="flex flex-col gap-[6px] p-[16px]">
+                {configLines.map((line) => (
+                  <Line key={line.name} label={line.name} value={line.label} />
+                ))}
+                {commerceEnabled && quote && (
+                  <>
+                    <div className="h-px bg-[#f0f3ff] my-[4px]" />
+                    <Line label={t("subtotalExVat")} value={t("aed", { amount: quote.subtotal_aed })} />
+                    <Line label={t("vat")} value={t("aed", { amount: quote.vat_aed })} />
+                    <Line label={t("delivery")} value={t("free")} />
+                    <div className="flex items-center justify-between pt-[8px]">
+                      <span className="text-[#151c27] text-[16px] font-bold">{t("totalInclVat")}</span>
+                      <span className="text-[#bb0027] text-[24px] font-extrabold">{t("aed", { amount: quote.total_aed })}</span>
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
-            <div className="flex flex-col gap-[6px] p-[16px]">
-              {configLines.map((line) => (
-                <Line key={line.name} label={line.name} value={line.label} />
-              ))}
-              {commerceEnabled && quote && (
-                <>
-                  <div className="h-px bg-[#f0f3ff] my-[4px]" />
-                  <Line label={t("subtotalExVat")} value={t("aed", { amount: quote.subtotal_aed })} />
-                  <Line label={t("vat")} value={t("aed", { amount: quote.vat_aed })} />
-                  <Line label={t("delivery")} value={t("free")} />
-                  <div className="flex items-center justify-between pt-[8px]">
-                    <span className="text-[#151c27] text-[16px] font-bold">{t("totalInclVat")}</span>
-                    <span className="text-[#bb0027] text-[24px] font-extrabold">{t("aed", { amount: quote.total_aed })}</span>
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
 
-          {commerceEnabled && (
-            <div className="bg-[#f0f3ff] rounded-[12px] p-[12px] text-[#151c27] text-[13px] font-semibold">
-              {t("payOnDelivery")}
-            </div>
-          )}
+            {commerceEnabled && (
+              <div className="bg-[#f0f3ff] rounded-[12px] p-[12px] text-[#151c27] text-[13px] font-semibold">
+                {t("payOnDelivery")}
+              </div>
+            )}
 
-          {/* Keyed on clock.now, like FlyersConfigurator's step 1 Countdown: a
-              fresh clock (a resubmit-triggered refresh, or this countdown's
-              own expiry below) remounts it with a clean countdown instead of
-              syncing a ticking value in from a changing prop. */}
-          <p>
-            <Countdown
-              key={clock.now}
-              clock={clock}
-              locale={locale}
-              onExpire={handleExpire}
-              commerceEnabled={commerceEnabled}
-              className="text-[#575c64] text-[13px]"
-            />
-          </p>
-
-          {notice && (
-            <p role="status" className="bg-[#fff4e5] text-[#8a4b00] rounded-[8px] px-[12px] py-[8px] text-[13px] font-semibold">
-              {notice}
-            </p>
-          )}
-
-          <DetailsForm t={t} details={details} onChange={updateDetails} commerceEnabled={commerceEnabled} />
-
-          <FirstVisitHint step="approval" />
-          <div className="flex flex-col gap-[8px] bg-white rounded-[12px] shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)] p-[12px]">
-            <Tick
-              checked={ticks.approval}
-              onChange={(v) => onSetTick("approval", v)}
-              label={t("approvalTick")}
-            />
-            {warningGroups.length > 0 && (
-              <Tick
-                checked={ticks.warnings}
-                onChange={(v) => onSetTick("warnings", v)}
-                label={t("warningsTick", { list: warningGroups.map((g) => warningShortName(g.code, locale)).join(", ") })}
+            {/* Keyed on clock.now, like FlyersConfigurator's step 1 Countdown: a
+                fresh clock (a resubmit-triggered refresh, or this countdown's
+                own expiry below) remounts it with a clean countdown instead of
+                syncing a ticking value in from a changing prop. */}
+            <p>
+              <Countdown
+                key={clock.now}
+                clock={clock}
+                locale={locale}
+                onExpire={handleExpire}
+                commerceEnabled={commerceEnabled}
+                className="text-[#575c64] text-[13px]"
               />
+            </p>
+
+            {notice && (
+              <p role="status" className="bg-[#fff4e5] text-[#8a4b00] rounded-[8px] px-[12px] py-[8px] text-[13px] font-semibold">
+                {notice}
+              </p>
             )}
           </div>
 
-          {hasError && <p className="text-[#bb0027] text-[13px] font-semibold">{t("hasErrors")}</p>}
-          {submitError && submitRetryable ? (
-            <LoadFailure message={submitError} retryLabel={t("retry")} onRetry={handleSubmit} />
-          ) : (
-            submitError && <p className="text-[#bb0027] text-[13px] font-semibold">{submitError}</p>
-          )}
+          {/* Contact/delivery details: the one part of this column that scrolls
+             inside its own panel (heading kept in view) when the rest doesn't
+             leave it room, the same rule as the Findings panel on the Artwork page. */}
+          <DetailsForm t={t} details={details} onChange={updateDetails} commerceEnabled={commerceEnabled} />
 
-          <div className="flex flex-wrap items-center justify-end gap-[12px]">
-            <button
-              type="button"
-              onClick={onBack}
-              className="tap h-[44px] px-[24px] rounded-[8px] text-[14px] font-semibold bg-white text-[#151c27] shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)]"
-            >
-              {t("backButton")}
-            </button>
+          <div className="shrink-0 flex flex-col gap-[8px]">
+            <div className="flex flex-col gap-[8px] bg-white rounded-[12px] shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)] p-[12px]">
+              <Tick
+                checked={ticks.approval}
+                onChange={(v) => onSetTick("approval", v)}
+                label={t("approvalTick")}
+              />
+              {warningGroups.length > 0 && (
+                <Tick
+                  checked={ticks.warnings}
+                  onChange={(v) => onSetTick("warnings", v)}
+                  label={t("warningsTick", { list: warningGroups.map((g) => warningShortName(g.code, locale)).join(", ") })}
+                />
+              )}
+            </div>
+
+            {submitError && submitRetryable ? (
+              <LoadFailure message={submitError} retryLabel={t("retry")} onRetry={handleSubmit} />
+            ) : (
+              submitError && <p className="text-[#bb0027] text-[13px] font-semibold">{submitError}</p>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <JourneyActionBar
+        secondary={
+          <button
+            type="button"
+            onClick={onBack}
+            className="tap h-[44px] px-[24px] rounded-[8px] text-[14px] font-semibold bg-white text-[#151c27] shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)]"
+          >
+            {t("backButton")}
+          </button>
+        }
+        primary={
+          <>
+            {approveReason && (
+              <span id="submit-disabled-reason" className="text-[#b0001d] text-[13px] font-semibold">
+                {t(approveReason)}
+              </span>
+            )}
             <button
               type="button"
               disabled={!canSubmit}
+              aria-describedby={approveReason ? "submit-disabled-reason" : undefined}
               onClick={handleSubmit}
               className="tap h-[44px] px-[24px] rounded-[8px] text-[14px] font-semibold bg-[#e51937] text-white disabled:opacity-40 disabled:cursor-not-allowed"
             >
               {submitting ? t("submitting") : t("submit")}
             </button>
-          </div>
-        </div>
-      </div>
+          </>
+        }
+      />
     </div>
   );
 }
 
-// The Proof thumbnail (spec: "uses the 400px PNG + shared preview
-// component"): the same ArtworkPreview SVG step 2 uses, drawing the 400px
-// thumbnail instead of the full-size render, no guides, no Finding pins —
-// only the Fit/Fill transform (white border / crop) stays visible.
-function ProofThumbnail({ label, image, orderedTrimMm, changeText, changeLabel, onChange }) {
-  const thumbImage = { ...image, image_url: image.thumbnail_url ?? image.image_url };
+// The Proof (ticket 05: the largest area on the Approve page, filling the
+// height of its column with `fill` — see ArtworkPreview) draws the same SVG
+// step 2 uses, at full size rather than the small thumbnail this card showed
+// before Single-screen, no guides, no Finding pins — only the Fit/Fill
+// transform (white border / crop) stays visible.
+function ProofThumbnail({ label, image, orderedTrimMm, changeText, changeLabel, onChange, fill }) {
+  const proofImage = { ...image, image_url: image.image_url ?? image.thumbnail_url };
   return (
-    <div className="bg-[#f0f3ff] rounded-[12px] p-[10px] flex flex-col gap-[6px]">
-      <ArtworkPreview
-        slot="proof"
-        image={thumbImage}
-        orderedTrimMm={orderedTrimMm}
-        productBleedMm={0}
-        productSafeMm={0}
-        groups={[]}
-        withGuides={false}
-      />
+    <div className={`bg-[#f0f3ff] rounded-[12px] p-[10px] flex flex-col gap-[6px] ${fill ? "flex-1 min-h-0" : ""}`}>
+      <div className={fill ? "flex-1 min-h-0 flex items-center justify-center" : ""}>
+        <ArtworkPreview
+          slot="proof"
+          image={proofImage}
+          orderedTrimMm={orderedTrimMm}
+          productBleedMm={0}
+          productSafeMm={0}
+          groups={[]}
+          withGuides={false}
+          fill={fill}
+        />
+      </div>
       <span className="text-[#575c64] text-[11px] text-center">{label}</span>
       <button type="button" aria-label={changeLabel} onClick={onChange} className="tap inline-flex items-center justify-center self-center text-[#bb0027] text-[12px] font-bold underline">
         {changeText}
@@ -359,10 +404,14 @@ function ProofThumbnail({ label, image, orderedTrimMm, changeText, changeLabel, 
   );
 }
 
+// The contact/delivery details card: the heading stays outside the scroll (`shrink-0`,
+// like the Findings panel's heading on the Artwork page), only the fields below it
+// scroll inside the card if there isn't room to show them all beside the Proof.
 function DetailsForm({ t, details, onChange, commerceEnabled }) {
   return (
-    <div className="bg-white rounded-[12px] shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)] p-[16px] flex flex-col gap-[10px]">
-      <span className="text-[#151c27] text-[14px] font-semibold">{t(commerceEnabled ? "deliveryDetails" : "contactDetails")}</span>
+    <div className="bg-white rounded-[12px] shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)] p-[16px] flex flex-col gap-[10px] lg:flex-1 lg:min-h-0">
+      <span className="shrink-0 text-[#151c27] text-[14px] font-semibold">{t(commerceEnabled ? "deliveryDetails" : "contactDetails")}</span>
+      <div className="flex flex-col gap-[10px] lg:min-h-0 lg:overflow-y-auto">
       <Field label={t("fieldName")} value={details.name} onChange={(v) => onChange("name", v)} required />
       <Field label={t("fieldMobile")} value={details.mobile} onChange={(v) => onChange("mobile", v)} required ltr />
       {commerceEnabled && (
@@ -374,6 +423,7 @@ function DetailsForm({ t, details, onChange, commerceEnabled }) {
       <Field label={t("fieldEmail")} value={details.email} onChange={(v) => onChange("email", v)} ltr />
       <Field label={t("fieldCompany")} value={details.company} onChange={(v) => onChange("company", v)} />
       <Field label={t("fieldNote")} value={details.note} onChange={(v) => onChange("note", v)} />
+      </div>
     </div>
   );
 }

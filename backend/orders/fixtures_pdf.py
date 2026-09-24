@@ -172,7 +172,11 @@ def build_f2():
 
         if font is not None:
             page.obj.Resources.Font.F1 = font
-            content += f" BT /F1 12 Tf 10 10 Td (F2 fixture) Tj ET".encode()
+            # Selects the font (still exercises font_not_embedded's Tf-driven
+            # "fonts used" walk) but draws no glyphs (Tj), so pdfium's text
+            # extraction — and Preflight's outline-required check — sees this
+            # as a "clean" fixture rather than live/un-outlined text.
+            content += b" BT /F1 12 Tf 10 10 Td ET"
 
         page.obj.Contents = pdf.make_stream(content)
 
@@ -220,8 +224,10 @@ def build_f1():
         if english_font is not None and arabic_font is not None:
             page.obj.Resources.Font.FEn = english_font
             page.obj.Resources.Font.FAr = arabic_font
-            content += b" BT /FEn 14 Tf 20 250 Td (Flyer sale) Tj ET"
-            content += b" BT /FAr 14 Tf 20 230 Td (Arabic text placeholder) Tj ET"
+            # Selects both fonts (still exercises font_not_embedded) but draws
+            # no glyphs — see the matching comment in build_f2 above.
+            content += b" BT /FEn 14 Tf 20 250 Td ET"
+            content += b" BT /FAr 14 Tf 20 230 Td ET"
 
         page.obj.Contents = pdf.make_stream(content)
 
@@ -252,6 +258,47 @@ def build_f4():
     tail = data[index:].split(b"\n")
     tail[1] = b"9"
     return io.BytesIO(data[:index] + b"\n".join(tail))
+
+
+def build_live_text():
+    """F2 with one change: the fixture's font selection (Tf) also draws real
+    glyphs (Tj) — Preflight's outline-required check (`text_not_outlined`),
+    unlike font embedding, cares whether any text is live/selectable at all,
+    not just whether its font is embedded."""
+    trim_w, trim_h = 148.0, 210.0
+    bleed = 3.0
+    media_w, media_h = trim_w + 2 * bleed, trim_h + 2 * bleed
+    ppi = 300
+    width_px = round(media_w / 25.4 * ppi)
+    height_px = round(media_h / 25.4 * ppi)
+
+    pdf = pikepdf.new()
+    font_bytes = _find_embeddable_font()
+    if font_bytes is None:
+        raise RuntimeError("build_live_text needs a host TrueType font to embed")
+    font = _embed_font(pdf, font_bytes)
+
+    page_dict = pdf.make_indirect(Dictionary(
+        Type=Name.Page,
+        MediaBox=Array([0, 0, mm(media_w), mm(media_h)]),
+        Resources=Dictionary(XObject=Dictionary(), Font=Dictionary()),
+    ))
+    page = Page(page_dict)
+    pdf.pages.append(page)
+    page.obj.TrimBox = Array([mm(bleed), mm(bleed), mm(bleed + trim_w), mm(bleed + trim_h)])
+    page.obj.BleedBox = Array([0, 0, mm(media_w), mm(media_h)])
+
+    image = _cmyk_image_xobject(pdf, width_px, height_px)
+    page.obj.Resources.XObject.Im0 = image
+    page.obj.Resources.Font.F1 = font
+    content = f"q {mm(media_w):.2f} 0 0 {mm(media_h):.2f} 0 0 cm /Im0 Do Q".encode()
+    content += b" BT /F1 12 Tf 10 10 Td (STAY FIT) Tj ET"
+    page.obj.Contents = pdf.make_stream(content)
+
+    buffer = io.BytesIO()
+    pdf.save(buffer)
+    buffer.seek(0)
+    return buffer
 
 
 def build_five_page_mixed():

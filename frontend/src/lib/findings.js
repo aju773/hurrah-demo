@@ -11,7 +11,7 @@ export const SEVERITY_RANK = { error: 0, warning: 1, note: 2 };
 // red in its own row (FindingRow keeps `group.severity`), but the overall
 // headline/Next button treat it as a caution, not a stop (owner instruction
 // 2026-09: only un-embedded/un-outlined fonts must be fixed before ordering).
-export const BLOCKING_CODES = new Set(["font_not_embedded"]);
+export const BLOCKING_CODES = new Set(["font_not_embedded", "text_not_outlined"]);
 
 // Which Preflight check a code belongs to, for the "Passed: …" line.
 const CHECK_OF = {
@@ -19,6 +19,7 @@ const CHECK_OF = {
   bleed_short: "bleed",
   low_ppi: "images",
   font_not_embedded: "fonts",
+  text_not_outlined: "fonts",
   rgb_colour: "colour",
   file_repaired: "file",
   check_incomplete: "file",

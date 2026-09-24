@@ -109,7 +109,7 @@ def _save_artwork(product, slot, uploaded_file, page_result, source_page_count, 
         artwork.thumbnail_image.save(f"{base_name}-thumb.png", ContentFile(images["thumbnail_png"]), save=False)
         artwork.save(update_fields=["page_image", "thumbnail_image"])
     if not artwork.is_valid:
-        first_error = next(f for f in report["findings"] if f["severity"] == preflight.ERROR)
+        first_error = next(f for f in report["findings"] if f["severity"] == preflight.ERROR and f["code"] in preflight.BLOCKING_CODES)
         artwork.error_code = first_error["code"]
         artwork.error_message = first_error["message"]
         artwork.save(update_fields=["error_code", "error_message"])

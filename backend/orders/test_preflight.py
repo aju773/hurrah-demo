@@ -13,7 +13,7 @@ from pikepdf import Array, Dictionary, Name, Page
 from rest_framework.test import APIClient
 
 from . import preflight
-from .fixtures_pdf import build_f1, build_f2, build_f3, build_f4, build_pdf, mm, _rgb_image_xobject
+from .fixtures_pdf import build_f1, build_f2, build_f3, build_f4, build_live_text, build_pdf, mm, _rgb_image_xobject
 from .models import Artwork, Option, OptionValue, Product
 from .pdf_utils import analyze_pdf_bytes
 
@@ -89,6 +89,23 @@ class PreflightEndpointTests(TestCase):
             self.assertEqual(report["findings"], [])
             self.assertEqual(report["headline_severity"], "ok")
             self.assertTrue(data[slot]["is_valid"])
+
+    def test_live_text_is_refused_even_with_an_embedded_font(self):
+        # Owner policy (2026-09): live/selectable text always needs outlining,
+        # even when its font is properly embedded — text_not_outlined blocks
+        # regardless (unlike low_ppi/etc., which only warn).
+        res = self.upload(build_live_text())
+        self.assertEqual(res.status_code, 201, res.content)
+        front = res.json()["front"]
+        self.assertFalse(front["is_valid"])
+        self.assertEqual(front["error_code"], "text_not_outlined")
+        self.assertIn('"STAY FIT"', front["error_message"])
+        self.assertIn("Create Outlines", front["error_message"])
+        report = front["preflight_report"]
+        self.assertEqual(report["headline_severity"], "error")
+        [finding] = [f for f in report["findings"] if f["code"] == "text_not_outlined"]
+        self.assertEqual(finding["severity"], "error")
+        self.assertEqual(finding["value"], "STAY FIT")
 
     def test_f3_file_unreadable(self):
         res = self.upload(build_f3())
@@ -395,3 +412,23 @@ class RotateReportTests(TestCase):
         preflight.rotate_report(base, [100.0, 200.0])
         self.assertEqual(base["findings"][0]["bbox"], [0.0, 0.0, 10.0, 20.0])
         self.assertNotIn("rotation", base)
+
+
+class HasBlockingErrorTests(TestCase):
+    """orders/preflight.has_blocking_error: only BLOCKING_CODES (font_not_embedded,
+    text_not_outlined) stop Continue/Submit — every other Error is a caution."""
+
+    def test_true_for_a_blocking_code(self):
+        findings = [preflight.finding("font_not_embedded", preflight.ERROR, value="Foo", slot="front", page=1)]
+        self.assertTrue(preflight.has_blocking_error(findings))
+
+    def test_true_for_text_not_outlined(self):
+        findings = [{"code": "text_not_outlined", "severity": preflight.ERROR, "value": "x", "slot": "front", "page": 1, "bbox": None, "message": "x"}]
+        self.assertTrue(preflight.has_blocking_error(findings))
+
+    def test_false_for_a_non_blocking_error(self):
+        findings = [preflight.finding("low_ppi", preflight.ERROR, value=50, slot="front", page=1)]
+        self.assertFalse(preflight.has_blocking_error(findings))
+
+    def test_false_with_no_findings(self):
+        self.assertFalse(preflight.has_blocking_error([]))

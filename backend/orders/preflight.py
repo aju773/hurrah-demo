@@ -62,7 +62,7 @@ FILL_CROP_WARN_MM = 1.0
 # other Error still shows red and still needs the customer's "I accept" tick
 # (order_views._warning_codes), but no longer stops them ordering (owner
 # instruction 2026-09: only un-embedded/un-outlined fonts must be fixed first).
-BLOCKING_CODES = {"font_not_embedded"}
+BLOCKING_CODES = {"font_not_embedded", "text_not_outlined"}
 
 
 def has_blocking_error(findings):
@@ -471,6 +471,37 @@ def check_fonts(fonts_used, slot, page):
     return findings
 
 
+TEXT_SAMPLE_MAX_CHARS = 40
+
+
+def check_text_outlined(file_bytes, page_index, slot, page):
+    """Owner policy (2026-09): live/selectable text isn't accepted at all, even
+    with a properly embedded font — the customer must convert it to outlines
+    ("Create Outlines" in Illustrator/InDesign) first. Detected by asking
+    pdfium to extract the page's text: outlined text is just vector paths, so
+    extraction comes back empty; real text objects always come back non-empty,
+    which is also where the quoted sample in the message comes from."""
+    import pypdfium2 as pdfium
+
+    pdf = pdfium.PdfDocument(file_bytes)
+    try:
+        text = pdf[page_index - 1].get_textpage().get_text_range()
+    finally:
+        pdf.close()
+
+    sample = next((line.strip() for line in text.splitlines() if line.strip()), "")
+    if not sample:
+        return []
+    if len(sample) > TEXT_SAMPLE_MAX_CHARS:
+        sample = sample[:TEXT_SAMPLE_MAX_CHARS].rstrip() + "…"
+
+    message = (
+        f'The file contains "{sample}" text. To resolve this issue, convert the '
+        'text to shapes ("Create Outlines" in Illustrator) and upload it again.'
+    )
+    return [{"code": "text_not_outlined", "severity": ERROR, "value": sample, "slot": slot, "page": page, "bbox": None, "message": message}]
+
+
 # ---- colour -----------------------------------------------------------
 
 def _is_rgbish_colorspace(cs):
@@ -563,6 +594,13 @@ def run_preflight(file_bytes, page_index, geometry, thresholds, slot, budget_s=C
 
                 if not incomplete:
                     findings += check_colour(images, vector_rgb, slot, page_index)
+                    incomplete = out_of_time()
+
+                if not incomplete:
+                    try:
+                        findings += check_text_outlined(file_bytes, page_index, slot, page_index)
+                    except Exception:
+                        pass
                     incomplete = out_of_time()
             finally:
                 pdf.close()

@@ -1,6 +1,6 @@
 import "@testing-library/jest-dom/vitest";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { act, cleanup, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import en from "../../messages/en.json";
 import OptionsPage from "./OptionsPage";
@@ -72,5 +72,83 @@ describe("the Cut-off clock on the Options page", () => {
   it("shows no notice before any expiry", () => {
     show({ commerceEnabled: false });
     expect(screen.queryByText(en.FlyersConfigurator.clockMovedNotice)).toBeNull();
+  });
+});
+
+describe("the Price grid replacing Quantity and Turnaround (ticket 03)", () => {
+  const CATALOGUE_QT = {
+    options: [
+      { code: "quantity", name: "Quantity", values: [{ code: "500", label: "500" }, { code: "1000", label: "1,000" }] },
+      { code: "turnaround", name: "Turnaround", values: [{ code: "standard", label: "Standard" }, { code: "same-day", label: "Same-day" }] },
+    ],
+  };
+  const GRID_QUOTE = { base_aed: 100, uplifts: [], subtotal_aed: 100, vat_aed: 5, total_aed: 105, per_piece_aed: 0.21 };
+  const PRICE_GRID = [
+    {
+      quantity: "500",
+      cells: [
+        { quantity: "500", turnaround: "standard", quote: GRID_QUOTE },
+        { quantity: "500", turnaround: "same-day", blocked: true, reason: "Same-day not available for A3" },
+      ],
+    },
+  ];
+
+  function showGrid({ commerceEnabled, onPick = vi.fn() } = {}) {
+    const state = {
+      commerceEnabled,
+      quote: commerceEnabled ? GRID_QUOTE : null,
+      notices: [],
+      blocked: {},
+      priceGrid: commerceEnabled ? PRICE_GRID : [],
+      clock: CLOCK,
+      turnarounds: [{ code: "standard", ...CLOCK }, { code: "same-day", ...CLOCK }],
+      available: true,
+    };
+    render(
+      <NextIntlClientProvider locale="en" messages={en}>
+        <OptionsPage
+          catalogue={CATALOGUE_QT}
+          selection={{ quantity: "500", turnaround: "standard" }}
+          state={state}
+          locale="en"
+          syncBanner={null}
+          clockNotice={false}
+          onPick={onPick}
+          onClockExpire={vi.fn()}
+          onStart={vi.fn()}
+        />
+      </NextIntlClientProvider>
+    );
+    return { onPick };
+  }
+
+  it("with Commerce on, shows the grid in place of separate Quantity and Turnaround rows", () => {
+    showGrid({ commerceEnabled: true });
+    expect(screen.getByText(en.FlyersConfigurator.priceGrid)).toBeInTheDocument();
+    expect(screen.queryByRole("radiogroup", { name: "Quantity" })).toBeNull();
+    expect(screen.queryByRole("group", { name: "Turnaround" })).toBeNull();
+  });
+
+  it("with Commerce off, shows Quantity and Turnaround as chips and no grid", () => {
+    showGrid({ commerceEnabled: false });
+    expect(screen.queryByText(en.FlyersConfigurator.priceGrid)).toBeNull();
+    expect(screen.getByRole("radiogroup", { name: "Quantity" })).toBeInTheDocument();
+  });
+
+  it("clicking an available cell picks both Quantity and Turnaround", () => {
+    const { onPick } = showGrid({ commerceEnabled: true });
+    const cell = screen.getByRole("table").querySelector("button:not([disabled])");
+    fireEvent.click(cell);
+    expect(onPick).toHaveBeenCalledWith("quantity", "500");
+    expect(onPick).toHaveBeenCalledWith("turnaround", "standard");
+  });
+
+  it("a blocked cell is disabled, cannot be picked and shows its reason", () => {
+    const { onPick } = showGrid({ commerceEnabled: true });
+    const blockedCell = screen.getByTitle("Same-day not available for A3");
+    expect(blockedCell).toBeDisabled();
+    fireEvent.click(blockedCell);
+    expect(onPick).not.toHaveBeenCalled();
+    expect(screen.getByText("Same-day not available for A3")).toBeInTheDocument();
   });
 });

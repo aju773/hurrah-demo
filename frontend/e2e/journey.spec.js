@@ -177,6 +177,7 @@ test.describe("keyboard only", () => {
     await expect(next).toBeEnabled();
     await tabTo(page, next);
     await page.keyboard.press("Enter");
+    await expect(page.getByRole("heading", { name: t("FlyersConfigurator", "pageApprove") })).toBeFocused();
 
     await tabTo(page, page.getByLabel(t("ApproveAndConfirmStep", "fieldName")));
     await page.keyboard.type("Omar Khalid");

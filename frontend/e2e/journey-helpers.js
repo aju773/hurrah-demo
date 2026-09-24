@@ -41,6 +41,29 @@ export const SINGLE_SCREEN_VIEWPORTS = [
 ];
 export const BELOW_FLOOR_VIEWPORT = { width: 1024, height: 600 };
 
+// Browser zoom (CONTEXT.md's Single-screen floor is a CSS-pixel size): at a fixed
+// window size, zooming in shrinks the number of CSS pixels available exactly the
+// way a smaller window would, so 150%/200% zoom on the floor is exercised the same
+// way as BELOW_FLOOR_VIEWPORT — a viewport shrunk by the same factor.
+export const ZOOM_VIEWPORTS = [1.5, 2].map((factor) => ({
+  factor,
+  viewport: { width: Math.round(SINGLE_SCREEN_VIEWPORTS[0].width / factor), height: Math.round(SINGLE_SCREEN_VIEWPORTS[0].height / factor) },
+}));
+
+/** Single-screen (CONTEXT.md): "content is centred and capped near 1440px wide" —
+ * asserts the page's frame (`.single-screen`) is no wider than `maxWidth` and has
+ * (near enough) equal space on either side of it, i.e. it is centred rather than
+ * pinned to one edge. */
+export async function expectCenteredAndCapped(page, { maxWidth = 1520 } = {}) {
+  const frame = page.locator(".single-screen");
+  const box = await frame.boundingBox();
+  const viewport = page.viewportSize();
+  expect(box.width, `frame is ${box.width}px wide on ${page.url()}`).toBeLessThanOrEqual(maxWidth);
+  const left = box.x;
+  const right = viewport.width - (box.x + box.width);
+  expect(Math.abs(left - right), `frame is not centred on ${page.url()} (left ${left}px, right ${right}px)`).toBeLessThanOrEqual(2);
+}
+
 /** The site's own words in one language: `copy("ApproveAndConfirmStep", "submit")`.
  * Text with {placeholders} comes back as a regular expression that matches its
  * fixed start, so a button such as "Confirm — switch to {file}" can be found. */

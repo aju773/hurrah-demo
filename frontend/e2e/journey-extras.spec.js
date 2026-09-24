@@ -145,5 +145,25 @@ for (const locale of LOCALES) {
       expect(number).toBe("HUR-10001");
       await checkPage(page, "desktop");
     });
+
+    // Single-screen (ticket 06's regression sweep): the Hint slot sits between
+    // the header and a page's own panels, but is never on the tab order's way
+    // out — reaching its buttons and tabbing on lands somewhere past it, not
+    // back on "Got it" or "Dismiss all".
+    test("a hint never traps keyboard focus", async ({ page }) => {
+      await page.goto(`/${locale}/flyers`);
+      const hint = page.locator('[data-hint="options"]');
+      await expect(hint).toBeVisible();
+      const gotIt = page.getByRole("button", { name: t("Hints", "gotIt") });
+      const dismissAll = page.getByRole("button", { name: t("Hints", "dismissAll") });
+
+      await gotIt.focus();
+      await expect(gotIt).toBeFocused();
+      await page.keyboard.press("Tab");
+      await expect(dismissAll).toBeFocused();
+      await page.keyboard.press("Tab");
+      await expect(gotIt).not.toBeFocused();
+      await expect(dismissAll).not.toBeFocused();
+    });
   });
 }

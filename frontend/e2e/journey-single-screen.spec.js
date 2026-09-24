@@ -11,8 +11,10 @@ import {
   BELOW_FLOOR_VIEWPORT,
   DEMO_FILES,
   SINGLE_SCREEN_VIEWPORTS,
+  ZOOM_VIEWPORTS,
   continueToApproval,
   copyFor,
+  expectCenteredAndCapped,
   expectSingleScreen,
   resetDemo,
   startOrdering,
@@ -91,5 +93,34 @@ for (const locale of LOCALES) {
         });
       }
     });
+
+    // Single-screen (CONTEXT.md): "content is centred and capped near 1440px
+    // wide" — checked at the widest supported monitor size, where the cap
+    // actually bites.
+    test.describe("at the widest screen", () => {
+      test.use({ viewport: SINGLE_SCREEN_VIEWPORTS.at(-1) });
+
+      for (const journeyPage of PAGES) {
+        test(`the ${journeyPage.name} page's content is centred and capped`, async ({ page }) => {
+          await journeyPage.open(page, locale, t);
+          await expectCenteredAndCapped(page);
+        });
+      }
+    });
+
+    // Browser zoom degrades the same way as a small viewport (journey-helpers.js:
+    // ZOOM_VIEWPORTS is the floor shrunk by the zoom factor, in CSS pixels).
+    for (const { factor, viewport } of ZOOM_VIEWPORTS) {
+      test.describe(`at ${factor * 100}% zoom`, () => {
+        test.use({ viewport });
+
+        for (const journeyPage of PAGES) {
+          test(`the ${journeyPage.name} page scrolls and its primary action stays reachable`, async ({ page }) => {
+            await journeyPage.open(page, locale, t);
+            await expectSingleScreen(page, { primary: journeyPage.primary(page, t), floor: false });
+          });
+        }
+      });
+    }
   });
 }

@@ -6,6 +6,13 @@
 
 export const SEVERITY_RANK = { error: 0, warning: 1, note: 2 };
 
+// Error-severity codes serious enough to actually block Next/Submit — mirrors
+// backend/orders/preflight.py's BLOCKING_CODES. Every other Error still shows
+// red in its own row (FindingRow keeps `group.severity`), but the overall
+// headline/Next button treat it as a caution, not a stop (owner instruction
+// 2026-09: only un-embedded/un-outlined fonts must be fixed before ordering).
+export const BLOCKING_CODES = new Set(["font_not_embedded"]);
+
 // Which Preflight check a code belongs to, for the "Passed: …" line.
 const CHECK_OF = {
   bleed_missing: "bleed",
@@ -84,12 +91,15 @@ export function passedChecks(groups, { resized = false } = {}) {
   return checks.filter((c) => !failed.has(c));
 }
 
-/** The order headline: worst Severity across both sides (spec story 66). */
+/** The order headline: worst Severity across both sides (spec story 66),
+ * except an Error outside BLOCKING_CODES no longer earns the "Must fix" red
+ * headline — it folds into the warning count/wording instead, since it no
+ * longer blocks Next/Submit either (see BLOCKING_CODES above). */
 export function orderHeadline(groups) {
-  if (groups.some((g) => g.severity === "error")) {
+  if (groups.some((g) => g.severity === "error" && BLOCKING_CODES.has(g.code))) {
     return { severity: "error", icon: "⛔", count: 0, text: "Must fix before ordering" };
   }
-  const warningCount = groups.filter((g) => g.severity === "warning").length;
+  const warningCount = groups.filter((g) => g.severity === "warning" || g.severity === "error").length;
   if (warningCount > 0) {
     return {
       severity: "warning",
@@ -131,9 +141,10 @@ export function slotHeadline(groups, slot) {
   return orderHeadline(groups.filter((g) => g.slot === slot));
 }
 
-/** Next is disabled on step 2 while any Error remains (spec story 75). */
+/** Next is disabled on step 2 only while a blocking Error remains (spec story
+ * 75, narrowed by BLOCKING_CODES above). */
 export function canGoNext(groups) {
-  return !groups.some((g) => g.severity === "error");
+  return !groups.some((g) => g.severity === "error" && BLOCKING_CODES.has(g.code));
 }
 
 // Short names for the step 3 "I accept…" warnings tick (spec story 79: "a

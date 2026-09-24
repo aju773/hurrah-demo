@@ -94,7 +94,7 @@ describe("orderHeadline", () => {
     expect(orderHeadline(groups)).toMatchObject({ severity: "warning", text: expect.stringContaining("1 thing") });
   });
 
-  it("is an Error headline when any group is an Error", () => {
+  it("is an Error headline when any group is a blocking Error (font_not_embedded)", () => {
     const groups = combineFindings({
       front: { findings: [finding({ code: "font_not_embedded", severity: "error" })] },
       back: null,
@@ -102,19 +102,37 @@ describe("orderHeadline", () => {
     });
     expect(orderHeadline(groups)).toMatchObject({ severity: "error" });
   });
+
+  it("folds a non-blocking Error (e.g. low_ppi) into the warning headline, not the error one", () => {
+    const groups = combineFindings({
+      front: { findings: [finding({ code: "low_ppi", severity: "error", value: 90 })] },
+      back: null,
+      sameAsFront: false,
+    });
+    expect(orderHeadline(groups)).toMatchObject({ severity: "warning", text: expect.stringContaining("1 thing") });
+  });
 });
 
 describe("canGoNext", () => {
-  it("is false while any Error remains, true otherwise", () => {
+  it("is false while a blocking Error (font_not_embedded) remains", () => {
     const withError = combineFindings({
       front: { findings: [finding({ code: "font_not_embedded", severity: "error" })] },
       back: null,
       sameAsFront: false,
     });
     expect(canGoNext(withError)).toBe(false);
+  });
 
+  it("is true for warnings, and for a non-blocking Error like low_ppi", () => {
     const warningOnly = combineFindings({ front: { findings: [finding()] }, back: null, sameAsFront: false });
     expect(canGoNext(warningOnly)).toBe(true);
+
+    const nonBlockingError = combineFindings({
+      front: { findings: [finding({ code: "low_ppi", severity: "error", value: 90 })] },
+      back: null,
+      sameAsFront: false,
+    });
+    expect(canGoNext(nonBlockingError)).toBe(true);
   });
 });
 

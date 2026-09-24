@@ -177,13 +177,35 @@ class MoneyFreeSubmitTests(TestCase):
         self.assertEqual((res.status_code, res.json()["code"]), (409, "stale"))
 
     def test_an_error_on_the_artwork_is_refused(self):
+        # Only a blocking code (font_not_embedded) refuses Submit now — everything
+        # else is a caution the customer ticks past (owner instruction 2026-09).
         body = self.payload()
         from .models import Artwork
         front = Artwork.objects.get(pk=body["front_artwork"])
-        front.preflight_report = {"findings": [], "headline_severity": "error"}
+        front.preflight_report = {
+            "findings": [{"code": "font_not_embedded", "severity": "error", "value": "Foo", "slot": "front", "page": 1, "bbox": None, "message": "x"}],
+            "headline_severity": "error",
+        }
+        front.is_valid = False
         front.save()
         res = self.client.post(SUBMIT_URL, body, format="json")
         self.assertEqual((res.status_code, res.json()["code"]), (400, "artwork_has_errors"))
+
+    def test_a_non_blocking_error_on_the_artwork_is_not_refused(self):
+        # A low-ppi Error is still shown to the customer, but no longer blocks
+        # Submit (owner instruction 2026-09: only font issues must be fixed first).
+        body = self.payload()
+        from .models import Artwork
+        front = Artwork.objects.get(pk=body["front_artwork"])
+        front.preflight_report = {
+            "findings": [{"code": "low_ppi", "severity": "error", "value": 50, "slot": "front", "page": 1, "bbox": None, "message": "x"}],
+            "headline_severity": "error",
+        }
+        front.save()
+        body["warnings_tick"] = True
+        body["accepted_warning_codes"] = ["low_ppi"]
+        res = self.client.post(SUBMIT_URL, body, format="json")
+        self.assertEqual(res.status_code, 201, res.content)
 
     def test_sent_total_is_ignored(self):
         res = self.client.post(SUBMIT_URL, self.payload(expected_total_fils=1), format="json")

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { API_BASE_URL, FLYERS_SLUG } from "@/lib/api";
 import Countdown from "./Countdown";
-import { combineFindings, warningShortName } from "@/lib/findings";
+import { BLOCKING_CODES, canGoNext, combineFindings, warningShortName } from "@/lib/findings";
 import { sizeChoiceWithInstructions } from "@/lib/draftOrder";
 import { fetchPreview } from "@/lib/preview";
 import ArtworkPreview from "./ArtworkPreview";
@@ -19,8 +19,15 @@ const SUBMIT_TIMEOUT_MS = 30000;
 // +971 is prefilled: every customer is on a UAE mobile.
 const EMPTY_DETAILS = { name: "", mobile: "+971", area: "", address_line: "", email: "", company: "", note: "" };
 
+// A group needs the "I accept" tick if it's a Warning, or an Error that no
+// longer blocks Submit (outside BLOCKING_CODES) — the tick is how the
+// customer acknowledges that caution instead.
+function needsWarningsTick(g) {
+  return g.severity === "warning" || (g.severity === "error" && !BLOCKING_CODES.has(g.code));
+}
+
 function warningCodesOf(groups) {
-  return [...new Set(groups.filter((g) => g.severity === "warning").map((g) => g.code))].sort();
+  return [...new Set(groups.filter(needsWarningsTick).map((g) => g.code))].sort();
 }
 
 /**
@@ -112,8 +119,8 @@ export default function ApproveAndConfirmStep({
     back: preview.back?.same_as_front ? null : { findings: preview.back?.findings ?? [] },
     sameAsFront: Boolean(preview.back?.same_as_front),
   });
-  const hasError = groups.some((g) => g.severity === "error");
-  const warningGroups = groups.filter((g) => g.severity === "warning");
+  const hasError = !canGoNext(groups);
+  const warningGroups = groups.filter(needsWarningsTick);
   const warningCodes = warningCodesOf(groups);
 
   const configLines = catalogue.options.map((option) => ({

@@ -58,6 +58,16 @@ MESSAGES_EN = {
 FIT_BORDER_WARN_MM = 1.0
 FILL_CROP_WARN_MM = 1.0
 
+# Error-severity codes serious enough to actually block Continue/Submit. Every
+# other Error still shows red and still needs the customer's "I accept" tick
+# (order_views._warning_codes), but no longer stops them ordering (owner
+# instruction 2026-09: only un-embedded/un-outlined fonts must be fixed first).
+BLOCKING_CODES = {"font_not_embedded"}
+
+
+def has_blocking_error(findings):
+    return any(f["severity"] == ERROR and f["code"] in BLOCKING_CODES for f in findings)
+
 
 def _message(code, severity):
     return MESSAGES_EN.get((code, severity), "")

@@ -99,7 +99,7 @@ def _save_artwork(product, slot, uploaded_file, page_result, source_page_count, 
         trim_source=page_result["trim_source"],
         bleed_mm=page_result["bleed_mm"],
         rotation=page_result["rotation"],
-        is_valid=report["headline_severity"] != preflight.ERROR,
+        is_valid=not preflight.has_blocking_error(report["findings"]),
         preflight_report=report,
     )
     images = render_artwork_images_bounded(file_bytes, page_index)

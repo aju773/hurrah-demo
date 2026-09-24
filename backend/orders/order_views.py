@@ -56,16 +56,18 @@ def _text(entry, field, locale):
 
 
 def _warning_codes(report):
-    """Distinct Finding codes at Warning severity in a stored Preflight report
-    (`headline_severity`'s inputs), sorted for a stable comparison/display.
-    Includes `check_incomplete` ("Not fully checked" — spec story 101)."""
+    """Distinct Finding codes the customer must tick "I accept" for: Warning
+    severity, plus an Error severity that no longer blocks Submit (anything
+    outside `preflight.BLOCKING_CODES`) — the tick is how they acknowledge
+    that caution instead. Includes `check_incomplete` ("Not fully checked" —
+    spec story 101)."""
     if not report:
         return set()
-    return {f["code"] for f in report.get("findings", []) if f["severity"] == preflight.WARNING}
-
-
-def _has_error(report):
-    return bool(report) and report.get("headline_severity") == preflight.ERROR
+    return {
+        f["code"]
+        for f in report.get("findings", [])
+        if f["severity"] == preflight.WARNING or (f["severity"] == preflight.ERROR and f["code"] not in preflight.BLOCKING_CODES)
+    }
 
 
 def _size_choice_record(value, same_as_front, has_back):
@@ -172,7 +174,7 @@ class OrderSubmitView(APIView):
         if resolved.get("sides") == "double" and not same_as_front and back is None:
             return Response({"detail": "Back artwork is required for double-sided orders.", "code": "invalid_artwork"}, status=status.HTTP_400_BAD_REQUEST)
 
-        if _has_error(front.preflight_report) or (back is not None and _has_error(back.preflight_report)):
+        if not front.is_valid or (back is not None and not back.is_valid):
             return Response({"detail": "Fix the Errors on your artwork before ordering.", "code": "artwork_has_errors"}, status=status.HTTP_400_BAD_REQUEST)
 
         warning_codes = _warning_codes(front.preflight_report)

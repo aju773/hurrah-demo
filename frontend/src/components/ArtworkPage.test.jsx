@@ -11,7 +11,7 @@ import { resetHints } from "@/lib/hints";
 vi.mock("@/lib/preview", () => ({ fetchPreview: vi.fn() }));
 vi.mock("./ArtworkPreview", () => ({ default: () => <div data-testid="proof" /> }));
 vi.mock("./ArtworkSlots", () => ({ default: () => <div data-testid="slots" /> }));
-vi.mock("./ArtworkTemplatesPanel", () => ({ default: () => null }));
+vi.mock("./ArtworkTemplatesPanel", () => ({ default: ({ open }) => (open ? <div data-testid="templates-drawer" /> : null) }));
 vi.mock("./DesignHelpDrawer", () => ({ default: () => null }));
 vi.mock("./SyncDialog", () => ({ default: () => null }));
 vi.mock("./SummaryPanel", () => ({ default: () => null }));
@@ -200,6 +200,13 @@ describe("the Artwork page's Summary and Options-change notices", () => {
     expect(editOptions).toHaveBeenCalledTimes(1);
   });
 
+  it("Artwork templates opens from a button, reachable with no Artwork uploaded yet", () => {
+    show({ front: null });
+    expect(screen.queryByTestId("templates-drawer")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Artwork templates" }));
+    expect(screen.getByTestId("templates-drawer")).toBeInTheDocument();
+  });
+
   for (const locale of ["en", "ar"]) {
     it(`says why the Back slot went after single-sided was chosen (${locale})`, () => {
       const m = locale === "ar" ? ar : en;
@@ -280,7 +287,10 @@ describe("the Artwork page's Hint", () => {
     cleanup();
     show();
     expect(document.querySelector("[data-hint]")).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: en.Hints.show }));
+    // "Show hints" lives in the shared header (ticket 02), not on this page:
+    // bringing hints back is exercised there; this only proves the page's own
+    // Hint slot reacts once they are back on.
+    act(() => resetHints());
     expect(document.querySelector('[data-hint="artwork"]')).toBeInTheDocument();
   });
 

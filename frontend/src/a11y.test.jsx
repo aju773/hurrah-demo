@@ -149,7 +149,7 @@ const STEPS = {
     />
   ),
   "Artwork page: upload error with Retry": () => <ArtworkSlot id="s" label="Front" status="error" fileName="a.pdf" artwork={null} error={{ code: "network_failed", message: null }} canRetry onFile={vi.fn()} onRemove={vi.fn()} onCancel={vi.fn()} onRetry={vi.fn()} />,
-  "Artwork page: artwork templates": () => <ArtworkTemplatesPanel />,
+  "Artwork page: artwork templates": () => <ArtworkTemplatesPanel open onClose={vi.fn()} />,
   "Options page: first-visit hint": () => <FirstVisitHint step="options" />,
   "Artwork page: size dialog": () => (
     <SyncDialog
@@ -216,7 +216,7 @@ describe("automated accessibility check: no serious or critical issues", () => {
         const { container } = render(withIntl(build(), locale));
         // Async steps (preview, templates) settle before the scan.
         if (name.startsWith("Artwork page: findings") || name.startsWith("Artwork page: whole")) await screen.findAllByText(/Must fix|يجب/);
-        if (name.includes("templates")) await waitFor(() => expect(container.querySelector("section")).not.toBeNull());
+        if (name.includes("templates")) await waitFor(() => expect(container.querySelector('[role="dialog"] ul')).not.toBeNull());
         if (name.includes("approve")) await waitFor(() => expect(container.querySelector("input[type=checkbox]")).not.toBeNull());
         expect(await seriousViolations(document.body)).toEqual([]);
       });

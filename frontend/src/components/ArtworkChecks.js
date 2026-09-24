@@ -35,16 +35,28 @@ const HEADLINE_CLASS = {
 };
 
 /**
- * The Findings and Proof preview on the Artwork page: one Findings list for both
- * sides above Front/Back previews with pins, an As printed / With guides toggle
- * and legend. `onBlockedChange(true)` tells the page while any Error remains, so
- * its Continue stays disabled. A side whose file was picked from a stored PDF offers
- * "Choose pages" (`canChoosePages.front/back`, answered by `onChoosePages(side)`),
- * so pages can be re-chosen without uploading again. Each side has a Rotate button
- * (`rotate`: {front, back} says which are turned, `onRotate(side)` turns or un-turns
- * one); the preview and Findings arrive already turned. With both a Front and a
- * Back it also offers Swap (`swap` says whether it is on, `onSwap()` toggles it): the
- * uploaded Back then prints as Front, and everything here names the sides as printed.
+ * The Findings and Proof preview on the Artwork page's three-zone Single-screen
+ * layout (ticket 04): one Findings list for both sides, and Front/Back previews
+ * with pins, an As printed / With guides toggle and legend. This is one
+ * component (one fetch of the preview, one set of Finding groups) but a
+ * Fragment of two grid items, not one wrapping element — so the caller
+ * (ArtworkPage) can place the Findings panel under the upload slots and the
+ * Proof preview beside them in the same CSS grid, while both keep reading from
+ * the same state. `onBlockedChange(true)` tells the page while any Error
+ * remains, so its Continue stays disabled. A side whose file was picked from a
+ * stored PDF offers "Choose pages" (`canChoosePages.front/back`, answered by
+ * `onChoosePages(side)`), so pages can be re-chosen without uploading again.
+ * Each side has a Rotate button (`rotate`: {front, back} says which are turned,
+ * `onRotate(side)` turns or un-turns one); the preview and Findings arrive
+ * already turned. With both a Front and a Back it also offers Swap (`swap` says
+ * whether it is on, `onSwap()` toggles it): the uploaded Back then prints as
+ * Front, and everything here names the sides as printed.
+ *
+ * Grid contract with ArtworkPage's outer grid: the Findings panel takes the
+ * left column (`lg:col-start-1 lg:col-span-5`), row 2, under the upload slots;
+ * the Proof preview takes the right column (`lg:col-start-6 lg:col-span-7`),
+ * row 1. Below the loading/error states, before either has any data, one
+ * message spans the whole grid instead.
  */
 export default function ArtworkChecks({ frontId, backId, sameAsFront, sizeCode, sizeChoice, rotate, onRotate, swap, onSwap, canChoosePages = {}, onChoosePages, onBlockedChange }) {
   const t = useTranslations("ArtworkChecks");
@@ -96,11 +108,11 @@ export default function ArtworkChecks({ frontId, backId, sameAsFront, sizeCode, 
   // One live region for the whole step, mounted before the preview arrives, so the
   // result ("Must fix before ordering", "Ready to print"…) is announced when it lands.
   if (error) {
-    return <LoadFailure className="p-[24px]" message={t("loadError")} retryLabel={t("retry")} onRetry={retry} />;
+    return <LoadFailure className="col-span-12 lg:col-span-12 p-[24px]" message={t("loadError")} retryLabel={t("retry")} onRetry={retry} />;
   }
   if (!preview) {
     return (
-      <div role="status" aria-live="polite" className="p-[24px] text-[#575c64] text-[14px]">
+      <div role="status" aria-live="polite" className="col-span-12 lg:col-span-12 p-[24px] text-[#575c64] text-[14px]">
         {t("loading")}
       </div>
     );
@@ -115,17 +127,22 @@ export default function ArtworkChecks({ frontId, backId, sameAsFront, sizeCode, 
   const passed = passedChecks(groups, { resized: sizeChoice?.choice === "keep_size_scale" });
 
   return (
-    <div className="flex flex-col gap-[16px] w-full">
-      <div
-        role="status"
-        aria-live="polite"
-        className={`rounded-[8px] px-[16px] py-[10px] text-[16px] font-semibold ${HEADLINE_CLASS[overallHeadline.severity]}`}
-      >
-        {headlineText(tPreflight, overallHeadline)}
-      </div>
+    <>
+      {/* Findings panel: under the upload slots, in a panel that scrolls inside
+         itself with its heading kept in view — nothing else on the page scrolls. */}
+      <div className="col-span-12 lg:col-start-1 lg:col-span-5 lg:row-start-2 min-w-0 flex flex-col gap-[10px] lg:min-h-0 lg:self-stretch">
+        <div className="shrink-0 flex flex-col gap-[8px]">
+          <h2 className="text-[#151c27] text-[13px] font-bold">{t("findingsHeading")}</h2>
+          <div
+            role="status"
+            aria-live="polite"
+            className={`rounded-[8px] px-[16px] py-[10px] text-[16px] font-semibold ${HEADLINE_CLASS[overallHeadline.severity]}`}
+          >
+            {headlineText(tPreflight, overallHeadline)}
+          </div>
+        </div>
 
-      <div className="flex flex-col gap-[16px] w-full">
-        <div className="min-w-0 flex flex-col gap-[8px]">
+        <div className="min-w-0 flex flex-col gap-[8px] lg:flex-1 lg:min-h-0 lg:overflow-y-auto">
           {groups.length === 0 ? (
             <p className="text-[#575c64] text-[13px]">{t("noFindings")}</p>
           ) : (
@@ -146,75 +163,76 @@ export default function ArtworkChecks({ frontId, backId, sameAsFront, sizeCode, 
             {t("passed", { items: passed.map((c) => t(CHECK_LABEL_KEYS[c])).join(", ") })}
           </p>
         </div>
+      </div>
 
-        <div className="min-w-0 flex flex-col gap-[10px]">
-          <div className="flex items-center gap-[8px]">
-            <ToggleButton active={!withGuides} onClick={() => setWithGuides(false)} label={t("asPrinted")} />
-            <ToggleButton active={withGuides} onClick={() => setWithGuides(true)} label={t("withGuides")} />
+      {/* Proof preview: the large zone beside the slots and Findings. */}
+      <div className="col-span-12 lg:col-start-6 lg:col-span-7 lg:row-start-1 min-w-0 flex flex-col gap-[10px]">
+        <div className="flex items-center gap-[8px]">
+          <ToggleButton active={!withGuides} onClick={() => setWithGuides(false)} label={t("asPrinted")} />
+          <ToggleButton active={withGuides} onClick={() => setWithGuides(true)} label={t("withGuides")} />
+        </div>
+
+        {onSwap && backId && !sameAsFront && (
+          <div className="flex flex-wrap items-center gap-x-[12px] gap-y-[4px]">
+            <button type="button" onClick={onSwap} className="tap inline-flex items-center justify-center text-[#bb0027] text-[12px] font-bold underline">
+              {t(swap ? "undoSwap" : "swapSides")}
+            </button>
+            {swap && <span className="text-[#575c64] text-[12px]">{t("swapNote")}</span>}
           </div>
+        )}
 
-          {onSwap && backId && !sameAsFront && (
-            <div className="flex flex-wrap items-center gap-x-[12px] gap-y-[4px]">
-              <button type="button" onClick={onSwap} className="tap inline-flex items-center justify-center text-[#bb0027] text-[12px] font-bold underline">
-                {t(swap ? "undoSwap" : "swapSides")}
-              </button>
-              {swap && <span className="text-[#575c64] text-[12px]">{t("swapNote")}</span>}
-            </div>
-          )}
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-[12px]">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-[12px]">
+          <PreviewCell
+            slot="front"
+            label={t("front")}
+            headline={headlineText(tPreflight, slotHeadline(groups, "front"))}
+            ariaLabel={t("previewLabel", { side: t("front") })}
+            enlargeLabel={t("enlargePreview", { side: t("front") })}
+            image={preview.front}
+            orderedTrimMm={preview.ordered_trim_mm}
+            productBleedMm={preview.product_bleed_mm}
+            productSafeMm={preview.product_safe_mm}
+            groups={groups}
+            withGuides={withGuides}
+            onOpen={() => openEnlarged("front")}
+            onSelectFinding={(group) => openEnlarged("front", group.key)}
+            choosePagesLabel={canChoosePages.front && onChoosePages ? t("choosePages") : null}
+            onChoosePages={() => onChoosePages("front")}
+            rotateLabel={onRotate ? t(rotate?.front ? "undoRotateSide" : "rotateSide", { side: t("front") }) : null}
+            onRotate={() => onRotate("front")}
+          />
+          {preview.back?.same_as_front ? (
+            <button
+              type="button"
+              onClick={() => openEnlarged("back")}
+              className="tap bg-[#f0f3ff] rounded-[12px] p-[10px] flex items-center justify-center text-[#575c64] text-[12px] cursor-pointer"
+            >
+              {t("sameAsFront")}
+            </button>
+          ) : preview.back ? (
             <PreviewCell
-              slot="front"
-              label={t("front")}
-              headline={headlineText(tPreflight, slotHeadline(groups, "front"))}
-              ariaLabel={t("previewLabel", { side: t("front") })}
-              enlargeLabel={t("enlargePreview", { side: t("front") })}
-              image={preview.front}
+              slot="back"
+              label={t("back")}
+              headline={headlineText(tPreflight, slotHeadline(groups, "back"))}
+              ariaLabel={t("previewLabel", { side: t("back") })}
+              enlargeLabel={t("enlargePreview", { side: t("back") })}
+              image={preview.back}
               orderedTrimMm={preview.ordered_trim_mm}
               productBleedMm={preview.product_bleed_mm}
               productSafeMm={preview.product_safe_mm}
               groups={groups}
               withGuides={withGuides}
-              onOpen={() => openEnlarged("front")}
-              onSelectFinding={(group) => openEnlarged("front", group.key)}
-              choosePagesLabel={canChoosePages.front && onChoosePages ? t("choosePages") : null}
-              onChoosePages={() => onChoosePages("front")}
-              rotateLabel={onRotate ? t(rotate?.front ? "undoRotateSide" : "rotateSide", { side: t("front") }) : null}
-              onRotate={() => onRotate("front")}
+              onOpen={() => openEnlarged("back")}
+              onSelectFinding={(group) => openEnlarged("back", group.key)}
+              choosePagesLabel={canChoosePages.back && onChoosePages ? t("choosePages") : null}
+              onChoosePages={() => onChoosePages("back")}
+              rotateLabel={onRotate ? t(rotate?.back ? "undoRotateSide" : "rotateSide", { side: t("back") }) : null}
+              onRotate={() => onRotate("back")}
             />
-            {preview.back?.same_as_front ? (
-              <button
-                type="button"
-                onClick={() => openEnlarged("back")}
-                className="tap bg-[#f0f3ff] rounded-[12px] p-[10px] flex items-center justify-center text-[#575c64] text-[12px] cursor-pointer"
-              >
-                {t("sameAsFront")}
-              </button>
-            ) : preview.back ? (
-              <PreviewCell
-                slot="back"
-                label={t("back")}
-                headline={headlineText(tPreflight, slotHeadline(groups, "back"))}
-                ariaLabel={t("previewLabel", { side: t("back") })}
-                enlargeLabel={t("enlargePreview", { side: t("back") })}
-                image={preview.back}
-                orderedTrimMm={preview.ordered_trim_mm}
-                productBleedMm={preview.product_bleed_mm}
-                productSafeMm={preview.product_safe_mm}
-                groups={groups}
-                withGuides={withGuides}
-                onOpen={() => openEnlarged("back")}
-                onSelectFinding={(group) => openEnlarged("back", group.key)}
-                choosePagesLabel={canChoosePages.back && onChoosePages ? t("choosePages") : null}
-                onChoosePages={() => onChoosePages("back")}
-                rotateLabel={onRotate ? t(rotate?.back ? "undoRotateSide" : "rotateSide", { side: t("back") }) : null}
-                onRotate={() => onRotate("back")}
-              />
-            ) : null}
-          </div>
-
-          <Legend t={t} missingBleedLabel={t("legendMissingBleed")} />
+          ) : null}
         </div>
+
+        <Legend t={t} missingBleedLabel={t("legendMissingBleed")} />
       </div>
 
       {enlarged && (
@@ -230,7 +248,7 @@ export default function ArtworkChecks({ frontId, backId, sameAsFront, sizeCode, 
           onClose={() => setEnlarged(null)}
         />
       )}
-    </div>
+    </>
   );
 }
 

@@ -1,6 +1,6 @@
 import "@testing-library/jest-dom/vitest";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { act, cleanup, render, screen, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import en from "../../messages/en.json";
 import ar from "../../messages/ar.json";
@@ -20,14 +20,15 @@ function stubFetch(response = { ok: true, json: () => Promise.resolve(PAYLOAD) }
   return fetchMock;
 }
 
-async function show({ locale = "en", messages = en } = {}) {
+async function show({ locale = "en", messages = en, onClose = vi.fn() } = {}) {
   await act(async () => {
     render(
       <NextIntlClientProvider locale={locale} messages={messages}>
-        <ArtworkTemplatesPanel productSlug="flyers" />
+        <ArtworkTemplatesPanel open productSlug="flyers" onClose={onClose} />
       </NextIntlClientProvider>
     );
   });
+  return { onClose };
 }
 
 afterEach(() => {
@@ -36,6 +37,27 @@ afterEach(() => {
 });
 
 describe("ArtworkTemplatesPanel", () => {
+  it("renders nothing, and asks nothing, while closed", async () => {
+    const fetchMock = stubFetch();
+    await act(async () => {
+      render(
+        <NextIntlClientProvider locale="en" messages={en}>
+          <ArtworkTemplatesPanel productSlug="flyers" onClose={vi.fn()} />
+        </NextIntlClientProvider>
+      );
+    });
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("opens as a dialog and closes on its Close button", async () => {
+    stubFetch();
+    const { onClose } = await show();
+    expect(screen.getByRole("dialog", { name: en.ArtworkTemplates.title })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: en.ArtworkTemplates.close }));
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
   it("asks the server for the Product's templates in the browsing language", async () => {
     const fetchMock = stubFetch();
     await show({ locale: "ar", messages: ar });

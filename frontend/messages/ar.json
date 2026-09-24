@@ -22,6 +22,7 @@
     "noArtworkHeading": "ليس لديك تصميم بعد؟",
     "noArtworkBody": "أرسل لنا ملخصًا وسنصممه لك.",
     "needDesign": "بحاجة إلى تصميم؟",
+    "artworkTemplates": "قوالب التصميم",
     "summary": "الملخص",
     "basePrice": "السعر الأساسي",
     "upliftLabel": "{label} ‎+{percent}%",
@@ -58,6 +59,7 @@
     "pageAnnouncement": "الصفحة {n} من {total}: {name}"
   },
   "ArtworkChecks": {
+    "findingsHeading": "نتائج الفحص",
     "loading": "جارٍ تحميل المعاينة…",
     "loadError": "حدث خطأ أثناء تحميل المعاينة. يرجى المحاولة مرة أخرى.",
     "noFindings": "لم يتم العثور على مشاكل.",
@@ -224,7 +226,8 @@
     "guideColour": "الألوان: استخدم CMYK. تُحوَّل ألوان الشاشة (RGB) للطباعة وقد تبدو أكثر خفوتًا.",
     "guideFonts": "الخطوط: ضمّن جميع الخطوط أو حوّل النص إلى مسارات عند تصدير ملف PDF.",
     "guideResolution": "الدقة: اجعل الصور بدقة {ppiWarn} ppi أو أكثر بحجم الطباعة. وأقل من {ppiError} ppi سنطلب منك إصلاح الملف.",
-    "retry": "إعادة المحاولة"
+    "retry": "إعادة المحاولة",
+    "close": "إغلاق"
   },
   "ArtworkSlot": {
     "detected": "تم الكشف",

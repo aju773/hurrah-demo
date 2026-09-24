@@ -22,6 +22,7 @@
     "noArtworkHeading": "No artwork yet?",
     "noArtworkBody": "Send us a brief and we’ll design it for you.",
     "needDesign": "Need a design?",
+    "artworkTemplates": "Artwork templates",
     "summary": "Summary",
     "basePrice": "Base price",
     "upliftLabel": "{label} +{percent}%",
@@ -58,6 +59,7 @@
     "pageAnnouncement": "Page {n} of {total}: {name}"
   },
   "ArtworkChecks": {
+    "findingsHeading": "Findings",
     "loading": "Loading your preview…",
     "loadError": "Something went wrong loading your preview. Please try again.",
     "noFindings": "No problems found.",
@@ -224,7 +226,8 @@
     "guideColour": "Colour: use CMYK. Screen (RGB) colours are converted for print and may look duller.",
     "guideFonts": "Fonts: embed all fonts, or convert text to outlines, when you export the PDF.",
     "guideResolution": "Resolution: keep images at {ppiWarn} ppi or more at printed size. Below {ppiError} ppi we ask you to fix the file.",
-    "retry": "Retry"
+    "retry": "Retry",
+    "close": "Close"
   },
   "ArtworkSlot": {
     "detected": "Detected",
